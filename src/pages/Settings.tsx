@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sun, Moon, User, Link2, LogOut, Info, Loader2, CheckCircle2, XCircle, AlertTriangle, Eye } from 'lucide-react';
+import { Sun, Moon, User, Link2, LogOut, Info, Loader2, CheckCircle2, XCircle, AlertTriangle, Eye, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FubSyncPreviewModal } from '@/components/FubSyncPreviewModal';
+import { FubImportReview } from '@/components/FubImportReview';
 import { toast } from '@/hooks/use-toast';
 
 interface IntegrationState {
@@ -32,21 +33,26 @@ export default function Settings() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
-  // Load integration status
+  // Staging state
+  const [staging, setStaging] = useState(false);
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [pastRuns, setPastRuns] = useState<any[]>([]);
+
+  // Load integration status + past runs
   const loadIntegration = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from('crm_integrations' as any)
-      .select('status, api_key_last4, last_validated_at')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (data) {
+    const [{ data: integData }, { data: runs }] = await Promise.all([
+      supabase.from('crm_integrations' as any).select('status, api_key_last4, last_validated_at').eq('user_id', user.id).maybeSingle(),
+      supabase.from('fub_import_runs' as any).select('id, status, source_counts, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+    ]);
+    if (integData) {
       setIntegration({
-        status: (data as any).status || 'disconnected',
-        last4: (data as any).api_key_last4 || null,
-        lastValidated: (data as any).last_validated_at || null,
+        status: (integData as any).status || 'disconnected',
+        last4: (integData as any).api_key_last4 || null,
+        lastValidated: (integData as any).last_validated_at || null,
       });
     }
+    setPastRuns(runs || []);
   }, [user]);
 
   useEffect(() => { loadIntegration(); }, [loadIntegration]);
@@ -60,10 +66,7 @@ export default function Settings() {
     if (!apiKeyInput.trim()) return;
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await supabase.functions.invoke('fub-save-key', {
-        body: { api_key: apiKeyInput.trim() },
-      });
+      const res = await supabase.functions.invoke('fub-save-key', { body: { api_key: apiKeyInput.trim() } });
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) throw new Error(res.data.error);
       setApiKeyInput('');
@@ -72,9 +75,7 @@ export default function Settings() {
       toast({ title: 'API key saved securely' });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const handleValidate = async () => {
@@ -93,9 +94,7 @@ export default function Settings() {
       });
     } catch (err: any) {
       toast({ title: 'Validation failed', description: err.message, variant: 'destructive' });
-    } finally {
-      setValidating(false);
-    }
+    } finally { setValidating(false); }
   };
 
   const handleSyncPreview = async () => {
@@ -109,11 +108,21 @@ export default function Settings() {
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) throw new Error(res.data.error);
       setPreviewData(res.data);
+    } catch (err: any) { setPreviewError(err.message); }
+    finally { setPreviewLoading(false); }
+  };
+
+  const handleStageImport = async () => {
+    setStaging(true);
+    try {
+      const res = await supabase.functions.invoke('fub-stage', { body: { limit: 50 } });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+      setActiveRunId(res.data.import_run_id);
+      toast({ title: 'Import staged!', description: `${res.data.counts.leads.total} leads, ${res.data.counts.deals.total} deals, ${res.data.counts.tasks.total} tasks staged for review.` });
     } catch (err: any) {
-      setPreviewError(err.message);
-    } finally {
-      setPreviewLoading(false);
-    }
+      toast({ title: 'Staging failed', description: err.message, variant: 'destructive' });
+    } finally { setStaging(false); }
   };
 
   const statusBadge = () => {
@@ -124,6 +133,11 @@ export default function Settings() {
       default: return <Badge variant="outline" className="text-muted-foreground">Disconnected</Badge>;
     }
   };
+
+  // If viewing an import run, show the review screen
+  if (activeRunId) {
+    return <FubImportReview runId={activeRunId} onBack={() => { setActiveRunId(null); loadIntegration(); }} />;
+  }
 
   return (
     <div className="max-w-lg mx-auto animate-fade-in">
@@ -145,10 +159,7 @@ export default function Settings() {
             {theme === 'dark' ? <Moon className="h-4 w-4 text-muted-foreground" /> : <Sun className="h-4 w-4 text-muted-foreground" />}
             <span className="text-sm">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
           </div>
-          <button
-            onClick={toggleTheme}
-            className="relative inline-flex h-6 w-11 items-center rounded-full bg-muted transition-colors"
-          >
+          <button onClick={toggleTheme} className="relative inline-flex h-6 w-11 items-center rounded-full bg-muted transition-colors">
             <span className={`inline-block h-4 w-4 transform rounded-full bg-primary transition-transform ${theme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
           </button>
         </div>
@@ -158,18 +169,9 @@ export default function Settings() {
       <section className="rounded-lg border border-border bg-card p-4 mb-4">
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><User className="h-4 w-4" /> Profile</h2>
         <div className="space-y-3">
-          <div>
-            <Label className="text-xs text-muted-foreground">Name</Label>
-            <p className="text-sm font-medium">{user?.name}</p>
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">Email</Label>
-            <p className="text-sm font-medium">{user?.email}</p>
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">Role</Label>
-            <p className="text-sm font-medium capitalize">{user?.role}</p>
-          </div>
+          <div><Label className="text-xs text-muted-foreground">Name</Label><p className="text-sm font-medium">{user?.name}</p></div>
+          <div><Label className="text-xs text-muted-foreground">Email</Label><p className="text-sm font-medium">{user?.email}</p></div>
+          <div><Label className="text-xs text-muted-foreground">Role</Label><p className="text-sm font-medium capitalize">{user?.role}</p></div>
         </div>
       </section>
 
@@ -182,57 +184,57 @@ export default function Settings() {
           {statusBadge()}
         </div>
 
-        {integration.last4 && (
-          <p className="text-xs text-muted-foreground mb-3">Key ending in ••••{integration.last4}</p>
-        )}
-
-        {integration.lastValidated && (
-          <p className="text-xs text-muted-foreground mb-3">
-            Last validated: {new Date(integration.lastValidated).toLocaleString()}
-          </p>
-        )}
+        {integration.last4 && <p className="text-xs text-muted-foreground mb-3">Key ending in ••••{integration.last4}</p>}
+        {integration.lastValidated && <p className="text-xs text-muted-foreground mb-3">Last validated: {new Date(integration.lastValidated).toLocaleString()}</p>}
 
         <div className="space-y-3">
           <div>
             <Label className="text-xs text-muted-foreground">API Key</Label>
             <div className="flex gap-2 mt-1">
-              <Input
-                type="password"
-                placeholder="Paste your FUB API key"
-                value={apiKeyInput}
-                onChange={(e) => setApiKeyInput(e.target.value)}
-                className="text-sm"
-              />
+              <Input type="password" placeholder="Paste your FUB API key" value={apiKeyInput} onChange={(e) => setApiKeyInput(e.target.value)} className="text-sm" />
               <Button size="sm" onClick={handleSaveKey} disabled={saving || !apiKeyInput.trim()}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Your key is encrypted server-side and never stored in your browser.
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Your key is encrypted server-side and never stored in your browser.</p>
           </div>
 
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleValidate}
-              disabled={validating || integration.status === 'disconnected' && !integration.last4}
-            >
+          <div className="flex gap-2 flex-wrap">
+            <Button size="sm" variant="outline" onClick={handleValidate} disabled={validating || (integration.status === 'disconnected' && !integration.last4)}>
               {validating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
               Validate
             </Button>
-
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleSyncPreview}
-              disabled={integration.status !== 'connected'}
-            >
-              <Eye className="h-4 w-4 mr-1" /> Sync Preview
+            <Button size="sm" variant="outline" onClick={handleSyncPreview} disabled={integration.status !== 'connected'}>
+              <Eye className="h-4 w-4 mr-1" /> Preview
+            </Button>
+            <Button size="sm" onClick={handleStageImport} disabled={integration.status !== 'connected' || staging}>
+              {staging ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+              Stage Import
             </Button>
           </div>
         </div>
+
+        {/* Past import runs */}
+        {pastRuns.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-border">
+            <h3 className="text-xs font-semibold text-muted-foreground mb-2">Import History</h3>
+            <div className="space-y-1">
+              {pastRuns.map((r: any) => (
+                <button
+                  key={r.id}
+                  onClick={() => setActiveRunId(r.id)}
+                  className="w-full flex items-center justify-between text-xs p-2 rounded-md hover:bg-muted/50 transition-colors"
+                >
+                  <span className="font-mono text-muted-foreground">{r.id.slice(0, 8)}…</span>
+                  <span className="text-muted-foreground">{new Date(r.created_at).toLocaleDateString()}</span>
+                  <Badge variant={r.status === 'committed' ? 'default' : r.status === 'cancelled' ? 'secondary' : 'outline'} className="text-xs">
+                    {r.status}
+                  </Badge>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Sign out */}
@@ -240,13 +242,7 @@ export default function Settings() {
         <LogOut className="h-4 w-4 mr-2" /> Sign Out
       </Button>
 
-      <FubSyncPreviewModal
-        open={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        data={previewData}
-        loading={previewLoading}
-        error={previewError}
-      />
+      <FubSyncPreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} data={previewData} loading={previewLoading} error={previewError} />
     </div>
   );
 }

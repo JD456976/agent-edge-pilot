@@ -238,6 +238,174 @@ export type Database = {
           },
         ]
       }
+      fub_import_runs: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          source_counts: Json | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          source_counts?: Json | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          source_counts?: Json | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      fub_staged_deals: {
+        Row: {
+          created_at: string
+          fub_id: string
+          id: string
+          import_run_id: string
+          match_status: string
+          matched_deal_id: string | null
+          normalized: Json
+          payload: Json
+          resolution: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fub_id: string
+          id?: string
+          import_run_id: string
+          match_status?: string
+          matched_deal_id?: string | null
+          normalized?: Json
+          payload?: Json
+          resolution?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fub_id?: string
+          id?: string
+          import_run_id?: string
+          match_status?: string
+          matched_deal_id?: string | null
+          normalized?: Json
+          payload?: Json
+          resolution?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fub_staged_deals_import_run_id_fkey"
+            columns: ["import_run_id"]
+            isOneToOne: false
+            referencedRelation: "fub_import_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fub_staged_leads: {
+        Row: {
+          created_at: string
+          fub_id: string
+          id: string
+          import_run_id: string
+          match_status: string
+          matched_lead_id: string | null
+          normalized: Json
+          payload: Json
+          resolution: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fub_id: string
+          id?: string
+          import_run_id: string
+          match_status?: string
+          matched_lead_id?: string | null
+          normalized?: Json
+          payload?: Json
+          resolution?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fub_id?: string
+          id?: string
+          import_run_id?: string
+          match_status?: string
+          matched_lead_id?: string | null
+          normalized?: Json
+          payload?: Json
+          resolution?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fub_staged_leads_import_run_id_fkey"
+            columns: ["import_run_id"]
+            isOneToOne: false
+            referencedRelation: "fub_import_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fub_staged_tasks: {
+        Row: {
+          created_at: string
+          fub_id: string
+          id: string
+          import_run_id: string
+          match_status: string
+          matched_task_id: string | null
+          normalized: Json
+          payload: Json
+          resolution: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fub_id: string
+          id?: string
+          import_run_id: string
+          match_status?: string
+          matched_task_id?: string | null
+          normalized?: Json
+          payload?: Json
+          resolution?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fub_id?: string
+          id?: string
+          import_run_id?: string
+          match_status?: string
+          matched_task_id?: string | null
+          normalized?: Json
+          payload?: Json
+          resolution?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fub_staged_tasks_import_run_id_fkey"
+            columns: ["import_run_id"]
+            isOneToOne: false
+            referencedRelation: "fub_import_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           assigned_to_user_id: string | null
