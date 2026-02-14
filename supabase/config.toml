@@ -1,1 +1,10 @@
 project_id = "dqcrhjbsrufmkgqbfsyn"
+
+[functions.fub-validate]
+verify_jwt = false
+
+[functions.fub-preview]
+verify_jwt = false
+
+[functions.fub-save-key]
+verify_jwt = false
