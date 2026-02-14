@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +10,7 @@ import { DataProvider } from "@/contexts/DataContext";
 import { AppLayout } from "@/components/AppLayout";
 import Login from "@/pages/Login";
 import CommandCenter from "@/pages/CommandCenter";
+import { OnboardingModal } from "@/components/OnboardingModal";
 import Pipeline from "@/pages/Pipeline";
 import Tasks from "@/pages/Tasks";
 import Settings from "@/pages/Settings";
@@ -18,7 +20,14 @@ import NotFound from "@/pages/NotFound";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, onboardingCompleted, setOnboardingCompleted, isReviewer } = useAuth();
+  const [onboardingDone, setOnboardingDone] = useState(onboardingCompleted);
+
+  // Keep local state in sync with context
+  React.useEffect(() => {
+    setOnboardingDone(onboardingCompleted);
+  }, [onboardingCompleted]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -32,6 +41,20 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user) return <Navigate to="/login" replace />;
+
+  // Show onboarding modal if not completed (reviewers skip — handled via auto-seed)
+  if (!onboardingDone && !isReviewer) {
+    return (
+      <AppLayout>
+        <OnboardingModal onComplete={() => {
+          setOnboardingCompleted();
+          setOnboardingDone(true);
+        }} />
+        {children}
+      </AppLayout>
+    );
+  }
+
   return <AppLayout>{children}</AppLayout>;
 }
 

@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, UserRole } from '@/types';
+import { generateDemoData } from '@/data/demo';
 
 interface AuthContextType {
   user: User | null;
@@ -24,9 +25,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [profiles, setProfiles] = useState<User[]>([]);
-  const [onboardingCompleted, setOnboardingCompletedState] = useState(true); // default true to avoid flash
+  const [onboardingCompleted, setOnboardingCompletedState] = useState(true);
   const [isReviewer, setIsReviewer] = useState(false);
   const [isProtected, setIsProtected] = useState(false);
+  const reviewerSeeded = useRef(false);
 
   const loadUserData = useCallback(async (authUserId: string) => {
     try {
@@ -78,6 +80,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => { mounted = false; subscription.unsubscribe(); };
   }, [loadUserData]);
+
+  // Reviewer auto-seed: on first login, seed demo data silently and mark onboarding complete
+  useEffect(() => {
+    if (!user || !isReviewer || onboardingCompleted || reviewerSeeded.current) return;
+    reviewerSeeded.current = true;
+    (async () => {
+      try {
+        const demo = generateDemoData(user.id);
+        await supabase.from('leads').insert(demo.leads);
+        await supabase.from('deals').insert(demo.deals);
+        await supabase.from('deal_participants').insert(demo.dealParticipants);
+        await supabase.from('tasks').insert(demo.tasks);
+        await supabase.from('alerts').insert(demo.alerts);
+        await supabase.from('profiles').update({ onboarding_completed: true } as any).eq('user_id', user.id);
+        setOnboardingCompletedState(true);
+      } catch (err) {
+        if (import.meta.env.DEV) console.error('Reviewer auto-seed failed:', err);
+      }
+    })();
+  }, [user, isReviewer, onboardingCompleted]);
 
   const login = async (email: string, password: string): Promise<{ error?: string }> => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
