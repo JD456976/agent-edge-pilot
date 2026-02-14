@@ -5,6 +5,7 @@ import { useData } from '@/contexts/DataContext';
 import { buildCommandCenterPanels } from '@/lib/intelligenceEngine';
 import { getDailyBriefing, getMissedYesterdayCount, getMomentum, getPipelineWatch, getControlStatus, getProgressSnapshot, shouldShowStressReduction, getPostActionFeedback } from '@/lib/dailyIntelligence';
 import { useSessionMemory } from '@/hooks/useSessionMemory';
+import { useImportHighlight } from '@/hooks/useImportHighlight';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/EmptyState';
@@ -65,6 +66,7 @@ export default function CommandCenter() {
   const getSnoozeCount = useCallback((id: string) => snoozeCounts[id] || 0, [snoozeCounts]);
 
   const previousSnapshot = useSessionMemory(leads, deals, tasks, alerts, hasData);
+  const showImportBadge = useImportHighlight();
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 600);
@@ -147,6 +149,14 @@ export default function CommandCenter() {
 
       {/* Daily Intelligence Briefing */}
       <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+        {/* Import highlight banner */}
+        {showImportBadge && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-primary/5 border border-primary/10 mb-2">
+            <Badge variant="outline" className="text-xs border-primary/30 text-primary">Imported just now</Badge>
+            <span className="text-xs text-muted-foreground">New items from your latest FUB import are reflected below.</span>
+          </div>
+        )}
+
         {/* Dynamic briefing message */}
         <div className="flex items-center gap-2">
           <span className="text-base">{briefing.icon}</span>

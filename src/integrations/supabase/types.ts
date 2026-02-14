@@ -240,7 +240,10 @@ export type Database = {
       }
       fub_import_runs: {
         Row: {
+          committed_at: string | null
+          committed_counts: Json | null
           created_at: string
+          duration_ms: number | null
           id: string
           notes: string | null
           source_counts: Json | null
@@ -248,7 +251,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          committed_at?: string | null
+          committed_counts?: Json | null
           created_at?: string
+          duration_ms?: number | null
           id?: string
           notes?: string | null
           source_counts?: Json | null
@@ -256,7 +262,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          committed_at?: string | null
+          committed_counts?: Json | null
           created_at?: string
+          duration_ms?: number | null
           id?: string
           notes?: string | null
           source_counts?: Json | null

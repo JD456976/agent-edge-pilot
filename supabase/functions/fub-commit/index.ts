@@ -8,6 +8,7 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const startTime = Date.now();
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -149,8 +150,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Mark run committed
-    await svc.from("fub_import_runs").update({ status: "committed" }).eq("id", import_run_id);
+    // Mark run committed with counts and timing
+    const durationMs = Date.now() - startTime;
+    await svc.from("fub_import_runs").update({
+      status: "committed",
+      committed_counts: committed,
+      committed_at: new Date().toISOString(),
+      duration_ms: durationMs,
+    }).eq("id", import_run_id);
 
     // Audit log
     await svc.from("admin_audit_events").insert({
