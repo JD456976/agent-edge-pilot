@@ -1,4 +1,4 @@
-import { X, Zap, DollarSign, AlertTriangle, TrendingUp, Eye, Check, Plus } from 'lucide-react';
+import { X, Zap, DollarSign, AlertTriangle, TrendingUp, Eye, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { ScoredEntity, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
@@ -15,6 +15,13 @@ interface Props {
   onComplete?: (taskId: string) => void;
 }
 
+function getConfidence(scores: ScoredEntity): 'High' | 'Medium' {
+  if ((scores.urgencyScore >= 40 && scores.revenueImpactScore >= 40) || scores.decayRiskScore >= 50) {
+    return 'High';
+  }
+  return 'Medium';
+}
+
 function ScoreBar({ label, value, icon: Icon, colorClass }: { label: string; value: number; icon: React.ElementType; colorClass: string }) {
   return (
     <div className="flex items-center gap-3">
@@ -28,18 +35,26 @@ function ScoreBar({ label, value, icon: Icon, colorClass }: { label: string; val
   );
 }
 
-function ScoresSection({ scores }: { scores: ScoredEntity }) {
+function ScoresSection({ scores, isOpportunity }: { scores: ScoredEntity; isOpportunity?: boolean }) {
+  const overallLabel = isOpportunity ? 'Opportunity Heat' : 'Action Urgency';
+  const overallValue = isOpportunity ? scores.opportunityScore : scores.overallPriorityScore;
+
   return (
     <div className="space-y-2.5">
       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Score Breakdown</h4>
       <ScoreBar label="Urgency" value={scores.urgencyScore} icon={Zap} colorClass="text-urgent" />
       <ScoreBar label="Revenue Impact" value={scores.revenueImpactScore} icon={DollarSign} colorClass="text-opportunity" />
       <ScoreBar label="Decay Risk" value={scores.decayRiskScore} icon={AlertTriangle} colorClass="text-warning" />
-      <ScoreBar label="Opportunity" value={scores.opportunityScore} icon={TrendingUp} colorClass="text-opportunity" />
+      <ScoreBar label={isOpportunity ? '🔥 Heat' : 'Opportunity'} value={scores.opportunityScore} icon={TrendingUp} colorClass="text-opportunity" />
       <ScoreBar label="Attention Gap" value={scores.attentionGapScore} icon={Eye} colorClass="text-time-sensitive" />
       <div className="pt-1 border-t border-border flex items-center justify-between">
-        <span className="text-xs font-semibold">Overall Priority</span>
-        <span className="text-sm font-bold text-primary">{scores.overallPriorityScore}</span>
+        <span className="text-xs font-semibold">{overallLabel}</span>
+        <div className="flex items-center gap-2">
+          <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+            <div className={`h-full rounded-full ${isOpportunity ? 'bg-opportunity' : 'bg-primary'}`} style={{ width: `${overallValue}%` }} />
+          </div>
+          <span className="text-xs text-muted-foreground">{overallValue}</span>
+        </div>
       </div>
     </div>
   );
@@ -65,6 +80,7 @@ function ExplanationList({ explanation }: { explanation: string[] }) {
 export function ActionDetailDrawer({ item, onClose, onComplete }: Props) {
   if (!item) return null;
 
+  const isOpportunity = item.kind === 'opportunity';
   let title = '';
   let scores: ScoredEntity;
   let subtitle = '';
@@ -85,7 +101,7 @@ export function ActionDetailDrawer({ item, onClose, onComplete }: Props) {
     case 'opportunity':
       title = item.data.lead.name;
       scores = item.data.scores;
-      subtitle = `${item.data.lead.source} · Engagement ${item.data.lead.engagementScore}`;
+      subtitle = `${item.data.lead.source} · 🔥 Heat ${item.data.scores.opportunityScore}`;
       break;
     case 'speedAlert':
       title = item.data.title;
@@ -93,6 +109,8 @@ export function ActionDetailDrawer({ item, onClose, onComplete }: Props) {
       subtitle = item.data.detail;
       break;
   }
+
+  const confidence = getConfidence(scores!);
 
   return (
     <>
@@ -118,7 +136,23 @@ export function ActionDetailDrawer({ item, onClose, onComplete }: Props) {
             <Badge variant="timeSensitive" className="text-xs">Suggested by Intelligence Engine</Badge>
           )}
 
-          <ScoresSection scores={scores!} />
+          {/* Confidence Indicator */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Confidence:</span>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${confidence === 'High' ? 'bg-muted text-foreground/80' : 'bg-muted/50 text-muted-foreground'}`}>
+              {confidence}
+            </span>
+          </div>
+
+          <ScoresSection scores={scores!} isOpportunity={isOpportunity} />
+
+          {/* Low-urgency opportunity note */}
+          {isOpportunity && scores!.urgencyScore < 20 && (
+            <p className="text-xs text-muted-foreground italic border-l-2 border-border pl-3">
+              This lead shows strong engagement but may not require immediate action.
+            </p>
+          )}
+
           <ExplanationList explanation={scores!.explanation} />
         </div>
 
