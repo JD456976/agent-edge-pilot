@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader2, CheckCircle2, AlertTriangle, Plus, SkipForward, Link, XCircle, Info } from 'lucide-react';
+import { ImportCompletionModal, type ImportResult } from '@/components/ImportCompletionModal';
+import { markImportCompleted } from '@/hooks/useImportHighlight';
 
 interface ImportReviewProps {
   runId: string;
@@ -21,7 +23,9 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
   const [loading, setLoading] = useState(true);
   const [committing, setCommitting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [completionResult, setCompletionResult] = useState<ImportResult | null>(null);
   const [run, setRun] = useState<any>(null);
+  const commitStartTime = useRef<number>(0);
   const [stagedLeads, setStagedLeads] = useState<any[]>([]);
   const [stagedDeals, setStagedDeals] = useState<any[]>([]);
   const [stagedTasks, setStagedTasks] = useState<any[]>([]);
@@ -51,13 +55,38 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
 
   const handleCommit = async () => {
     setCommitting(true);
+    commitStartTime.current = Date.now();
     try {
       const res = await supabase.functions.invoke('fub-commit', {
         body: { import_run_id: runId },
       });
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) throw new Error(res.data.error);
-      toast({ title: 'Import committed!', description: `${res.data.committed.leads} leads, ${res.data.committed.deals} deals, ${res.data.committed.tasks} tasks imported.` });
+
+      const durationMs = Date.now() - commitStartTime.current;
+      const committed = res.data.committed;
+
+      // Calculate skipped and matched from staged data
+      const skippedLeads = stagedLeads.filter(l => (l.resolution || (l.match_status === 'conflict' ? null : undefined)) === 'skip').length;
+      const skippedDeals = stagedDeals.filter(d => (d.resolution || (d.match_status === 'conflict' ? null : undefined)) === 'skip').length;
+      const skippedTasks = stagedTasks.filter(t => (t.resolution || (t.match_status === 'conflict' ? null : undefined)) === 'skip').length;
+      const matchedLeads = stagedLeads.filter(l => l.match_status === 'matched').length;
+      const matchedDeals = stagedDeals.filter(d => d.match_status === 'matched').length;
+      const matchedTasks = stagedTasks.filter(t => t.match_status === 'matched').length;
+
+      // Mark import completed for Command Center badge
+      if (!isReviewer) {
+        markImportCompleted();
+      }
+
+      setCompletionResult({
+        committed,
+        skipped: { leads: skippedLeads, deals: skippedDeals, tasks: skippedTasks },
+        matched: { leads: matchedLeads, deals: matchedDeals, tasks: matchedTasks },
+        isReviewer,
+        durationMs,
+      });
+
       await loadData();
     } catch (err: any) {
       toast({ title: 'Commit failed', description: err.message, variant: 'destructive' });
@@ -94,6 +123,20 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
     ...stagedDeals.filter(d => d.match_status === 'conflict' && !d.resolution),
     ...stagedTasks.filter(t => t.match_status === 'conflict' && !t.resolution),
   ].length;
+
+  // Show completion modal after successful commit
+  if (completionResult) {
+    return (
+      <ImportCompletionModal
+        result={completionResult}
+        onViewHistory={onBack}
+        onClose={() => {
+          setCompletionResult(null);
+          // Stay on review screen to view imported items
+        }}
+      />
+    );
+  }
 
   if (loading) {
     return (
