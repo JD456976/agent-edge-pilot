@@ -11,27 +11,37 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("Missing authorization");
+    if (!authHeader?.startsWith("Bearer "))
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const encryptionKey = Deno.env.get("FUB_ENCRYPTION_KEY");
-    if (!encryptionKey) throw new Error("Encryption key not configured");
 
-    // Get authenticated user
-    const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!);
-    const { data: { user }, error: authError } = await anonClient.auth.getUser(authHeader.replace("Bearer ", ""));
-    if (authError || !user) throw new Error("Unauthorized");
+    if (!supabaseUrl || !anonKey) return new Response(JSON.stringify({ error: "Server config error: missing URL or anon key" }), { status: 500, headers: corsHeaders });
+    if (!serviceKey) return new Response(JSON.stringify({ error: "Server config error: missing service key" }), { status: 500, headers: corsHeaders });
+    if (!encryptionKey) return new Response(JSON.stringify({ error: "Server config error: missing encryption key" }), { status: 500, headers: corsHeaders });
+
+    // Authenticate user via getClaims
+    const anonClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims)
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+
+    const userId = claimsData.claims.sub as string;
 
     const { api_key } = await req.json();
     if (!api_key || typeof api_key !== "string" || api_key.trim().length < 4) {
       throw new Error("Invalid API key");
     }
 
-    // Use service role to call the encryption function
-    const serviceClient = createClient(supabaseUrl, supabaseKey);
+    const serviceClient = createClient(supabaseUrl, serviceKey);
     const { error } = await serviceClient.rpc("store_encrypted_api_key", {
-      p_user_id: user.id,
+      p_user_id: userId,
       p_api_key: api_key.trim(),
       p_encryption_key: encryptionKey,
     });
