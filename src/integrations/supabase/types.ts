@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_events: {
+        Row: {
+          action: string
+          admin_user_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       alerts: {
         Row: {
           created_at: string
@@ -263,7 +287,9 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          is_protected: boolean
           name: string
+          onboarding_completed: boolean
           theme_preference: string
           updated_at: string
           user_id: string
@@ -272,7 +298,9 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          is_protected?: boolean
           name?: string
+          onboarding_completed?: boolean
           theme_preference?: string
           updated_at?: string
           user_id: string
@@ -281,7 +309,9 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          is_protected?: boolean
           name?: string
+          onboarding_completed?: boolean
           theme_preference?: string
           updated_at?: string
           user_id?: string

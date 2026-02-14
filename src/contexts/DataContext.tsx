@@ -86,7 +86,7 @@ function mapParticipant(row: any, profileName?: string): DealParticipant {
 function computeUserCommission(dealRow: any, participants: DealParticipant[], userId: string): number {
   const commission = Number(dealRow.commission_amount) || 0;
   const participant = participants.find(p => p.dealId === dealRow.id && p.userId === userId);
-  if (!participant) return commission; // solo mode fallback
+  if (!participant) return commission;
   if (participant.commissionOverride !== undefined && participant.commissionOverride !== null) return participant.commissionOverride;
   const splitPct = participant.splitPercent ?? 0;
   if (splitPct <= 0) {
@@ -153,7 +153,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Demo data isolation: if real data exists, ask for confirmation
     if (hasData) {
       const confirmed = window.confirm('Seed demo scenarios alongside real data?');
       if (!confirmed) return;
@@ -161,12 +160,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     const demo = generateDemoData(user.id);
 
-    // Insert in order respecting FK constraints
     await supabase.from('leads').insert(demo.leads);
     await supabase.from('deals').insert(demo.deals);
     await supabase.from('deal_participants').insert(demo.dealParticipants);
     await supabase.from('tasks').insert(demo.tasks);
     await supabase.from('alerts').insert(demo.alerts);
+
+    // Log admin action
+    await supabase.from('admin_audit_events' as any).insert({
+      admin_user_id: user.id,
+      action: 'seed_demo_data',
+      metadata: {},
+    });
 
     await loadData();
   };
@@ -174,13 +179,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const wipeData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    // Delete in FK order
     const dealIds = deals.map(d => d.id);
     if (dealIds.length > 0) {
       await supabase.from('deal_participants').delete().in('deal_id', dealIds);
     }
     await supabase.from('tasks').delete().eq('assigned_to_user_id', user.id);
-    // Delete alerts related to user's leads/deals
     const leadIds = leads.map(l => l.id);
     if (leadIds.length > 0) {
       await supabase.from('alerts').delete().in('related_lead_id', leadIds);
@@ -190,6 +193,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
     await supabase.from('deals').delete().eq('assigned_to_user_id', user.id);
     await supabase.from('leads').delete().eq('assigned_to_user_id', user.id);
+
+    // Log admin action
+    await supabase.from('admin_audit_events' as any).insert({
+      admin_user_id: user.id,
+      action: 'wipe_data',
+      metadata: {},
+    });
 
     await loadData();
   };

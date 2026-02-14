@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ShieldCheck, Users, Target, ListChecks, Database, Plus, Trash2, AlertTriangle, Building2, UsersRound } from 'lucide-react';
+import { ShieldCheck, Users, Target, ListChecks, Database, Plus, Trash2, AlertTriangle, Building2, UsersRound, ScrollText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,8 +23,16 @@ function MetricCard({ icon: Icon, label, value }: { icon: React.ElementType; lab
   );
 }
 
+interface AuditEvent {
+  id: string;
+  action: string;
+  admin_user_id: string;
+  created_at: string;
+  metadata: Record<string, unknown>;
+}
+
 export default function Admin() {
-  const { user, profiles, fetchProfiles, updateUserRole } = useAuth();
+  const { user, profiles, fetchProfiles, updateUserRole, logAdminAction } = useAuth();
   const { leads, deals, tasks, seedDemoData, wipeData } = useData();
   const [showWipeConfirm, setShowWipeConfirm] = useState(false);
   const [wipeConfirmText, setWipeConfirmText] = useState('');
@@ -39,10 +47,14 @@ export default function Admin() {
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
 
+  // Audit log
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+
   useEffect(() => {
     if (user?.role === 'admin') {
       fetchProfiles();
       loadOrgData();
+      loadAuditLog();
     }
   }, [user?.role]);
 
@@ -66,26 +78,56 @@ export default function Admin() {
     }
   };
 
+  const loadAuditLog = async () => {
+    const { data } = await supabase
+      .from('admin_audit_events' as any)
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (data) setAuditEvents(data as unknown as AuditEvent[]);
+  };
+
   const createOrg = async () => {
     if (!newOrgName.trim()) return;
     await supabase.from('organizations').insert({ name: newOrgName.trim(), owner_user_id: user!.id });
+    await logAdminAction('create_organization', { name: newOrgName.trim() });
     setNewOrgName('');
     setShowCreateOrg(false);
     await loadOrgData();
+    await loadAuditLog();
   };
 
   const createTeam = async () => {
     if (!newTeamName.trim() || !selectedOrgId) return;
     await supabase.from('teams').insert({ name: newTeamName.trim(), organization_id: selectedOrgId, team_leader_user_id: user!.id });
+    await logAdminAction('create_team', { name: newTeamName.trim(), organizationId: selectedOrgId });
     setNewTeamName('');
     setShowCreateTeam(false);
     await loadOrgData();
+    await loadAuditLog();
   };
 
   const addMemberToTeam = async (teamId: string, userId: string) => {
     await supabase.from('team_members').insert({ team_id: teamId, user_id: userId, role: 'agent' as any });
+    await logAdminAction('add_team_member', { teamId, userId });
     await loadOrgData();
+    await loadAuditLog();
   };
+
+  const handleSeedDemoData = async () => {
+    await seedDemoData();
+    await loadAuditLog();
+  };
+
+  const handleWipeData = async () => {
+    await wipeData();
+    setShowWipeConfirm(false);
+    setWipeConfirmText('');
+    await loadAuditLog();
+  };
+
+  // Determine protected profiles
+  const protectedEmails = new Set(['jason.craig@chinattirealty.com']);
 
   if (user?.role !== 'admin') {
     return (
@@ -96,6 +138,18 @@ export default function Admin() {
       </div>
     );
   }
+
+  const formatAction = (action: string) => {
+    const map: Record<string, string> = {
+      seed_demo_data: 'Seeded demo data',
+      wipe_data: 'Wiped test data',
+      create_organization: 'Created organization',
+      create_team: 'Created team',
+      add_team_member: 'Added team member',
+      role_change: 'Changed user role',
+    };
+    return map[action] || action;
+  };
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
@@ -114,7 +168,7 @@ export default function Admin() {
       <section className="rounded-lg border border-border bg-card p-4 mb-6">
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Database className="h-4 w-4" /> Test Data Tools</h2>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={seedDemoData}><Plus className="h-4 w-4 mr-1" /> Seed Demo Data</Button>
+          <Button size="sm" onClick={handleSeedDemoData}><Plus className="h-4 w-4 mr-1" /> Seed Demo Data</Button>
           <Button size="sm" variant="destructive" onClick={() => setShowWipeConfirm(true)}><Trash2 className="h-4 w-4 mr-1" /> Wipe Test Data</Button>
         </div>
         {showWipeConfirm && (
@@ -134,7 +188,7 @@ export default function Admin() {
               className="mb-3 max-w-xs"
             />
             <div className="flex gap-2">
-              <Button size="sm" variant="destructive" disabled={wipeConfirmText !== 'DELETE'} onClick={() => { wipeData(); setShowWipeConfirm(false); setWipeConfirmText(''); }}>Yes, Wipe Data</Button>
+              <Button size="sm" variant="destructive" disabled={wipeConfirmText !== 'DELETE'} onClick={handleWipeData}>Yes, Wipe Data</Button>
               <Button size="sm" variant="outline" onClick={() => { setShowWipeConfirm(false); setWipeConfirmText(''); }}>Cancel</Button>
             </div>
           </div>
@@ -246,34 +300,63 @@ export default function Admin() {
       </section>
 
       {/* User Management */}
-      <section className="rounded-lg border border-border bg-card p-4">
+      <section className="rounded-lg border border-border bg-card p-4 mb-6">
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Users className="h-4 w-4" /> User Management</h2>
         <div className="space-y-1">
-          {profiles.map(u => (
-            <div key={u.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-accent/50 transition-colors">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium">{u.name || u.email}</p>
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 capitalize">{u.role}</Badge>
+          {profiles.map(u => {
+            const isUserProtected = protectedEmails.has(u.email) || (u as any).isProtected;
+            return (
+              <div key={u.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-accent/50 transition-colors">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">{u.name || u.email}</p>
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 capitalize">{u.role}</Badge>
+                    {isUserProtected && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Protected</Badge>}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{u.email}</p>
                 </div>
-                <p className="text-xs text-muted-foreground">{u.email}</p>
+                {u.id !== user?.id && !isUserProtected && (
+                  <Select value={u.role} onValueChange={(v) => updateUserRole(u.id, v as UserRole)}>
+                    <SelectTrigger className="w-28 h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="agent">Agent</SelectItem>
+                      <SelectItem value="reviewer">Reviewer</SelectItem>
+                      <SelectItem value="beta">Beta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
-              {u.id !== user?.id && (
-                <Select value={u.role} onValueChange={(v) => updateUserRole(u.id, v as UserRole)}>
-                  <SelectTrigger className="w-28 h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="agent">Agent</SelectItem>
-                    <SelectItem value="reviewer">Reviewer</SelectItem>
-                    <SelectItem value="beta">Beta</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
+      </section>
+
+      {/* Audit Log */}
+      <section className="rounded-lg border border-border bg-card p-4">
+        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><ScrollText className="h-4 w-4" /> Audit Log</h2>
+        {auditEvents.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">No admin actions recorded yet</p>
+        ) : (
+          <div className="space-y-1">
+            {auditEvents.map(event => {
+              const adminName = profiles.find(p => p.id === event.admin_user_id)?.name || 'Unknown';
+              return (
+                <div key={event.id} className="flex items-center justify-between p-2 rounded-md text-sm">
+                  <div className="min-w-0 flex-1">
+                    <span className="font-medium">{formatAction(event.action)}</span>
+                    <span className="text-muted-foreground ml-2">by {adminName}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {new Date(event.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
     </div>
   );

@@ -1,17 +1,19 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye } from 'lucide-react';
+import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { buildCommandCenterPanels } from '@/lib/intelligenceEngine';
 import { getDailyBriefing, getMissedYesterdayCount, getMomentum, getPipelineWatch, getControlStatus, getProgressSnapshot, shouldShowStressReduction, getPostActionFeedback } from '@/lib/dailyIntelligence';
 import { useSessionMemory } from '@/hooks/useSessionMemory';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/EmptyState';
 import { SkeletonCard } from '@/components/SkeletonCard';
 import { ActionDetailDrawer } from '@/components/ActionDetailDrawer';
 import { RecommendedFirstAction } from '@/components/RecommendedFirstAction';
 import { ControlStatusBar } from '@/components/ControlStatusBar';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
+import { QuickAddModal } from '@/components/QuickAddModal';
 import { toast } from '@/hooks/use-toast';
 import type { RiskLevel, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
@@ -36,6 +38,7 @@ type DetailItem =
 export default function CommandCenter() {
   const { user } = useAuth();
   const { leads, deals, tasks, alerts, hasData, seedDemoData, completeTask } = useData();
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<DetailItem | null>(null);
   const [snoozedIds, setSnoozedIds] = useState<Set<string>>(new Set());
@@ -109,12 +112,22 @@ export default function CommandCenter() {
           <Info className="h-4 w-4 text-primary shrink-0" />
           <span className="text-muted-foreground">Not connected to Follow Up Boss yet. Using demo or manual data.</span>
         </div>
-        <EmptyState
-          title="No data yet"
-          description="Load demo data to see your Command Center in action with realistic real estate scenarios."
-          actionLabel="Load Demo Data"
-          onAction={seedDemoData}
-        />
+        <div className="flex flex-col items-center justify-center py-12 px-4 text-center animate-fade-in">
+          <div className="mb-4 rounded-2xl bg-muted p-4">
+            <Zap className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold mb-1">No data yet</h3>
+          <p className="text-sm text-muted-foreground max-w-xs mb-4">
+            Load demo data to explore, or add your first deal manually.
+          </p>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={seedDemoData}>Load Demo Data</Button>
+            <Button size="sm" variant="outline" onClick={() => setShowQuickAdd(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Add Manually
+            </Button>
+          </div>
+        </div>
+        {showQuickAdd && <QuickAddModal defaultType="deal" onClose={() => setShowQuickAdd(false)} />}
       </div>
     );
   }
@@ -127,6 +140,9 @@ export default function CommandCenter() {
           <h1 className="text-xl font-bold">Command Center</h1>
           <p className="text-sm text-muted-foreground">Today's Briefing · {today}</p>
         </div>
+        <Button size="sm" variant="outline" onClick={() => setShowQuickAdd(true)}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> Quick Add
+        </Button>
       </div>
 
       {/* Daily Intelligence Briefing */}
@@ -379,6 +395,9 @@ export default function CommandCenter() {
         }}
         snoozeCount={selectedItem ? getSnoozeCount(selectedItem.kind === 'action' ? selectedItem.data.id : '') : 0}
       />
+
+      {/* Quick Add Modal */}
+      {showQuickAdd && <QuickAddModal onClose={() => setShowQuickAdd(false)} />}
     </div>
   );
 }
