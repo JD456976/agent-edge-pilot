@@ -71,10 +71,11 @@ Deno.serve(async (req) => {
     if (!authHeader?.startsWith("Bearer "))
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const encryptionKey = Deno.env.get("FUB_ENCRYPTION_KEY");
+    if (!supabaseUrl || !anonKey || !serviceKey) throw new Error("Server config error");
     if (!encryptionKey) throw new Error("Encryption key not configured");
 
     const anonClient = createClient(supabaseUrl, anonKey, {
