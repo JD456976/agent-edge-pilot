@@ -3,6 +3,13 @@ export type DealStage = 'offer' | 'offer_accepted' | 'pending' | 'closed';
 export type RiskLevel = 'green' | 'yellow' | 'red';
 export type TaskType = 'call' | 'text' | 'email' | 'showing' | 'follow_up' | 'closing' | 'open_house' | 'thank_you';
 export type AlertType = 'speed' | 'urgent' | 'risk' | 'opportunity';
+export type LeadTemperature = 'cold' | 'warm' | 'hot';
+
+export interface MilestoneStatus {
+  inspection?: 'unknown' | 'scheduled' | 'complete';
+  financing?: 'unknown' | 'preapproved' | 'approved';
+  appraisal?: 'unknown' | 'ordered' | 'complete';
+}
 
 export interface User {
   id: string;
@@ -24,6 +31,9 @@ export interface Lead {
   notes: string;
   statusTags: string[];
   assignedToUserId: string;
+  createdAt?: string;
+  lastActivityAt?: string;
+  leadTemperature?: LeadTemperature;
 }
 
 export interface Deal {
@@ -35,6 +45,10 @@ export interface Deal {
   closeDate: string;
   riskLevel: RiskLevel;
   assignedToUserId: string;
+  createdAt?: string;
+  lastTouchedAt?: string;
+  riskFlags?: string[];
+  milestoneStatus?: MilestoneStatus;
 }
 
 export interface Task {
@@ -68,4 +82,62 @@ export interface PriorityAction {
   relatedTaskId?: string;
   relatedLeadId?: string;
   relatedDealId?: string;
+}
+
+/** Intelligence Engine scored output */
+export interface ScoredEntity {
+  entityId: string;
+  entityType: 'lead' | 'deal' | 'task' | 'alert';
+  urgencyScore: number;
+  revenueImpactScore: number;
+  decayRiskScore: number;
+  opportunityScore: number;
+  attentionGapScore: number;
+  overallPriorityScore: number;
+  explanation: string[];
+}
+
+export interface CommandCenterAction {
+  id: string;
+  title: string;
+  reason: string;
+  timeWindow: string;
+  potentialValue?: number;
+  overallScore: number;
+  scores: ScoredEntity;
+  relatedTaskId?: string;
+  relatedLeadId?: string;
+  relatedDealId?: string;
+  isSuggested?: boolean;
+  suggestedType?: TaskType;
+}
+
+export interface CommandCenterDealAtRisk {
+  deal: Deal;
+  scores: ScoredEntity;
+  topReason: string;
+}
+
+export interface CommandCenterOpportunity {
+  lead: Lead;
+  scores: ScoredEntity;
+  topReason: string;
+}
+
+export interface CommandCenterSpeedAlert {
+  id: string;
+  title: string;
+  detail: string;
+  type: AlertType | 'task_due';
+  urgencyScore: number;
+  scores: ScoredEntity;
+  relatedLeadId?: string;
+  relatedDealId?: string;
+}
+
+export interface CommandCenterPanels {
+  priorityActions: CommandCenterAction[];
+  dealsAtRisk: CommandCenterDealAtRisk[];
+  opportunities: CommandCenterOpportunity[];
+  speedAlerts: CommandCenterSpeedAlert[];
 }
