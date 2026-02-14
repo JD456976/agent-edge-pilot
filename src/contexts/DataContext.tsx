@@ -84,13 +84,18 @@ function mapParticipant(row: any, profileName?: string): DealParticipant {
 }
 
 function computeUserCommission(dealRow: any, participants: DealParticipant[], userId: string): number {
-  const commission = Number(dealRow.commission_amount);
+  const commission = Number(dealRow.commission_amount) || 0;
   const participant = participants.find(p => p.dealId === dealRow.id && p.userId === userId);
   if (!participant) return commission; // solo mode fallback
-  if (participant.commissionOverride !== undefined) return participant.commissionOverride;
+  if (participant.commissionOverride !== undefined && participant.commissionOverride !== null) return participant.commissionOverride;
+  const splitPct = participant.splitPercent ?? 0;
+  if (splitPct <= 0) {
+    if (import.meta.env.DEV) console.warn(`[computeUserCommission] splitPercent is ${splitPct} for participant ${participant.id}, treating as 0`);
+    return 0;
+  }
   const referralFee = dealRow.referral_fee_percent ? Number(dealRow.referral_fee_percent) : 0;
   const net = commission * (1 - referralFee / 100);
-  return Math.round(net * participant.splitPercent / 100);
+  return Math.round(net * splitPct / 100);
 }
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
@@ -147,6 +152,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const seedDemoData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    // Demo data isolation: if real data exists, ask for confirmation
+    if (hasData) {
+      const confirmed = window.confirm('Seed demo scenarios alongside real data?');
+      if (!confirmed) return;
+    }
+
     const demo = generateDemoData(user.id);
 
     // Insert in order respecting FK constraints
