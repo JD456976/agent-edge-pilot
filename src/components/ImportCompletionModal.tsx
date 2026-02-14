@@ -110,9 +110,15 @@ export function ImportCompletionModal({ result, onViewHistory, onClose }: Import
       });
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) throw new Error(res.data.error);
+      const { deleted, skipped_edited, skipped_matched } = res.data;
+      const totalSkippedEdited = (skipped_edited?.leads || 0) + (skipped_edited?.deals || 0) + (skipped_edited?.tasks || 0);
       setUndone(true);
       await refreshData();
-      toast({ description: 'Import has been undone. All created records have been removed.' });
+      toast({ 
+        description: totalSkippedEdited > 0
+          ? `Import undone. ${totalSkippedEdited} item(s) not removed because they were edited after import.`
+          : 'Import has been undone. All created records have been removed.',
+      });
     } catch (err: any) {
       toast({ title: 'Undo failed', description: err.message, variant: 'destructive' });
     } finally {
