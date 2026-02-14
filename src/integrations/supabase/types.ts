@@ -96,6 +96,42 @@ export type Database = {
           },
         ]
       }
+      crm_integrations: {
+        Row: {
+          api_key_encrypted: string | null
+          api_key_last4: string | null
+          created_at: string
+          id: string
+          last_validated_at: string | null
+          provider: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key_encrypted?: string | null
+          api_key_last4?: string | null
+          created_at?: string
+          id?: string
+          last_validated_at?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key_encrypted?: string | null
+          api_key_last4?: string | null
+          created_at?: string
+          id?: string
+          last_validated_at?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       deal_participants: {
         Row: {
           commission_override: number | null
@@ -459,12 +495,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_decrypted_api_key: {
+        Args: { p_encryption_key: string; p_user_id: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      store_encrypted_api_key: {
+        Args: { p_api_key: string; p_encryption_key: string; p_user_id: string }
+        Returns: undefined
       }
     }
     Enums: {
