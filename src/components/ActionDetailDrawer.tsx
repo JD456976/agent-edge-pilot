@@ -13,6 +13,7 @@ interface Props {
   item: DetailItem | null;
   onClose: () => void;
   onComplete?: (taskId: string) => void;
+  snoozeCount?: number;
 }
 
 function getConfidence(scores: ScoredEntity): 'High' | 'Medium' {
@@ -77,7 +78,7 @@ function ExplanationList({ explanation }: { explanation: string[] }) {
   );
 }
 
-export function ActionDetailDrawer({ item, onClose, onComplete }: Props) {
+export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 }: Props) {
   if (!item) return null;
 
   const isOpportunity = item.kind === 'opportunity';
@@ -154,6 +155,12 @@ export function ActionDetailDrawer({ item, onClose, onComplete }: Props) {
           )}
 
           <ExplanationList explanation={scores!.explanation} />
+
+          {snoozeCount >= 3 && (
+            <p className="text-xs text-warning italic border-l-2 border-warning/50 pl-3">
+              Action repeatedly deferred.
+            </p>
+          )}
         </div>
 
         {/* Actions */}

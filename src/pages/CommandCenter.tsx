@@ -11,8 +11,11 @@ import { SkeletonCard } from '@/components/SkeletonCard';
 import { ActionDetailDrawer } from '@/components/ActionDetailDrawer';
 import { RecommendedFirstAction } from '@/components/RecommendedFirstAction';
 import { ControlStatusBar } from '@/components/ControlStatusBar';
+import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { toast } from '@/hooks/use-toast';
 import type { RiskLevel, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
+
+const SNOOZE_STORAGE_KEY = 'dp-snooze-counts';
 
 function formatCurrency(n: number) {
   return n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
@@ -36,6 +39,9 @@ export default function CommandCenter() {
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<DetailItem | null>(null);
   const [snoozedIds, setSnoozedIds] = useState<Set<string>>(new Set());
+  const [snoozeCounts, setSnoozeCounts] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem(SNOOZE_STORAGE_KEY) || '{}'); } catch { return {}; }
+  });
   const [stressReductionDismissed, setStressReductionDismissed] = useState(false);
 
   const showPostActionToast = useCallback((kind: 'complete' | 'snooze' | 'handled', context?: { isRiskDeal?: boolean; isOverdue?: boolean; isOpportunity?: boolean }) => {
@@ -45,8 +51,15 @@ export default function CommandCenter() {
 
   const handleSnooze = useCallback((id: string) => {
     setSnoozedIds(prev => new Set(prev).add(id));
+    setSnoozeCounts(prev => {
+      const next = { ...prev, [id]: (prev[id] || 0) + 1 };
+      localStorage.setItem(SNOOZE_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
     showPostActionToast('snooze');
   }, [showPostActionToast]);
+
+  const getSnoozeCount = useCallback((id: string) => snoozeCounts[id] || 0, [snoozeCounts]);
 
   const previousSnapshot = useSessionMemory(leads, deals, tasks, alerts, hasData);
 
@@ -177,6 +190,7 @@ export default function CommandCenter() {
       {/* 4-Panel Grid + Pipeline Watch */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Priority Actions */}
+        <PanelErrorBoundary>
         <div className="rounded-lg border border-border bg-card p-4 md:row-span-2">
           <div className="flex items-center gap-2 mb-1">
             <Zap className="h-4 w-4 text-primary" />
@@ -190,6 +204,7 @@ export default function CommandCenter() {
             <div className="space-y-2">
               {panels.priorityActions.map(action => {
                 const confidence = (action.scores.urgencyScore >= 40 && action.scores.revenueImpactScore >= 40) || action.scores.decayRiskScore >= 50 ? 'High' : 'Medium';
+                const snoozeCount = getSnoozeCount(action.id);
                 return (
                   <div
                     key={action.id}
@@ -216,6 +231,9 @@ export default function CommandCenter() {
                           <span className="text-xs text-opportunity font-medium">{formatCurrency(action.potentialValue)}</span>
                         )}
                       </div>
+                      {snoozeCount >= 3 && (
+                        <p className="text-[10px] text-warning mt-1 italic">Action repeatedly deferred.</p>
+                      )}
                     </div>
                     <span className={`text-xs font-medium shrink-0 ${action.timeWindow === 'Overdue' ? 'text-urgent' : action.timeWindow === 'Due now' ? 'text-warning' : 'text-muted-foreground'}`}>
                       {action.timeWindow}
@@ -232,8 +250,10 @@ export default function CommandCenter() {
             </div>
           )}
         </div>
+        </PanelErrorBoundary>
 
         {/* Deals at Risk */}
+        <PanelErrorBoundary>
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="h-4 w-4 text-warning" />
@@ -259,8 +279,10 @@ export default function CommandCenter() {
             </div>
           )}
         </div>
+        </PanelErrorBoundary>
 
         {/* Opportunities Heating Up */}
+        <PanelErrorBoundary>
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp className="h-4 w-4 text-opportunity" />
@@ -293,8 +315,10 @@ export default function CommandCenter() {
             </div>
           )}
         </div>
+        </PanelErrorBoundary>
 
         {/* Speed Alerts */}
+        <PanelErrorBoundary>
         <div className="rounded-lg border border-border bg-card p-4 md:col-start-2">
           <div className="flex items-center gap-2 mb-1">
             <Zap className="h-4 w-4 text-time-sensitive" />
@@ -323,6 +347,7 @@ export default function CommandCenter() {
             </div>
           )}
         </div>
+        </PanelErrorBoundary>
       </div>
 
       {/* Pipeline Watch */}
@@ -352,6 +377,7 @@ export default function CommandCenter() {
           completeTask(taskId);
           showPostActionToast('handled');
         }}
+        snoozeCount={selectedItem ? getSnoozeCount(selectedItem.kind === 'action' ? selectedItem.data.id : '') : 0}
       />
     </div>
   );

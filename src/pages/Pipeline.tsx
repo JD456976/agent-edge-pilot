@@ -64,29 +64,39 @@ function DealCard({ deal, onClick }: DealCardProps) {
   );
 }
 
-function ParticipantsList({ participants }: { participants: DealParticipant[] }) {
-  if (participants.length === 0) return null;
+function ParticipantsList({ participants, deal }: { participants: DealParticipant[]; deal: Deal }) {
+  const totalSplit = participants.reduce((sum, p) => sum + (p.splitPercent ?? 0), 0);
+  const hasNoParticipantForUser = participants.length === 0;
+
   return (
     <div className="mt-4 pt-4 border-t border-border">
       <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
         <Users className="h-3.5 w-3.5" /> Participants
       </h3>
-      <div className="space-y-2">
-        {participants.map(p => (
-          <div key={p.id} className="flex items-center justify-between text-sm">
-            <div>
-              <span className="font-medium">{p.userName || 'Team Member'}</span>
-              <span className="text-xs text-muted-foreground ml-2">{PARTICIPANT_ROLE_LABELS[p.role]}</span>
+      {hasNoParticipantForUser && (
+        <p className="text-xs text-muted-foreground mb-2 italic">No personal commission assigned.</p>
+      )}
+      {totalSplit > 100 && (
+        <p className="text-xs text-warning mb-2">⚠ Participant splits exceed 100%.</p>
+      )}
+      {participants.length > 0 && (
+        <div className="space-y-2">
+          {participants.map(p => (
+            <div key={p.id} className="flex items-center justify-between text-sm">
+              <div>
+                <span className="font-medium">{p.userName || 'Team Member'}</span>
+                <span className="text-xs text-muted-foreground ml-2">{PARTICIPANT_ROLE_LABELS[p.role]}</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {p.commissionOverride !== undefined && p.commissionOverride !== null
+                  ? <span className="text-opportunity font-medium">{formatCurrency(p.commissionOverride)} override</span>
+                  : <span>{p.splitPercent ?? 0}% split</span>
+                }
+              </div>
             </div>
-            <div className="text-xs text-muted-foreground">
-              {p.commissionOverride !== undefined
-                ? <span className="text-opportunity font-medium">{formatCurrency(p.commissionOverride)} override</span>
-                : <span>{p.splitPercent}% split</span>
-              }
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -117,7 +127,7 @@ function DealDetail({ deal, tasks, participants, onClose }: {
           <div className="flex justify-between"><span className="text-muted-foreground">Stage</span><span className="capitalize">{deal.stage.replace('_', ' ')}</span></div>
         </div>
 
-        <ParticipantsList participants={participants} />
+        <ParticipantsList participants={participants} deal={deal} />
 
         {tasks.length > 0 && (
           <div className="mt-4 pt-4 border-t border-border">

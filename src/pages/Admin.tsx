@@ -27,6 +27,7 @@ export default function Admin() {
   const { user, profiles, fetchProfiles, updateUserRole } = useAuth();
   const { leads, deals, tasks, seedDemoData, wipeData } = useData();
   const [showWipeConfirm, setShowWipeConfirm] = useState(false);
+  const [wipeConfirmText, setWipeConfirmText] = useState('');
 
   // Org/Team state
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -122,12 +123,19 @@ export default function Admin() {
               <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold">Confirm Data Wipe</p>
-                <p className="text-xs text-muted-foreground mt-1">This will delete all leads, deals, tasks, and alerts.</p>
+                <p className="text-xs text-muted-foreground mt-1">This will delete all leads, deals, tasks, and alerts. Type <strong>DELETE</strong> to confirm.</p>
               </div>
             </div>
+            <Input
+              size={1}
+              value={wipeConfirmText}
+              onChange={e => setWipeConfirmText(e.target.value)}
+              placeholder="Type DELETE to confirm"
+              className="mb-3 max-w-xs"
+            />
             <div className="flex gap-2">
-              <Button size="sm" variant="destructive" onClick={() => { wipeData(); setShowWipeConfirm(false); }}>Yes, Wipe Data</Button>
-              <Button size="sm" variant="outline" onClick={() => setShowWipeConfirm(false)}>Cancel</Button>
+              <Button size="sm" variant="destructive" disabled={wipeConfirmText !== 'DELETE'} onClick={() => { wipeData(); setShowWipeConfirm(false); setWipeConfirmText(''); }}>Yes, Wipe Data</Button>
+              <Button size="sm" variant="outline" onClick={() => { setShowWipeConfirm(false); setWipeConfirmText(''); }}>Cancel</Button>
             </div>
           </div>
         )}
