@@ -1,8 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
-import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles } from 'lucide-react';
+import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { buildCommandCenterPanels } from '@/lib/intelligenceEngine';
+import { getDailyBriefing, getMissedYesterdayCount, getMomentum, getPipelineWatch } from '@/lib/dailyIntelligence';
+import { useSessionMemory } from '@/hooks/useSessionMemory';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/EmptyState';
 import { SkeletonCard } from '@/components/SkeletonCard';
@@ -31,6 +33,8 @@ export default function CommandCenter() {
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<DetailItem | null>(null);
 
+  const previousSnapshot = useSessionMemory(leads, deals, tasks, alerts, hasData);
+
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 600);
     return () => clearTimeout(t);
@@ -41,6 +45,11 @@ export default function CommandCenter() {
   const activeDeals = deals.filter(d => d.stage !== 'closed');
   const totalRevenue = activeDeals.reduce((s, d) => s + d.commission, 0);
   const dealsNeedingAttention = panels.dealsAtRisk.length;
+
+  const briefing = useMemo(() => getDailyBriefing(panels, tasks, deals, leads), [panels, tasks, deals, leads]);
+  const missedYesterday = useMemo(() => getMissedYesterdayCount(tasks, deals, previousSnapshot), [tasks, deals, previousSnapshot]);
+  const momentum = useMemo(() => getMomentum(tasks, deals, previousSnapshot), [tasks, deals, previousSnapshot]);
+  const pipelineWatch = useMemo(() => getPipelineWatch(leads, deals, previousSnapshot), [leads, deals, previousSnapshot]);
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -89,20 +98,42 @@ export default function CommandCenter() {
         </div>
       </div>
 
-      {/* Morning Briefing */}
-      <div className="rounded-lg border border-border bg-card p-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+      {/* Daily Intelligence Briefing */}
+      <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+        {/* Dynamic briefing message */}
         <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-opportunity" />
-          <span className="text-sm font-medium">{formatCurrency(totalRevenue)} revenue in play</span>
+          <span className="text-base">{briefing.icon}</span>
+          <span className="text-sm font-medium">{briefing.text}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-warning" />
-          <span className="text-sm font-medium">{dealsNeedingAttention} deal{dealsNeedingAttention !== 1 ? 's' : ''} need{dealsNeedingAttention === 1 ? 's' : ''} attention</span>
+
+        {/* Stats row */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5">
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-3.5 w-3.5 text-opportunity" />
+            <span className="text-xs text-muted-foreground">{formatCurrency(totalRevenue)} revenue in play</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+            <span className="text-xs text-muted-foreground">{dealsNeedingAttention} deal{dealsNeedingAttention !== 1 ? 's' : ''} need{dealsNeedingAttention === 1 ? 's' : ''} attention</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              Momentum: <span className={`font-medium ${momentum === 'Improving' ? 'text-foreground' : momentum === 'Declining' ? 'text-foreground' : 'text-muted-foreground'}`}>{momentum}</span>
+            </span>
+          </div>
         </div>
-        <span className="text-xs text-muted-foreground">Good morning, {user?.name?.split(' ')[0]}</span>
+
+        {/* Missed yesterday */}
+        {missedYesterday > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Yesterday's unfinished priorities: {missedYesterday}
+          </p>
+        )}
+
+        <span className="text-xs text-muted-foreground block">Good morning, {user?.name?.split(' ')[0]}</span>
       </div>
 
-      {/* 4-Panel Grid */}
+      {/* 4-Panel Grid + Pipeline Watch */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Priority Actions */}
         <div className="rounded-lg border border-border bg-card p-4 md:row-span-2">
@@ -252,6 +283,25 @@ export default function CommandCenter() {
           )}
         </div>
       </div>
+
+      {/* Pipeline Watch */}
+      {pipelineWatch.length > 0 && (
+        <div className="rounded-lg border border-border bg-card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Eye className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">Pipeline Watch</h2>
+            <span className="text-xs text-muted-foreground ml-auto">Since last session</span>
+          </div>
+          <div className="space-y-2">
+            {pipelineWatch.map(event => (
+              <div key={event.id} className="flex items-center gap-2.5 p-2 rounded-md">
+                <span className="text-sm">{event.icon}</span>
+                <span className="text-sm text-muted-foreground">{event.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Detail Drawer */}
       <ActionDetailDrawer
