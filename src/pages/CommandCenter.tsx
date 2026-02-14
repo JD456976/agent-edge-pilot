@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/EmptyState';
 import { SkeletonCard } from '@/components/SkeletonCard';
 import { ActionDetailDrawer } from '@/components/ActionDetailDrawer';
+import { RecommendedFirstAction } from '@/components/RecommendedFirstAction';
 import type { RiskLevel, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 function formatCurrency(n: number) {
@@ -32,6 +33,11 @@ export default function CommandCenter() {
   const { leads, deals, tasks, alerts, hasData, seedDemoData, completeTask } = useData();
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<DetailItem | null>(null);
+  const [snoozedIds, setSnoozedIds] = useState<Set<string>>(new Set());
+
+  const handleSnooze = useCallback((id: string) => {
+    setSnoozedIds(prev => new Set(prev).add(id));
+  }, []);
 
   const previousSnapshot = useSessionMemory(leads, deals, tasks, alerts, hasData);
 
@@ -132,6 +138,14 @@ export default function CommandCenter() {
 
         <span className="text-xs text-muted-foreground block">Good morning, {user?.name?.split(' ')[0]}</span>
       </div>
+
+      {/* Recommended First Action */}
+      <RecommendedFirstAction
+        panels={panels}
+        onComplete={completeTask}
+        snoozedIds={snoozedIds}
+        onSnooze={handleSnooze}
+      />
 
       {/* 4-Panel Grid + Pipeline Watch */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
