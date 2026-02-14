@@ -14,16 +14,450 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alerts: {
+        Row: {
+          created_at: string
+          detail: string | null
+          expires_at: string
+          id: string
+          organization_id: string | null
+          related_deal_id: string | null
+          related_lead_id: string | null
+          title: string
+          type: Database["public"]["Enums"]["alert_type"]
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          expires_at?: string
+          id?: string
+          organization_id?: string | null
+          related_deal_id?: string | null
+          related_lead_id?: string | null
+          title: string
+          type?: Database["public"]["Enums"]["alert_type"]
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          expires_at?: string
+          id?: string
+          organization_id?: string | null
+          related_deal_id?: string | null
+          related_lead_id?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["alert_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerts_related_deal_id_fkey"
+            columns: ["related_deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerts_related_lead_id_fkey"
+            columns: ["related_lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_participants: {
+        Row: {
+          commission_override: number | null
+          created_at: string
+          deal_id: string
+          id: string
+          role: Database["public"]["Enums"]["participant_role"]
+          split_percent: number
+          user_id: string
+        }
+        Insert: {
+          commission_override?: number | null
+          created_at?: string
+          deal_id: string
+          id?: string
+          role?: Database["public"]["Enums"]["participant_role"]
+          split_percent?: number
+          user_id: string
+        }
+        Update: {
+          commission_override?: number | null
+          created_at?: string
+          deal_id?: string
+          id?: string
+          role?: Database["public"]["Enums"]["participant_role"]
+          split_percent?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_participants_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deals: {
+        Row: {
+          assigned_to_user_id: string | null
+          close_date: string
+          commission_amount: number
+          commission_rate: number | null
+          created_at: string
+          id: string
+          last_touched_at: string | null
+          milestone_appraisal: string | null
+          milestone_financing: string | null
+          milestone_inspection: string | null
+          organization_id: string | null
+          price: number
+          referral_fee_percent: number | null
+          risk_flags: string[] | null
+          risk_level: Database["public"]["Enums"]["risk_level"]
+          stage: Database["public"]["Enums"]["deal_stage"]
+          title: string
+        }
+        Insert: {
+          assigned_to_user_id?: string | null
+          close_date?: string
+          commission_amount?: number
+          commission_rate?: number | null
+          created_at?: string
+          id?: string
+          last_touched_at?: string | null
+          milestone_appraisal?: string | null
+          milestone_financing?: string | null
+          milestone_inspection?: string | null
+          organization_id?: string | null
+          price?: number
+          referral_fee_percent?: number | null
+          risk_flags?: string[] | null
+          risk_level?: Database["public"]["Enums"]["risk_level"]
+          stage?: Database["public"]["Enums"]["deal_stage"]
+          title: string
+        }
+        Update: {
+          assigned_to_user_id?: string | null
+          close_date?: string
+          commission_amount?: number
+          commission_rate?: number | null
+          created_at?: string
+          id?: string
+          last_touched_at?: string | null
+          milestone_appraisal?: string | null
+          milestone_financing?: string | null
+          milestone_inspection?: string | null
+          organization_id?: string | null
+          price?: number
+          referral_fee_percent?: number | null
+          risk_flags?: string[] | null
+          risk_level?: Database["public"]["Enums"]["risk_level"]
+          stage?: Database["public"]["Enums"]["deal_stage"]
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          assigned_to_user_id: string | null
+          created_at: string
+          engagement_score: number
+          id: string
+          last_activity_at: string | null
+          last_contact_at: string
+          lead_temperature:
+            | Database["public"]["Enums"]["lead_temperature"]
+            | null
+          name: string
+          notes: string | null
+          organization_id: string | null
+          source: string
+          status_tags: string[] | null
+        }
+        Insert: {
+          assigned_to_user_id?: string | null
+          created_at?: string
+          engagement_score?: number
+          id?: string
+          last_activity_at?: string | null
+          last_contact_at?: string
+          lead_temperature?:
+            | Database["public"]["Enums"]["lead_temperature"]
+            | null
+          name: string
+          notes?: string | null
+          organization_id?: string | null
+          source?: string
+          status_tags?: string[] | null
+        }
+        Update: {
+          assigned_to_user_id?: string | null
+          created_at?: string
+          engagement_score?: number
+          id?: string
+          last_activity_at?: string | null
+          last_contact_at?: string
+          lead_temperature?:
+            | Database["public"]["Enums"]["lead_temperature"]
+            | null
+          name?: string
+          notes?: string | null
+          organization_id?: string | null
+          source?: string
+          status_tags?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          theme_preference: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          theme_preference?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          theme_preference?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          assigned_to_user_id: string | null
+          completed_at: string | null
+          created_at: string
+          due_at: string
+          id: string
+          related_deal_id: string | null
+          related_lead_id: string | null
+          title: string
+          type: Database["public"]["Enums"]["task_type"]
+        }
+        Insert: {
+          assigned_to_user_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_at?: string
+          id?: string
+          related_deal_id?: string | null
+          related_lead_id?: string | null
+          title: string
+          type?: Database["public"]["Enums"]["task_type"]
+        }
+        Update: {
+          assigned_to_user_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_at?: string
+          id?: string
+          related_deal_id?: string | null
+          related_lead_id?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["task_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_related_deal_id_fkey"
+            columns: ["related_deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_related_lead_id_fkey"
+            columns: ["related_lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          created_at: string
+          default_split_percent: number | null
+          id: string
+          role: Database["public"]["Enums"]["team_role"]
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_split_percent?: number | null
+          id?: string
+          role?: Database["public"]["Enums"]["team_role"]
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_split_percent?: number | null
+          id?: string
+          role?: Database["public"]["Enums"]["team_role"]
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+          team_leader_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          organization_id: string
+          team_leader_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          team_leader_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      alert_type: "speed" | "urgent" | "risk" | "opportunity"
+      app_role: "admin" | "agent" | "reviewer" | "beta"
+      deal_stage: "offer" | "offer_accepted" | "pending" | "closed"
+      lead_temperature: "cold" | "warm" | "hot"
+      participant_role:
+        | "primary_agent"
+        | "co_agent"
+        | "referral_partner"
+        | "showing_agent"
+      risk_level: "green" | "yellow" | "red"
+      task_type:
+        | "call"
+        | "text"
+        | "email"
+        | "showing"
+        | "follow_up"
+        | "closing"
+        | "open_house"
+        | "thank_you"
+      team_role: "leader" | "agent" | "isa" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +584,29 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      alert_type: ["speed", "urgent", "risk", "opportunity"],
+      app_role: ["admin", "agent", "reviewer", "beta"],
+      deal_stage: ["offer", "offer_accepted", "pending", "closed"],
+      lead_temperature: ["cold", "warm", "hot"],
+      participant_role: [
+        "primary_agent",
+        "co_agent",
+        "referral_partner",
+        "showing_agent",
+      ],
+      risk_level: ["green", "yellow", "red"],
+      task_type: [
+        "call",
+        "text",
+        "email",
+        "showing",
+        "follow_up",
+        "closing",
+        "open_house",
+        "thank_you",
+      ],
+      team_role: ["leader", "agent", "isa", "admin"],
+    },
   },
 } as const

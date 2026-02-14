@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useData } from '@/contexts/DataContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { EmptyState } from '@/components/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ListChecks, Check, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Task, TaskType } from '@/types';
+import type { TaskType } from '@/types';
 
 const TABS = ['Today', 'Overdue', 'Future'] as const;
 const TASK_TYPES: TaskType[] = ['call', 'text', 'email', 'showing', 'follow_up', 'closing', 'open_house', 'thank_you'];
@@ -19,6 +20,7 @@ const typeLabel: Record<TaskType, string> = {
 
 export default function Tasks() {
   const { tasks, hasData, seedDemoData, completeTask, uncompleteTask, addTask } = useData();
+  const { user } = useAuth();
   const [tab, setTab] = useState<typeof TABS[number]>('Today');
   const [filterType, setFilterType] = useState<TaskType | 'all'>('all');
   const [showCreate, setShowCreate] = useState(false);
@@ -39,15 +41,13 @@ export default function Tasks() {
   }, [tasks, tab, filterType]);
 
   const handleCreate = () => {
-    if (!newTitle.trim()) return;
-    const task: Task = {
-      id: `task-${Date.now()}`,
+    if (!newTitle.trim() || !user) return;
+    addTask({
       title: newTitle.trim(),
       type: newType,
       dueAt: new Date().toISOString(),
-      assignedToUserId: 'demo-agent-1',
-    };
-    addTask(task);
+      assignedToUserId: user.id,
+    });
     setNewTitle('');
     setShowCreate(false);
   };
@@ -111,7 +111,7 @@ export default function Tasks() {
                   <p className={cn('text-sm font-medium truncate', done && 'line-through')}>{task.title}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{typeLabel[task.type]}</Badge>
-                    <span className={cn('text-xs', overdue ? 'text-urgent font-medium' : 'text-muted-foreground')}>
+                    <span className={cn('text-xs', overdue ? 'text-destructive font-medium' : 'text-muted-foreground')}>
                       {overdue ? 'Overdue' : new Date(task.dueAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                     </span>
                   </div>

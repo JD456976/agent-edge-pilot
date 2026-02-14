@@ -1,71 +1,128 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import type { User, UserRole } from '@/types';
 
 interface AuthContextType {
   user: User | null;
-  users: User[];
-  login: (email: string, password: string) => boolean;
-  logout: () => void;
-  createUser: (name: string, email: string, role: UserRole) => User;
-  deactivateUser: (id: string) => void;
+  loading: boolean;
+  profiles: User[];
+  login: (email: string, password: string) => Promise<{ error?: string }>;
+  signup: (email: string, password: string, name: string) => Promise<{ error?: string }>;
+  logout: () => Promise<void>;
+  updateUserRole: (userId: string, role: UserRole) => Promise<void>;
+  fetchProfiles: () => Promise<void>;
 }
-
-const DEMO_USERS: User[] = [
-  { id: 'demo-agent-1', name: 'Alex Morgan', email: 'alex@dealpilot.demo', role: 'agent', themePreference: 'dark', createdAt: '2025-12-01T00:00:00Z', lastLoginAt: new Date().toISOString(), isActive: true },
-  { id: 'demo-admin-1', name: 'Jordan Taylor', email: 'admin@dealpilot.demo', role: 'admin', themePreference: 'dark', createdAt: '2025-11-01T00:00:00Z', lastLoginAt: new Date().toISOString(), isActive: true },
-  { id: 'demo-reviewer-1', name: 'App Reviewer', email: 'reviewer@dealpilot.demo', role: 'reviewer', themePreference: 'dark', createdAt: '2026-01-15T00:00:00Z', lastLoginAt: new Date().toISOString(), isActive: true },
-];
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem('dp-user');
-    return stored ? JSON.parse(stored) : null;
-  });
-  const [users, setUsers] = useState<User[]>(() => {
-    const stored = localStorage.getItem('dp-users');
-    return stored ? JSON.parse(stored) : DEMO_USERS;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [profiles, setProfiles] = useState<User[]>([]);
 
-  const saveUsers = (u: User[]) => { setUsers(u); localStorage.setItem('dp-users', JSON.stringify(u)); };
+  const loadUserData = useCallback(async (authUserId: string) => {
+    try {
+      const [{ data: profile }, { data: roleData }] = await Promise.all([
+        supabase.from('profiles').select('*').eq('user_id', authUserId).single(),
+        supabase.from('user_roles').select('role').eq('user_id', authUserId).single(),
+      ]);
 
-  const login = (email: string, _password: string): boolean => {
-    const found = users.find(u => u.email === email && u.isActive);
-    if (found) {
-      const updated = { ...found, lastLoginAt: new Date().toISOString() };
-      setUser(updated);
-      localStorage.setItem('dp-user', JSON.stringify(updated));
-      return true;
+      if (profile) {
+        setUser({
+          id: authUserId,
+          name: profile.name,
+          email: profile.email,
+          role: (roleData?.role as UserRole) || 'agent',
+          themePreference: (profile.theme_preference as 'dark' | 'light') || 'dark',
+          createdAt: profile.created_at,
+          lastLoginAt: new Date().toISOString(),
+          isActive: true,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load user data:', err);
     }
-    return false;
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
+      if (session?.user) {
+        setTimeout(() => {
+          if (mounted) loadUserData(session.user.id);
+        }, 0);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session && mounted) setLoading(false);
+    });
+
+    return () => { mounted = false; subscription.unsubscribe(); };
+  }, [loadUserData]);
+
+  const login = async (email: string, password: string): Promise<{ error?: string }> => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: error.message };
+    return {};
   };
 
-  const logout = () => {
+  const signup = async (email: string, password: string, name: string): Promise<{ error?: string }> => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: window.location.origin,
+        data: { name },
+      },
+    });
+    if (error) return { error: error.message };
+    return {};
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('dp-user');
   };
 
-  const createUser = (name: string, email: string, role: UserRole): User => {
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      name, email, role,
-      themePreference: 'dark',
-      createdAt: new Date().toISOString(),
-      lastLoginAt: new Date().toISOString(),
-      isActive: true,
-    };
-    const updated = [...users, newUser];
-    saveUsers(updated);
-    return newUser;
-  };
+  const fetchProfiles = useCallback(async () => {
+    const [{ data: profilesData }, { data: rolesData }] = await Promise.all([
+      supabase.from('profiles').select('*'),
+      supabase.from('user_roles').select('*'),
+    ]);
+    if (profilesData) {
+      const roleMap = new Map<string, UserRole>();
+      rolesData?.forEach(r => roleMap.set(r.user_id, r.role as UserRole));
+      setProfiles(profilesData.map(p => ({
+        id: p.user_id,
+        name: p.name,
+        email: p.email,
+        role: roleMap.get(p.user_id) || 'agent',
+        themePreference: (p.theme_preference as 'dark' | 'light') || 'dark',
+        createdAt: p.created_at,
+        lastLoginAt: '',
+        isActive: true,
+      })));
+    }
+  }, []);
 
-  const deactivateUser = (id: string) => {
-    saveUsers(users.map(u => u.id === id ? { ...u, isActive: false } : u));
+  const updateUserRole = async (userId: string, role: UserRole) => {
+    await supabase.from('user_roles').delete().eq('user_id', userId);
+    await supabase.from('user_roles').insert({ user_id: userId, role: role as any });
+    await fetchProfiles();
+    if (userId === user?.id) {
+      setUser(prev => prev ? { ...prev, role } : null);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, users, login, logout, createUser, deactivateUser }}>
+    <AuthContext.Provider value={{ user, loading, profiles, login, signup, logout, updateUserRole, fetchProfiles }}>
       {children}
     </AuthContext.Provider>
   );

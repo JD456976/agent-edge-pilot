@@ -11,6 +11,11 @@ export default function Settings() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
   return (
     <div className="max-w-lg mx-auto animate-fade-in">
       <h1 className="text-xl font-bold mb-1">Settings</h1>
@@ -71,7 +76,7 @@ export default function Settings() {
       </section>
 
       {/* Sign out */}
-      <Button variant="outline" className="w-full" onClick={() => { logout(); navigate('/login'); }}>
+      <Button variant="outline" className="w-full" onClick={handleLogout}>
         <LogOut className="h-4 w-4 mr-2" /> Sign Out
       </Button>
     </div>

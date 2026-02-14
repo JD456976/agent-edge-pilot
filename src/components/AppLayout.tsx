@@ -28,6 +28,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
     return location.pathname.startsWith(path);
   };
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop sidebar */}
@@ -60,7 +65,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
           </button>
-          <button onClick={() => { logout(); navigate('/login'); }} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors">
+          <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors">
             <LogOut className="h-4 w-4" />
             Sign Out
           </button>
