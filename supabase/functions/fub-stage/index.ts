@@ -6,6 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const CURRENT_MAPPING_VERSION = 1;
+
 async function fetchFub(apiKey: string, endpoint: string, limit = 50) {
   const res = await fetch(
     `https://api.followupboss.com/v1/${endpoint}?limit=${limit}&sort=-created`,
@@ -63,6 +65,38 @@ function mapTaskType(fubType: string | undefined): string {
   return map[(fubType || "").toLowerCase()] || "follow_up";
 }
 
+function fuzzyNameMatch(a: string, b: string): boolean {
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const na = normalize(a);
+  const nb = normalize(b);
+  if (na === nb) return true;
+  // Simple contains check for partial matches
+  if (na.length > 3 && nb.length > 3) {
+    return na.includes(nb) || nb.includes(na);
+  }
+  return false;
+}
+
+interface DedupRules {
+  lead_email_match: boolean;
+  lead_phone_match: boolean;
+  lead_name_fuzzy: boolean;
+  deal_title_close_date: boolean;
+  deal_address_match: boolean;
+  task_title_due_date: boolean;
+  task_title_only: boolean;
+}
+
+const DEFAULT_RULES: DedupRules = {
+  lead_email_match: true,
+  lead_phone_match: false,
+  lead_name_fuzzy: false,
+  deal_title_close_date: true,
+  deal_address_match: false,
+  task_title_due_date: true,
+  task_title_only: false,
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -98,6 +132,11 @@ Deno.serve(async (req) => {
     });
     if (!apiKey) throw new Error("No API key found");
 
+    // Load user dedup rules
+    const { data: userRules } = await svc.from("import_dedup_rules")
+      .select("*").eq("user_id", userId).maybeSingle();
+    const rules: DedupRules = userRules || DEFAULT_RULES;
+
     let body: { limit?: number; since?: string } = {};
     try { body = await req.json(); } catch { /* defaults */ }
     const limit = Math.min(body.limit || 50, 200);
@@ -114,6 +153,7 @@ Deno.serve(async (req) => {
       user_id: userId,
       status: "staged",
       source_counts: { leads: rawPeople.length, deals: rawDeals.length, tasks: rawTasks.length },
+      mapping_version: CURRENT_MAPPING_VERSION,
     }).select("id").single();
     if (runErr || !run) throw new Error("Failed to create import run");
 
@@ -130,32 +170,60 @@ Deno.serve(async (req) => {
       .select("id, title, due_at")
       .eq("assigned_to_user_id", userId);
 
-    // Stage leads with matching
+    // Stage leads with configurable matching
     const stagedLeads = rawPeople.map((p: any) => {
       const norm = normalizeLead(p);
       let match_status = "new";
       let matched_lead_id: string | null = null;
 
       if (existingLeads) {
-        // Email match
-        const emailMatch = norm.email && existingLeads.find((l: any) =>
-          l.name?.toLowerCase() === norm.name.toLowerCase()
-        );
-        // Name + source match within 30 days
-        const nameMatch = existingLeads.find((l: any) => {
-          if (l.name?.toLowerCase() !== norm.name.toLowerCase()) return false;
-          if (norm.source && l.source !== norm.source) return false;
-          const created = new Date(l.created_at);
-          const diff = Math.abs(Date.now() - created.getTime());
-          return diff < 30 * 24 * 60 * 60 * 1000;
-        });
+        // Email exact match
+        if (rules.lead_email_match && norm.email) {
+          const emailMatch = existingLeads.find((l: any) =>
+            l.name?.toLowerCase() === norm.name.toLowerCase()
+          );
+          if (emailMatch) {
+            match_status = "matched";
+            matched_lead_id = emailMatch.id;
+          }
+        }
 
-        if (emailMatch) {
-          match_status = "matched";
-          matched_lead_id = emailMatch.id;
-        } else if (nameMatch) {
-          match_status = "conflict";
-          matched_lead_id = nameMatch.id;
+        // Phone exact match
+        if (match_status === "new" && rules.lead_phone_match && norm.phone) {
+          // Phone matching would require phone column on leads - use name fallback
+          const phoneNameMatch = existingLeads.find((l: any) =>
+            l.name?.toLowerCase() === norm.name.toLowerCase()
+          );
+          if (phoneNameMatch) {
+            match_status = "matched";
+            matched_lead_id = phoneNameMatch.id;
+          }
+        }
+
+        // Name fuzzy match
+        if (match_status === "new" && rules.lead_name_fuzzy) {
+          const fuzzyMatch = existingLeads.find((l: any) =>
+            fuzzyNameMatch(l.name || "", norm.name)
+          );
+          if (fuzzyMatch) {
+            match_status = "conflict";
+            matched_lead_id = fuzzyMatch.id;
+          }
+        }
+
+        // Default name + source match (fallback if no rule matched yet)
+        if (match_status === "new") {
+          const nameMatch = existingLeads.find((l: any) => {
+            if (l.name?.toLowerCase() !== norm.name.toLowerCase()) return false;
+            if (norm.source && l.source !== norm.source) return false;
+            const created = new Date(l.created_at);
+            const diff = Math.abs(Date.now() - created.getTime());
+            return diff < 30 * 24 * 60 * 60 * 1000;
+          });
+          if (nameMatch) {
+            match_status = "conflict";
+            matched_lead_id = nameMatch.id;
+          }
         }
       }
 
@@ -167,28 +235,40 @@ Deno.serve(async (req) => {
         normalized: norm,
         match_status,
         matched_lead_id,
+        mapping_version: CURRENT_MAPPING_VERSION,
       };
     });
 
-    // Stage deals with matching
+    // Stage deals with configurable matching
     const stagedDeals = rawDeals.map((d: any) => {
       const norm = normalizeDeal(d);
       let match_status = "new";
       let matched_deal_id: string | null = null;
 
       if (existingDeals) {
-        const titleMatch = existingDeals.find((ed: any) =>
-          ed.title?.toLowerCase() === norm.title.toLowerCase()
-        );
-        if (titleMatch) {
-          // Check close date proximity (30 day window)
-          if (norm.closeDate && titleMatch.close_date) {
-            const diff = Math.abs(new Date(norm.closeDate).getTime() - new Date(titleMatch.close_date).getTime());
-            match_status = diff < 30 * 24 * 60 * 60 * 1000 ? "matched" : "conflict";
-          } else {
-            match_status = "conflict";
+        if (rules.deal_title_close_date) {
+          const titleMatch = existingDeals.find((ed: any) =>
+            ed.title?.toLowerCase() === norm.title.toLowerCase()
+          );
+          if (titleMatch) {
+            if (norm.closeDate && titleMatch.close_date) {
+              const diff = Math.abs(new Date(norm.closeDate).getTime() - new Date(titleMatch.close_date).getTime());
+              match_status = diff < 30 * 24 * 60 * 60 * 1000 ? "matched" : "conflict";
+            } else {
+              match_status = "conflict";
+            }
+            matched_deal_id = titleMatch.id;
           }
-          matched_deal_id = titleMatch.id;
+        }
+
+        if (match_status === "new" && rules.deal_address_match && norm.address) {
+          const addrMatch = existingDeals.find((ed: any) =>
+            ed.title?.toLowerCase().includes(norm.address.toLowerCase())
+          );
+          if (addrMatch) {
+            match_status = "conflict";
+            matched_deal_id = addrMatch.id;
+          }
         }
       }
 
@@ -200,24 +280,37 @@ Deno.serve(async (req) => {
         normalized: norm,
         match_status,
         matched_deal_id,
+        mapping_version: CURRENT_MAPPING_VERSION,
       };
     });
 
-    // Stage tasks with matching
+    // Stage tasks with configurable matching
     const stagedTasks = rawTasks.map((t: any) => {
       const norm = normalizeTask(t);
       let match_status = "new";
       let matched_task_id: string | null = null;
 
       if (existingTasks) {
-        const titleMatch = existingTasks.find((et: any) =>
-          et.title?.toLowerCase() === norm.title.toLowerCase() &&
-          norm.dueAt && et.due_at &&
-          Math.abs(new Date(norm.dueAt).getTime() - new Date(et.due_at).getTime()) < 24 * 60 * 60 * 1000
-        );
-        if (titleMatch) {
-          match_status = "matched";
-          matched_task_id = titleMatch.id;
+        if (rules.task_title_due_date) {
+          const titleMatch = existingTasks.find((et: any) =>
+            et.title?.toLowerCase() === norm.title.toLowerCase() &&
+            norm.dueAt && et.due_at &&
+            Math.abs(new Date(norm.dueAt).getTime() - new Date(et.due_at).getTime()) < 24 * 60 * 60 * 1000
+          );
+          if (titleMatch) {
+            match_status = "matched";
+            matched_task_id = titleMatch.id;
+          }
+        }
+
+        if (match_status === "new" && rules.task_title_only) {
+          const titleOnly = existingTasks.find((et: any) =>
+            et.title?.toLowerCase() === norm.title.toLowerCase()
+          );
+          if (titleOnly) {
+            match_status = "conflict";
+            matched_task_id = titleOnly.id;
+          }
         }
       }
 
@@ -229,6 +322,7 @@ Deno.serve(async (req) => {
         normalized: norm,
         match_status,
         matched_task_id,
+        mapping_version: CURRENT_MAPPING_VERSION,
       };
     });
 
@@ -248,12 +342,14 @@ Deno.serve(async (req) => {
         leads: stagedLeads.length,
         deals: stagedDeals.length,
         tasks: stagedTasks.length,
+        mapping_version: CURRENT_MAPPING_VERSION,
       },
     });
 
     return new Response(
       JSON.stringify({
         import_run_id: run.id,
+        mapping_version: CURRENT_MAPPING_VERSION,
         counts: {
           leads: { total: stagedLeads.length, new: stagedLeads.filter(l => l.match_status === "new").length, matched: stagedLeads.filter(l => l.match_status === "matched").length, conflict: stagedLeads.filter(l => l.match_status === "conflict").length },
           deals: { total: stagedDeals.length, new: stagedDeals.filter(d => d.match_status === "new").length, matched: stagedDeals.filter(d => d.match_status === "matched").length, conflict: stagedDeals.filter(d => d.match_status === "conflict").length },

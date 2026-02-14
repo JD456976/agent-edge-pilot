@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ShieldCheck, Users, Target, ListChecks, Database, Plus, Trash2, AlertTriangle, Building2, UsersRound, ScrollText } from 'lucide-react';
+import { ImportHealthPanel } from '@/components/ImportHealthPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -333,6 +334,9 @@ export default function Admin() {
           })}
         </div>
       </section>
+
+      {/* Import Health */}
+      <ImportHealthPanel />
 
       {/* Audit Log */}
       <section className="rounded-lg border border-border bg-card p-4">

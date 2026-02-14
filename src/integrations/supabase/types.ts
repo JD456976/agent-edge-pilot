@@ -181,6 +181,8 @@ export type Database = {
           import_run_id: string | null
           imported_at: string | null
           imported_from: string | null
+          last_modified_at: string | null
+          last_modified_by: string | null
           last_touched_at: string | null
           milestone_appraisal: string | null
           milestone_financing: string | null
@@ -203,6 +205,8 @@ export type Database = {
           import_run_id?: string | null
           imported_at?: string | null
           imported_from?: string | null
+          last_modified_at?: string | null
+          last_modified_by?: string | null
           last_touched_at?: string | null
           milestone_appraisal?: string | null
           milestone_financing?: string | null
@@ -225,6 +229,8 @@ export type Database = {
           import_run_id?: string | null
           imported_at?: string | null
           imported_from?: string | null
+          last_modified_at?: string | null
+          last_modified_by?: string | null
           last_touched_at?: string | null
           milestone_appraisal?: string | null
           milestone_financing?: string | null
@@ -254,6 +260,7 @@ export type Database = {
           created_at: string
           duration_ms: number | null
           id: string
+          mapping_version: number
           notes: string | null
           source_counts: Json | null
           status: string
@@ -267,6 +274,7 @@ export type Database = {
           created_at?: string
           duration_ms?: number | null
           id?: string
+          mapping_version?: number
           notes?: string | null
           source_counts?: Json | null
           status?: string
@@ -280,6 +288,7 @@ export type Database = {
           created_at?: string
           duration_ms?: number | null
           id?: string
+          mapping_version?: number
           notes?: string | null
           source_counts?: Json | null
           status?: string
@@ -295,6 +304,7 @@ export type Database = {
           fub_id: string
           id: string
           import_run_id: string
+          mapping_version: number
           match_status: string
           matched_deal_id: string | null
           normalized: Json
@@ -307,6 +317,7 @@ export type Database = {
           fub_id: string
           id?: string
           import_run_id: string
+          mapping_version?: number
           match_status?: string
           matched_deal_id?: string | null
           normalized?: Json
@@ -319,6 +330,7 @@ export type Database = {
           fub_id?: string
           id?: string
           import_run_id?: string
+          mapping_version?: number
           match_status?: string
           matched_deal_id?: string | null
           normalized?: Json
@@ -342,6 +354,7 @@ export type Database = {
           fub_id: string
           id: string
           import_run_id: string
+          mapping_version: number
           match_status: string
           matched_lead_id: string | null
           normalized: Json
@@ -354,6 +367,7 @@ export type Database = {
           fub_id: string
           id?: string
           import_run_id: string
+          mapping_version?: number
           match_status?: string
           matched_lead_id?: string | null
           normalized?: Json
@@ -366,6 +380,7 @@ export type Database = {
           fub_id?: string
           id?: string
           import_run_id?: string
+          mapping_version?: number
           match_status?: string
           matched_lead_id?: string | null
           normalized?: Json
@@ -389,6 +404,7 @@ export type Database = {
           fub_id: string
           id: string
           import_run_id: string
+          mapping_version: number
           match_status: string
           matched_task_id: string | null
           normalized: Json
@@ -401,6 +417,7 @@ export type Database = {
           fub_id: string
           id?: string
           import_run_id: string
+          mapping_version?: number
           match_status?: string
           matched_task_id?: string | null
           normalized?: Json
@@ -413,6 +430,7 @@ export type Database = {
           fub_id?: string
           id?: string
           import_run_id?: string
+          mapping_version?: number
           match_status?: string
           matched_task_id?: string | null
           normalized?: Json
@@ -430,6 +448,45 @@ export type Database = {
           },
         ]
       }
+      import_dedup_rules: {
+        Row: {
+          deal_address_match: boolean
+          deal_title_close_date: boolean
+          id: string
+          lead_email_match: boolean
+          lead_name_fuzzy: boolean
+          lead_phone_match: boolean
+          task_title_due_date: boolean
+          task_title_only: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          deal_address_match?: boolean
+          deal_title_close_date?: boolean
+          id?: string
+          lead_email_match?: boolean
+          lead_name_fuzzy?: boolean
+          lead_phone_match?: boolean
+          task_title_due_date?: boolean
+          task_title_only?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          deal_address_match?: boolean
+          deal_title_close_date?: boolean
+          id?: string
+          lead_email_match?: boolean
+          lead_name_fuzzy?: boolean
+          lead_phone_match?: boolean
+          task_title_due_date?: boolean
+          task_title_only?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           assigned_to_user_id: string | null
@@ -441,6 +498,8 @@ export type Database = {
           imported_from: string | null
           last_activity_at: string | null
           last_contact_at: string
+          last_modified_at: string | null
+          last_modified_by: string | null
           lead_temperature:
             | Database["public"]["Enums"]["lead_temperature"]
             | null
@@ -460,6 +519,8 @@ export type Database = {
           imported_from?: string | null
           last_activity_at?: string | null
           last_contact_at?: string
+          last_modified_at?: string | null
+          last_modified_by?: string | null
           lead_temperature?:
             | Database["public"]["Enums"]["lead_temperature"]
             | null
@@ -479,6 +540,8 @@ export type Database = {
           imported_from?: string | null
           last_activity_at?: string | null
           last_contact_at?: string
+          last_modified_at?: string | null
+          last_modified_by?: string | null
           lead_temperature?:
             | Database["public"]["Enums"]["lead_temperature"]
             | null
@@ -565,6 +628,8 @@ export type Database = {
           import_run_id: string | null
           imported_at: string | null
           imported_from: string | null
+          last_modified_at: string | null
+          last_modified_by: string | null
           related_deal_id: string | null
           related_lead_id: string | null
           title: string
@@ -579,6 +644,8 @@ export type Database = {
           import_run_id?: string | null
           imported_at?: string | null
           imported_from?: string | null
+          last_modified_at?: string | null
+          last_modified_by?: string | null
           related_deal_id?: string | null
           related_lead_id?: string | null
           title: string
@@ -593,6 +660,8 @@ export type Database = {
           import_run_id?: string | null
           imported_at?: string | null
           imported_from?: string | null
+          last_modified_at?: string | null
+          last_modified_by?: string | null
           related_deal_id?: string | null
           related_lead_id?: string | null
           title?: string

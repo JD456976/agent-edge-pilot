@@ -62,55 +62,101 @@ Deno.serve(async (req) => {
     const { data: hasReviewer } = await svc.rpc("has_role", { _user_id: userId, _role: "reviewer" });
     if (hasReviewer) throw new Error("Review mode: undo disabled");
 
-    let undone = { leads: 0, deals: 0, tasks: 0, participants: 0 };
+    const committedAtStr = run.committed_at;
+    let deleted = { leads: 0, deals: 0, tasks: 0, participants: 0 };
+    let skipped_edited = { leads: 0, deals: 0, tasks: 0 };
+    let skipped_matched = { leads: 0, deals: 0, tasks: 0 };
 
-    // Delete ONLY records created by this import run (not matched/linked ones)
-    // Leads created by this import
+    // --- UNDO LEADS ---
     const { data: importedLeads } = await svc.from("leads")
-      .select("id")
+      .select("id, last_modified_at")
       .eq("import_run_id", import_run_id)
       .eq("imported_from", "fub")
       .eq("assigned_to_user_id", userId);
 
     if (importedLeads && importedLeads.length > 0) {
-      const leadIds = importedLeads.map(l => l.id);
-      // Delete related alerts first
-      await svc.from("alerts").delete().in("related_lead_id", leadIds);
-      // Delete related tasks
-      await svc.from("tasks").delete().in("related_lead_id", leadIds);
-      // Delete leads
-      const { count } = await svc.from("leads").delete({ count: "exact" }).in("id", leadIds);
-      undone.leads = count || 0;
+      const toDelete: string[] = [];
+      for (const l of importedLeads) {
+        if (l.last_modified_at && new Date(l.last_modified_at).getTime() > new Date(committedAtStr).getTime()) {
+          skipped_edited.leads++;
+        } else {
+          toDelete.push(l.id);
+        }
+      }
+      if (toDelete.length > 0) {
+        await svc.from("alerts").delete().in("related_lead_id", toDelete);
+        await svc.from("tasks").delete().in("related_lead_id", toDelete);
+        const { count } = await svc.from("leads").delete({ count: "exact" }).in("id", toDelete);
+        deleted.leads = count || 0;
+      }
     }
 
-    // Deals created by this import
-    const { data: importedDeals } = await svc.from("deals")
+    // Count matched leads (not created by import, so not deletable)
+    const { data: stagedMatchedLeads } = await svc.from("fub_staged_leads")
       .select("id")
+      .eq("import_run_id", import_run_id)
+      .eq("match_status", "matched");
+    skipped_matched.leads = stagedMatchedLeads?.length || 0;
+
+    // --- UNDO DEALS ---
+    const { data: importedDeals } = await svc.from("deals")
+      .select("id, last_modified_at")
       .eq("import_run_id", import_run_id)
       .eq("imported_from", "fub")
       .eq("assigned_to_user_id", userId);
 
     if (importedDeals && importedDeals.length > 0) {
-      const dealIds = importedDeals.map(d => d.id);
-      // Delete participants first
-      const { count: pCount } = await svc.from("deal_participants").delete({ count: "exact" }).in("deal_id", dealIds);
-      undone.participants = pCount || 0;
-      // Delete related alerts
-      await svc.from("alerts").delete().in("related_deal_id", dealIds);
-      // Delete related tasks
-      await svc.from("tasks").delete().in("related_deal_id", dealIds);
-      // Delete deals
-      const { count } = await svc.from("deals").delete({ count: "exact" }).in("id", dealIds);
-      undone.deals = count || 0;
+      const toDelete: string[] = [];
+      for (const d of importedDeals) {
+        if (d.last_modified_at && new Date(d.last_modified_at).getTime() > new Date(committedAtStr).getTime()) {
+          skipped_edited.deals++;
+        } else {
+          toDelete.push(d.id);
+        }
+      }
+      if (toDelete.length > 0) {
+        const { count: pCount } = await svc.from("deal_participants").delete({ count: "exact" }).in("deal_id", toDelete);
+        deleted.participants = pCount || 0;
+        await svc.from("alerts").delete().in("related_deal_id", toDelete);
+        await svc.from("tasks").delete().in("related_deal_id", toDelete);
+        const { count } = await svc.from("deals").delete({ count: "exact" }).in("id", toDelete);
+        deleted.deals = count || 0;
+      }
     }
 
-    // Tasks created by this import (standalone, not already deleted above)
-    const { count: taskCount } = await svc.from("tasks")
-      .delete({ count: "exact" })
+    const { data: stagedMatchedDeals } = await svc.from("fub_staged_deals")
+      .select("id")
+      .eq("import_run_id", import_run_id)
+      .eq("match_status", "matched");
+    skipped_matched.deals = stagedMatchedDeals?.length || 0;
+
+    // --- UNDO TASKS ---
+    const { data: importedTasks } = await svc.from("tasks")
+      .select("id, last_modified_at")
       .eq("import_run_id", import_run_id)
       .eq("imported_from", "fub")
       .eq("assigned_to_user_id", userId);
-    undone.tasks = taskCount || 0;
+
+    if (importedTasks && importedTasks.length > 0) {
+      const toDelete: string[] = [];
+      for (const t of importedTasks) {
+        if (t.last_modified_at && new Date(t.last_modified_at).getTime() > new Date(committedAtStr).getTime()) {
+          skipped_edited.tasks++;
+        } else {
+          toDelete.push(t.id);
+        }
+      }
+      if (toDelete.length > 0) {
+        const { count } = await svc.from("tasks").delete({ count: "exact" }).in("id", toDelete);
+        deleted.tasks = count || 0;
+      }
+    }
+
+    const { data: stagedMatchedTasks } = await svc.from("fub_staged_tasks")
+      .select("id")
+      .eq("import_run_id", import_run_id)
+      .eq("match_status", "matched");
+    skipped_matched.tasks = stagedMatchedTasks?.length || 0;
 
     // Mark run as undone
     await svc.from("fub_import_runs").update({
@@ -122,11 +168,11 @@ Deno.serve(async (req) => {
     await svc.from("admin_audit_events").insert({
       admin_user_id: userId,
       action: "import_undone",
-      metadata: { import_run_id, undone },
+      metadata: { import_run_id, deleted, skipped_edited, skipped_matched },
     });
 
     return new Response(
-      JSON.stringify({ success: true, undone }),
+      JSON.stringify({ success: true, deleted, skipped_edited, skipped_matched }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

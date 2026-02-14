@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FubSyncPreviewModal } from '@/components/FubSyncPreviewModal';
 import { FubImportReview } from '@/components/FubImportReview';
+import { ImportMatchingRules, ImportDryRunPanel } from '@/components/ImportSettings';
 import { toast } from '@/hooks/use-toast';
 
 interface IntegrationState {
@@ -43,7 +44,7 @@ export default function Settings() {
     if (!user) return;
     const [{ data: integData }, { data: runs }] = await Promise.all([
       supabase.from('crm_integrations' as any).select('status, api_key_last4, last_validated_at').eq('user_id', user.id).maybeSingle(),
-      supabase.from('fub_import_runs' as any).select('id, status, source_counts, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+      supabase.from('fub_import_runs' as any).select('id, status, source_counts, created_at, mapping_version, undone_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
     ]);
     if (integData) {
       setIntegration({
@@ -207,11 +208,17 @@ export default function Settings() {
             <Button size="sm" variant="outline" onClick={handleSyncPreview} disabled={integration.status !== 'connected'}>
               <Eye className="h-4 w-4 mr-1" /> Preview
             </Button>
-            <Button size="sm" onClick={handleStageImport} disabled={integration.status !== 'connected' || staging}>
-              {staging ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
-              Stage Import
-            </Button>
           </div>
+
+          {/* Dry Run Estimate Panel */}
+          {integration.status === 'connected' && (
+            <ImportDryRunPanel integration={{ status: integration.status, lastValidated: integration.lastValidated }} />
+          )}
+
+          <Button size="sm" className="w-full" onClick={handleStageImport} disabled={integration.status !== 'connected' || staging}>
+            {staging ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+            Stage Import
+          </Button>
         </div>
 
         {/* Past import runs */}
@@ -226,9 +233,10 @@ export default function Settings() {
                   className="w-full flex items-center justify-between text-xs p-2 rounded-md hover:bg-muted/50 transition-colors"
                 >
                   <span className="font-mono text-muted-foreground">{r.id.slice(0, 8)}…</span>
+                  <span className="text-muted-foreground">v{r.mapping_version || 1}</span>
                   <span className="text-muted-foreground">{new Date(r.created_at).toLocaleDateString()}</span>
                   <Badge variant={r.status === 'committed' ? 'default' : r.status === 'cancelled' ? 'secondary' : 'outline'} className="text-xs">
-                    {r.status}
+                    {r.undone_at ? 'undone' : r.status}
                   </Badge>
                 </button>
               ))}
@@ -236,6 +244,9 @@ export default function Settings() {
           </div>
         )}
       </section>
+
+      {/* Import Matching Rules */}
+      <ImportMatchingRules />
 
       {/* Sign out */}
       <Button variant="outline" className="w-full" onClick={handleLogout}>
