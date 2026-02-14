@@ -4,6 +4,8 @@ export type RiskLevel = 'green' | 'yellow' | 'red';
 export type TaskType = 'call' | 'text' | 'email' | 'showing' | 'follow_up' | 'closing' | 'open_house' | 'thank_you';
 export type AlertType = 'speed' | 'urgent' | 'risk' | 'opportunity';
 export type LeadTemperature = 'cold' | 'warm' | 'hot';
+export type TeamRole = 'leader' | 'agent' | 'isa' | 'admin';
+export type ParticipantRole = 'primary_agent' | 'co_agent' | 'referral_partner' | 'showing_agent';
 
 export interface MilestoneStatus {
   inspection?: 'unknown' | 'scheduled' | 'complete';
@@ -42,6 +44,9 @@ export interface Deal {
   stage: DealStage;
   price: number;
   commission: number;
+  commissionRate?: number;
+  referralFeePercent?: number;
+  userCommission?: number;
   closeDate: string;
   riskLevel: RiskLevel;
   assignedToUserId: string;
@@ -49,6 +54,41 @@ export interface Deal {
   lastTouchedAt?: string;
   riskFlags?: string[];
   milestoneStatus?: MilestoneStatus;
+  organizationId?: string;
+}
+
+export interface DealParticipant {
+  id: string;
+  dealId: string;
+  userId: string;
+  userName?: string;
+  role: ParticipantRole;
+  splitPercent: number;
+  commissionOverride?: number;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  ownerUserId?: string;
+  createdAt: string;
+}
+
+export interface Team {
+  id: string;
+  organizationId: string;
+  name: string;
+  teamLeaderUserId?: string;
+  createdAt: string;
+}
+
+export interface TeamMember {
+  id: string;
+  teamId: string;
+  userId: string;
+  userName?: string;
+  role: TeamRole;
+  defaultSplitPercent?: number;
 }
 
 export interface Task {
@@ -141,3 +181,17 @@ export interface CommandCenterPanels {
   opportunities: CommandCenterOpportunity[];
   speedAlerts: CommandCenterSpeedAlert[];
 }
+
+export const PARTICIPANT_ROLE_LABELS: Record<ParticipantRole, string> = {
+  primary_agent: 'Primary Agent',
+  co_agent: 'Co-Agent',
+  referral_partner: 'Referral Partner',
+  showing_agent: 'Showing Agent',
+};
+
+export const TEAM_ROLE_LABELS: Record<TeamRole, string> = {
+  leader: 'Leader',
+  agent: 'Agent',
+  isa: 'ISA',
+  admin: 'Admin',
+};

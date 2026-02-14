@@ -14,7 +14,7 @@ export function calculatePriorityScore(task: Task, lead?: Lead, deal?: Deal): nu
 
   // Revenue impact
   if (deal) {
-    score += Math.min(deal.commission / 1000, 25);
+    score += Math.min((deal.userCommission ?? deal.commission) / 1000, 25);
   }
 
   // Decay risk
@@ -70,7 +70,7 @@ export function generatePriorityActions(
       title: task.title,
       reason,
       timeWindow,
-      potentialValue: deal?.commission,
+      potentialValue: deal ? (deal.userCommission ?? deal.commission) : undefined,
       score,
       relatedTaskId: task.id,
       relatedLeadId: task.relatedLeadId,

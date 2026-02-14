@@ -93,8 +93,8 @@ export function scoreDeal(deal: Deal, now: Date): ScoredEntity {
   let attentionGap = 0;
 
   // Revenue impact
-  revenueImpact = normalizeCommission(deal.commission);
-  if (revenueImpact >= 50) explanation.push(`$${(deal.commission / 1000).toFixed(0)}K commission at stake`);
+  revenueImpact = normalizeCommission(deal.userCommission ?? deal.commission);
+  if (revenueImpact >= 50) explanation.push(`$${((deal.userCommission ?? deal.commission) / 1000).toFixed(0)}K commission at stake`);
 
   // Urgency from close date
   const hoursToClose = hoursUntil(deal.closeDate, now);
@@ -155,8 +155,8 @@ export function scoreTask(
 
   // Revenue from related deal
   if (relatedDeal) {
-    revenueImpact = normalizeCommission(relatedDeal.commission);
-    if (revenueImpact >= 30) explanation.push(`$${(relatedDeal.commission / 1000).toFixed(0)}K commission`);
+    revenueImpact = normalizeCommission(relatedDeal.userCommission ?? relatedDeal.commission);
+    if (revenueImpact >= 30) explanation.push(`$${((relatedDeal.userCommission ?? relatedDeal.commission) / 1000).toFixed(0)}K commission`);
   }
 
   // Decay from related lead
@@ -324,7 +324,7 @@ export function buildCommandCenterPanels(
       title: task.title,
       reason: scores.explanation[0] || 'Scheduled task',
       timeWindow: formatTimeWindow(hours),
-      potentialValue: deal?.commission,
+      potentialValue: deal ? (deal.userCommission ?? deal.commission) : undefined,
       overallScore: scores.overallPriorityScore,
       scores,
       relatedTaskId: task.id,
@@ -339,7 +339,7 @@ export function buildCommandCenterPanels(
     title: s.title,
     reason: s.scores.explanation[0] || 'Attention gap',
     timeWindow: 'Within 24h',
-    potentialValue: s.relatedDealId ? dealMap.get(s.relatedDealId)?.commission : undefined,
+    potentialValue: s.relatedDealId ? (dealMap.get(s.relatedDealId)?.userCommission ?? dealMap.get(s.relatedDealId)?.commission) : undefined,
     overallScore: s.scores.overallPriorityScore,
     scores: s.scores,
     relatedLeadId: s.relatedLeadId,

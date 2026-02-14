@@ -1,31 +1,50 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, ArrowRight } from 'lucide-react';
+import { Target, ArrowRight, Mail } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+type Tab = 'signin' | 'signup';
+
 export default function Login() {
+  const [tab, setTab] = useState<Tab>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const [success, setSuccess] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const { login, signup } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    if (login(email, password)) {
-      navigate('/');
+    setError(''); setSuccess(''); setSubmitting(true);
+    const result = await login(email, password);
+    setSubmitting(false);
+    if (result.error) {
+      setError(result.error);
     } else {
-      setError('Account not found or inactive. Try a demo account below.');
+      navigate('/');
     }
   };
 
-  const quickLogin = (email: string) => {
-    if (login(email, 'demo')) {
-      navigate('/');
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(''); setSuccess(''); setSubmitting(true);
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      setSubmitting(false);
+      return;
+    }
+    const result = await signup(email, password, name);
+    setSubmitting(false);
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setSuccess('Check your email for a verification link, then sign in.');
     }
   };
 
@@ -40,47 +59,63 @@ export default function Login() {
           <p className="text-sm text-muted-foreground mt-1">Your real estate command center</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
-          </div>
-          {error && <p className="text-sm text-urgent">{error}</p>}
-          <Button type="submit" className="w-full">
-            Sign In <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </form>
-
-        <div className="mt-8">
-          <p className="text-xs text-muted-foreground text-center mb-3">Quick access — Demo accounts</p>
-          <div className="space-y-2">
-            <button onClick={() => quickLogin('alex@dealpilot.demo')} className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-border bg-card hover:bg-accent transition-colors text-sm">
-              <div className="text-left">
-                <p className="font-medium">Alex Morgan</p>
-                <p className="text-xs text-muted-foreground">Agent · alex@dealpilot.demo</p>
-              </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <button onClick={() => quickLogin('admin@dealpilot.demo')} className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-border bg-card hover:bg-accent transition-colors text-sm">
-              <div className="text-left">
-                <p className="font-medium">Jordan Taylor</p>
-                <p className="text-xs text-muted-foreground">Admin · admin@dealpilot.demo</p>
-              </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <button onClick={() => quickLogin('reviewer@dealpilot.demo')} className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-border bg-card hover:bg-accent transition-colors text-sm">
-              <div className="text-left">
-                <p className="font-medium">App Reviewer</p>
-                <p className="text-xs text-muted-foreground">Reviewer · reviewer@dealpilot.demo</p>
-              </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
+        {/* Tabs */}
+        <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1">
+          <button
+            onClick={() => { setTab('signin'); setError(''); setSuccess(''); }}
+            className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-colors ${tab === 'signin' ? 'bg-card shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            Sign In
+          </button>
+          <button
+            onClick={() => { setTab('signup'); setError(''); setSuccess(''); }}
+            className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-colors ${tab === 'signup' ? 'bg-card shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            Sign Up
+          </button>
         </div>
+
+        {tab === 'signin' ? (
+          <form onSubmit={handleSignIn} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? 'Signing in...' : 'Sign In'} <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </form>
+        ) : (
+          <form onSubmit={handleSignUp} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="signup-name">Full Name</Label>
+              <Input id="signup-name" type="text" placeholder="Alex Morgan" value={name} onChange={e => setName(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="signup-email">Email</Label>
+              <Input id="signup-email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="signup-password">Password</Label>
+              <Input id="signup-password" type="password" placeholder="At least 6 characters" value={password} onChange={e => setPassword(e.target.value)} required />
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            {success && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-muted text-sm">
+                <Mail className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <span className="text-muted-foreground">{success}</span>
+              </div>
+            )}
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? 'Creating account...' : 'Create Account'}
+            </Button>
+          </form>
+        )}
       </div>
     </div>
   );
