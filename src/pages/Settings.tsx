@@ -1,13 +1,13 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sun, Moon, User, Link2, LogOut } from 'lucide-react';
+import { Sun, Moon, User, Link2, LogOut, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
 
 export default function Settings() {
-  const { user, logout } = useAuth();
+  const { user, logout, isReviewer } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -20,6 +20,14 @@ export default function Settings() {
     <div className="max-w-lg mx-auto animate-fade-in">
       <h1 className="text-xl font-bold mb-1">Settings</h1>
       <p className="text-sm text-muted-foreground mb-6">Preferences and account</p>
+
+      {/* Reviewer Banner */}
+      {isReviewer && (
+        <div className="rounded-lg border border-border bg-muted/50 p-3 mb-4 flex items-center gap-2 text-sm">
+          <Info className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-muted-foreground">Reviewer Demo Mode is active.</span>
+        </div>
+      )}
 
       {/* Theme */}
       <section className="rounded-lg border border-border bg-card p-4 mb-4">

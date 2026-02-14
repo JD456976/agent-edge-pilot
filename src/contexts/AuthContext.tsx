@@ -6,11 +6,16 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   profiles: User[];
+  onboardingCompleted: boolean;
+  isReviewer: boolean;
+  isProtected: boolean;
   login: (email: string, password: string) => Promise<{ error?: string }>;
   signup: (email: string, password: string, name: string) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
   updateUserRole: (userId: string, role: UserRole) => Promise<void>;
   fetchProfiles: () => Promise<void>;
+  setOnboardingCompleted: () => Promise<void>;
+  logAdminAction: (action: string, metadata?: Record<string, unknown>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,6 +24,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [profiles, setProfiles] = useState<User[]>([]);
+  const [onboardingCompleted, setOnboardingCompletedState] = useState(true); // default true to avoid flash
+  const [isReviewer, setIsReviewer] = useState(false);
+  const [isProtected, setIsProtected] = useState(false);
 
   const loadUserData = useCallback(async (authUserId: string) => {
     try {
@@ -28,16 +36,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       if (profile) {
+        const role = (roleData?.role as UserRole) || 'agent';
         setUser({
           id: authUserId,
           name: profile.name,
           email: profile.email,
-          role: (roleData?.role as UserRole) || 'agent',
+          role,
           themePreference: (profile.theme_preference as 'dark' | 'light') || 'dark',
           createdAt: profile.created_at,
           lastLoginAt: new Date().toISOString(),
           isActive: true,
         });
+        setOnboardingCompletedState((profile as any).onboarding_completed ?? false);
+        setIsReviewer(role === 'reviewer');
+        setIsProtected((profile as any).is_protected ?? false);
       }
     } catch (err) {
       console.error('Failed to load user data:', err);
@@ -108,6 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         createdAt: p.created_at,
         lastLoginAt: '',
         isActive: true,
+        isProtected: (p as any).is_protected ?? false,
       })));
     }
   }, []);
@@ -115,14 +128,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateUserRole = async (userId: string, role: UserRole) => {
     await supabase.from('user_roles').delete().eq('user_id', userId);
     await supabase.from('user_roles').insert({ user_id: userId, role: role as any });
+    await logAdminAction('role_change', { targetUserId: userId, newRole: role });
     await fetchProfiles();
     if (userId === user?.id) {
       setUser(prev => prev ? { ...prev, role } : null);
     }
   };
 
+  const setOnboardingCompleted = async () => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) {
+      await supabase.from('profiles').update({ onboarding_completed: true } as any).eq('user_id', authUser.id);
+      setOnboardingCompletedState(true);
+    }
+  };
+
+  const logAdminAction = async (action: string, metadata?: Record<string, unknown>) => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
+    await supabase.from('admin_audit_events' as any).insert({
+      admin_user_id: authUser.id,
+      action,
+      metadata: metadata || {},
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, profiles, login, signup, logout, updateUserRole, fetchProfiles }}>
+    <AuthContext.Provider value={{
+      user, loading, profiles, onboardingCompleted, isReviewer, isProtected,
+      login, signup, logout, updateUserRole, fetchProfiles,
+      setOnboardingCompleted, logAdminAction,
+    }}>
       {children}
     </AuthContext.Provider>
   );
