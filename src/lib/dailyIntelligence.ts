@@ -145,3 +145,106 @@ export function getPipelineWatch(
 
   return events.slice(0, 3);
 }
+
+// ── Control Status ──────────────────────────────────────────────────
+
+export type ControlStatus = 'Stabilizing' | 'Holding' | 'Needs Attention';
+
+export function getControlStatus(
+  tasks: Task[],
+  deals: Deal[],
+  previousSnapshot: SessionSnapshot | null,
+): ControlStatus {
+  const m = getMomentum(tasks, deals, previousSnapshot);
+  if (m === 'Improving') return 'Stabilizing';
+  if (m === 'Declining') return 'Needs Attention';
+  return 'Holding';
+}
+
+// ── Progress Snapshot ───────────────────────────────────────────────
+
+export interface ProgressItem {
+  id: string;
+  text: string;
+}
+
+export function getProgressSnapshot(
+  tasks: Task[],
+  deals: Deal[],
+  leads: Lead[],
+  previousSnapshot: SessionSnapshot | null,
+): ProgressItem[] {
+  if (!previousSnapshot) return [];
+  const items: ProgressItem[] = [];
+
+  // Overdue items resolved (were overdue in previous, now completed)
+  let resolvedOverdue = 0;
+  for (const taskId of previousSnapshot.overdueTaskIds) {
+    const task = tasks.find(t => t.id === taskId);
+    if (task && task.completedAt) resolvedOverdue++;
+  }
+  if (resolvedOverdue > 0) {
+    items.push({ id: 'resolved-overdue', text: `${resolvedOverdue} overdue item${resolvedOverdue !== 1 ? 's' : ''} resolved` });
+  }
+
+  // Deals moved out of risk
+  let dealsDerisked = 0;
+  for (const dealId of previousSnapshot.riskDealIds) {
+    const deal = deals.find(d => d.id === dealId);
+    if (deal && deal.riskLevel === 'green') dealsDerisked++;
+  }
+  if (dealsDerisked > 0) {
+    items.push({ id: 'deals-derisked', text: `${dealsDerisked} deal${dealsDerisked !== 1 ? 's' : ''} moved out of risk` });
+  }
+
+  // New opportunities engaged (new leads since last session)
+  const prevLeadIds = new Set(previousSnapshot.leadIds);
+  const newLeads = leads.filter(l => !prevLeadIds.has(l.id));
+  if (newLeads.length > 0) {
+    items.push({ id: 'new-leads', text: `${newLeads.length} new opportunit${newLeads.length !== 1 ? 'ies' : 'y'} engaged` });
+  }
+
+  return items.slice(0, 3);
+}
+
+// ── Stress Reduction Signal ─────────────────────────────────────────
+
+export function shouldShowStressReduction(
+  tasks: Task[],
+  deals: Deal[],
+  previousSnapshot: SessionSnapshot | null,
+): boolean {
+  if (!previousSnapshot) return false;
+  const now = new Date();
+  const currentOverdue = tasks.filter(t => !t.completedAt && new Date(t.dueAt) < now).length;
+  const currentRisk = deals.filter(d => d.stage !== 'closed' && (d.riskLevel === 'red' || d.riskLevel === 'yellow')).length;
+  const currentUrgent = currentOverdue + currentRisk;
+  return previousSnapshot.urgentCount >= 3 && currentUrgent <= previousSnapshot.urgentCount - 2;
+}
+
+// ── Post-Action Feedback Messages ───────────────────────────────────
+
+export type ActionFeedbackKind = 'complete' | 'snooze' | 'handled';
+
+export interface ActionFeedback {
+  message: string;
+}
+
+export function getPostActionFeedback(
+  kind: ActionFeedbackKind,
+  context?: { isRiskDeal?: boolean; isOverdue?: boolean; isOpportunity?: boolean },
+): ActionFeedback {
+  if (kind === 'snooze') {
+    return { message: 'Action snoozed. Next priority surfaced.' };
+  }
+  if (context?.isRiskDeal) {
+    return { message: 'Risk reduced. Deal status stabilized.' };
+  }
+  if (context?.isOverdue) {
+    return { message: 'Overdue item cleared.' };
+  }
+  if (context?.isOpportunity) {
+    return { message: 'Opportunity engaged.' };
+  }
+  return { message: 'Action completed.' };
+}

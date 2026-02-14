@@ -3,13 +3,15 @@ import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, 
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { buildCommandCenterPanels } from '@/lib/intelligenceEngine';
-import { getDailyBriefing, getMissedYesterdayCount, getMomentum, getPipelineWatch } from '@/lib/dailyIntelligence';
+import { getDailyBriefing, getMissedYesterdayCount, getMomentum, getPipelineWatch, getControlStatus, getProgressSnapshot, shouldShowStressReduction, getPostActionFeedback } from '@/lib/dailyIntelligence';
 import { useSessionMemory } from '@/hooks/useSessionMemory';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/EmptyState';
 import { SkeletonCard } from '@/components/SkeletonCard';
 import { ActionDetailDrawer } from '@/components/ActionDetailDrawer';
 import { RecommendedFirstAction } from '@/components/RecommendedFirstAction';
+import { ControlStatusBar } from '@/components/ControlStatusBar';
+import { toast } from '@/hooks/use-toast';
 import type { RiskLevel, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 function formatCurrency(n: number) {
@@ -34,10 +36,17 @@ export default function CommandCenter() {
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<DetailItem | null>(null);
   const [snoozedIds, setSnoozedIds] = useState<Set<string>>(new Set());
+  const [stressReductionDismissed, setStressReductionDismissed] = useState(false);
+
+  const showPostActionToast = useCallback((kind: 'complete' | 'snooze' | 'handled', context?: { isRiskDeal?: boolean; isOverdue?: boolean; isOpportunity?: boolean }) => {
+    const feedback = getPostActionFeedback(kind, context);
+    toast({ description: feedback.message, duration: 3000 });
+  }, []);
 
   const handleSnooze = useCallback((id: string) => {
     setSnoozedIds(prev => new Set(prev).add(id));
-  }, []);
+    showPostActionToast('snooze');
+  }, [showPostActionToast]);
 
   const previousSnapshot = useSessionMemory(leads, deals, tasks, alerts, hasData);
 
@@ -56,6 +65,9 @@ export default function CommandCenter() {
   const missedYesterday = useMemo(() => getMissedYesterdayCount(tasks, deals, previousSnapshot), [tasks, deals, previousSnapshot]);
   const momentum = useMemo(() => getMomentum(tasks, deals, previousSnapshot), [tasks, deals, previousSnapshot]);
   const pipelineWatch = useMemo(() => getPipelineWatch(leads, deals, previousSnapshot), [leads, deals, previousSnapshot]);
+  const controlStatus = useMemo(() => getControlStatus(tasks, deals, previousSnapshot), [tasks, deals, previousSnapshot]);
+  const progressItems = useMemo(() => getProgressSnapshot(tasks, deals, leads, previousSnapshot), [tasks, deals, leads, previousSnapshot]);
+  const stressReduction = useMemo(() => shouldShowStressReduction(tasks, deals, previousSnapshot), [tasks, deals, previousSnapshot]);
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -139,10 +151,25 @@ export default function CommandCenter() {
         <span className="text-xs text-muted-foreground block">Good morning, {user?.name?.split(' ')[0]}</span>
       </div>
 
+      {/* Control Status & Progress */}
+      <ControlStatusBar
+        controlStatus={controlStatus}
+        progressItems={progressItems}
+        showStressReduction={stressReduction}
+        stressReductionDismissed={stressReductionDismissed}
+        onDismissStressReduction={() => setStressReductionDismissed(true)}
+      />
+
       {/* Recommended First Action */}
       <RecommendedFirstAction
         panels={panels}
-        onComplete={completeTask}
+        onComplete={(taskId) => {
+          completeTask(taskId);
+          showPostActionToast('complete', {
+            isOverdue: tasks.find(t => t.id === taskId && !t.completedAt && new Date(t.dueAt) < new Date()) !== undefined,
+            isRiskDeal: deals.some(d => d.stage !== 'closed' && (d.riskLevel === 'red' || d.riskLevel === 'yellow') && tasks.find(t => t.id === taskId)?.relatedDealId === d.id),
+          });
+        }}
         snoozedIds={snoozedIds}
         onSnooze={handleSnooze}
       />
@@ -170,7 +197,7 @@ export default function CommandCenter() {
                     onClick={() => setSelectedItem({ kind: 'action', data: action })}
                   >
                     <button
-                      onClick={(e) => { e.stopPropagation(); action.relatedTaskId && completeTask(action.relatedTaskId); }}
+                      onClick={(e) => { e.stopPropagation(); if (action.relatedTaskId) { completeTask(action.relatedTaskId); showPostActionToast('complete', { isOverdue: action.timeWindow === 'Overdue' }); } }}
                       className="mt-0.5 h-5 w-5 rounded-md border-2 border-muted-foreground/30 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors shrink-0"
                     >
                       <Check className="h-3 w-3 text-transparent group-hover:text-primary transition-colors" />
@@ -321,7 +348,10 @@ export default function CommandCenter() {
       <ActionDetailDrawer
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
-        onComplete={completeTask}
+        onComplete={(taskId) => {
+          completeTask(taskId);
+          showPostActionToast('handled');
+        }}
       />
     </div>
   );
