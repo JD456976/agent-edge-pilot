@@ -80,11 +80,14 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
       }
 
       setCompletionResult({
+        importRunId: runId,
         committed,
         skipped: { leads: skippedLeads, deals: skippedDeals, tasks: skippedTasks },
         matched: { leads: matchedLeads, deals: matchedDeals, tasks: matchedTasks },
         isReviewer,
+        partialFailures: res.data.failures || undefined,
         durationMs,
+        committedAt: new Date().toISOString(),
       });
 
       await loadData();

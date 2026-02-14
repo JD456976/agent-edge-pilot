@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.fub-commit]
 verify_jwt = false
+
+[functions.fub-undo]
+verify_jwt = false

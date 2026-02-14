@@ -7,6 +7,7 @@ import { Target, DollarSign, Calendar, X, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Deal, DealStage, RiskLevel, DealParticipant } from '@/types';
 import { PARTICIPANT_ROLE_LABELS } from '@/types';
+import { ImportSourceBadge } from '@/components/ImportSourceBadge';
 import { cn } from '@/lib/utils';
 
 const STAGES: { key: DealStage; label: string }[] = [
@@ -56,9 +57,12 @@ function DealCard({ deal, onClick }: DealCardProps) {
           <Calendar className="h-3 w-3" />
           {new Date(deal.closeDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
         </div>
-        <Badge variant={riskVariant[deal.riskLevel]} className="text-[10px] px-1.5 py-0">
-          {deal.riskLevel === 'red' ? 'Risk' : deal.riskLevel === 'yellow' ? 'Watch' : 'Good'}
-        </Badge>
+        <div className="flex items-center gap-1.5">
+          {deal.importedFrom && <ImportSourceBadge importedFrom={deal.importedFrom} compact />}
+          <Badge variant={riskVariant[deal.riskLevel]} className="text-[10px] px-1.5 py-0">
+            {deal.riskLevel === 'red' ? 'Risk' : deal.riskLevel === 'yellow' ? 'Watch' : 'Good'}
+          </Badge>
+        </div>
       </div>
     </button>
   );
@@ -125,6 +129,11 @@ function DealDetail({ deal, tasks, participants, onClose }: {
           <div className="flex justify-between"><span className="text-muted-foreground">Close Date</span><span>{new Date(deal.closeDate).toLocaleDateString()}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Risk</span><Badge variant={riskVariant[deal.riskLevel]}>{deal.riskLevel}</Badge></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Stage</span><span className="capitalize">{deal.stage.replace('_', ' ')}</span></div>
+          {deal.importedFrom && (
+            <div className="pt-2">
+              <ImportSourceBadge importedFrom={deal.importedFrom} importedAt={deal.importedAt} importRunId={deal.importRunId} />
+            </div>
+          )}
         </div>
 
         <ParticipantsList participants={participants} deal={deal} />

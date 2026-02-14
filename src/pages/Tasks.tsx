@@ -3,6 +3,7 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { EmptyState } from '@/components/EmptyState';
 import { Badge } from '@/components/ui/badge';
+import { ImportSourceBadge } from '@/components/ImportSourceBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -111,6 +112,7 @@ export default function Tasks() {
                   <p className={cn('text-sm font-medium truncate', done && 'line-through')}>{task.title}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{typeLabel[task.type]}</Badge>
+                    {task.importedFrom && <ImportSourceBadge importedFrom={task.importedFrom} compact />}
                     <span className={cn('text-xs', overdue ? 'text-destructive font-medium' : 'text-muted-foreground')}>
                       {overdue ? 'Overdue' : new Date(task.dueAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                     </span>
