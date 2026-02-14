@@ -106,44 +106,57 @@ export default function CommandCenter() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Priority Actions */}
         <div className="rounded-lg border border-border bg-card p-4 md:row-span-2">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-1">
             <Zap className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-semibold">Priority Actions</h2>
             <span className="text-xs text-muted-foreground ml-auto">{panels.priorityActions.length} items</span>
           </div>
+          <p className="text-xs text-muted-foreground mb-3">Focus on these first to protect or create income.</p>
           {panels.priorityActions.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">You're all caught up!</p>
           ) : (
             <div className="space-y-2">
-              {panels.priorityActions.map(action => (
-                <div
-                  key={action.id}
-                  className="flex items-start gap-3 p-2.5 rounded-md hover:bg-accent/50 transition-colors group cursor-pointer"
-                  onClick={() => setSelectedItem({ kind: 'action', data: action })}
-                >
-                  <button
-                    onClick={(e) => { e.stopPropagation(); action.relatedTaskId && completeTask(action.relatedTaskId); }}
-                    className="mt-0.5 h-5 w-5 rounded-md border-2 border-muted-foreground/30 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors shrink-0"
+              {panels.priorityActions.map(action => {
+                const confidence = (action.scores.urgencyScore >= 40 && action.scores.revenueImpactScore >= 40) || action.scores.decayRiskScore >= 50 ? 'High' : 'Medium';
+                return (
+                  <div
+                    key={action.id}
+                    className="flex items-start gap-3 p-2.5 rounded-md hover:bg-accent/50 transition-colors group cursor-pointer"
+                    onClick={() => setSelectedItem({ kind: 'action', data: action })}
                   >
-                    <Check className="h-3 w-3 text-transparent group-hover:text-primary transition-colors" />
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-medium leading-tight truncate">{action.title}</p>
-                      {action.isSuggested && <Sparkles className="h-3 w-3 text-time-sensitive shrink-0" />}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); action.relatedTaskId && completeTask(action.relatedTaskId); }}
+                      className="mt-0.5 h-5 w-5 rounded-md border-2 border-muted-foreground/30 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors shrink-0"
+                    >
+                      <Check className="h-3 w-3 text-transparent group-hover:text-primary transition-colors" />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium leading-tight truncate">{action.title}</p>
+                        {action.isSuggested && <Sparkles className="h-3 w-3 text-time-sensitive shrink-0" />}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${confidence === 'High' ? 'bg-muted text-foreground/70' : 'bg-muted/50 text-muted-foreground'}`}>
+                          {confidence}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">{action.reason}</span>
+                        {action.potentialValue && (
+                          <span className="text-xs text-opportunity font-medium">{formatCurrency(action.potentialValue)}</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-muted-foreground">{action.reason}</span>
-                      {action.potentialValue && (
-                        <span className="text-xs text-opportunity font-medium">{formatCurrency(action.potentialValue)}</span>
-                      )}
-                    </div>
+                    <span className={`text-xs font-medium shrink-0 ${action.timeWindow === 'Overdue' ? 'text-urgent' : action.timeWindow === 'Due now' ? 'text-warning' : 'text-muted-foreground'}`}>
+                      {action.timeWindow}
+                    </span>
                   </div>
-                  <span className={`text-xs font-medium shrink-0 ${action.timeWindow === 'Overdue' ? 'text-urgent' : action.timeWindow === 'Due now' ? 'text-warning' : 'text-muted-foreground'}`}>
-                    {action.timeWindow}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
+              <button
+                onClick={() => {/* TODO: navigate to full actions list */}}
+                className="w-full text-center text-xs text-primary hover:text-primary/80 transition-colors py-2"
+              >
+                View All Actions <ChevronRight className="inline h-3 w-3" />
+              </button>
             </div>
           )}
         </div>
@@ -177,10 +190,11 @@ export default function CommandCenter() {
 
         {/* Opportunities Heating Up */}
         <div className="rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-1">
             <TrendingUp className="h-4 w-4 text-opportunity" />
             <h2 className="text-sm font-semibold">Opportunities Heating Up</h2>
           </div>
+          <p className="text-xs text-muted-foreground mb-3">Leads showing strong buying or selling signals.</p>
           {panels.opportunities.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">No hot leads right now</p>
           ) : (
@@ -196,10 +210,11 @@ export default function CommandCenter() {
                     <p className="text-xs text-muted-foreground">{item.topReason}</p>
                   </div>
                   <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">🔥</span>
                     <div className="w-12 h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full rounded-full bg-opportunity" style={{ width: `${item.lead.engagementScore}%` }} />
+                      <div className="h-full rounded-full bg-opportunity" style={{ width: `${item.scores.opportunityScore}%` }} />
                     </div>
-                    <span className="text-xs text-muted-foreground w-7 text-right">{item.lead.engagementScore}</span>
+                    <span className="text-xs text-muted-foreground w-7 text-right">{item.scores.opportunityScore}</span>
                   </div>
                 </div>
               ))}
@@ -209,10 +224,11 @@ export default function CommandCenter() {
 
         {/* Speed Alerts */}
         <div className="rounded-lg border border-border bg-card p-4 md:col-start-2">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-1">
             <Zap className="h-4 w-4 text-time-sensitive" />
             <h2 className="text-sm font-semibold">Speed Alerts</h2>
           </div>
+          <p className="text-xs text-muted-foreground mb-3">Time-sensitive items requiring immediate attention.</p>
           {panels.speedAlerts.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">No time-sensitive alerts</p>
           ) : (

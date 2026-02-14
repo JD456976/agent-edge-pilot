@@ -16,7 +16,8 @@ function hoursUntil(dateStr: string, now: Date): number {
 
 function daysSince(dateStr: string | undefined, now: Date): number {
   if (!dateStr) return Infinity;
-  return (now.getTime() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24);
+  // Round down to whole days for ranking stability (anti-jitter)
+  return Math.floor((now.getTime() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
 }
 
 function normalizeCommission(commission: number): number {
@@ -349,7 +350,7 @@ export function buildCommandCenterPanels(
 
   const priorityActions = [...taskActions, ...suggestedActions]
     .sort((a, b) => b.overallScore - a.overallScore)
-    .slice(0, 7);
+    .slice(0, 5);
 
   // ── Deals at Risk ──
   const activeDeals = deals.filter(d => d.stage !== 'closed');
@@ -403,9 +404,9 @@ export function buildCommandCenterPanels(
       };
     });
 
-  // Also inject overdue/due-soon tasks as speed alerts
+  // Also inject overdue/due-soon tasks as speed alerts (within 48h)
   const urgentTaskAlerts: CommandCenterSpeedAlert[] = incompleteTasks
-    .filter(t => hoursUntil(t.dueAt, now) < 2)
+    .filter(t => hoursUntil(t.dueAt, now) < 48)
     .map(task => {
       const lead = task.relatedLeadId ? leadMap.get(task.relatedLeadId) : undefined;
       const deal = task.relatedDealId ? dealMap.get(task.relatedDealId) : undefined;
@@ -422,9 +423,16 @@ export function buildCommandCenterPanels(
       };
     });
 
-  const speedAlerts = [...scoredAlerts, ...urgentTaskAlerts]
+  // Filter speed alerts: only overdue or within 48h
+  const filteredAlerts = scoredAlerts.filter(a => {
+    const alert = alerts.find(al => al.id === a.id);
+    if (!alert) return false;
+    return hoursUntil(alert.expiresAt, now) < 48;
+  });
+
+  const speedAlerts = [...filteredAlerts, ...urgentTaskAlerts]
     .sort((a, b) => b.urgencyScore - a.urgencyScore)
-    .slice(0, 6);
+    .slice(0, 4);
 
   return { priorityActions, dealsAtRisk, opportunities, speedAlerts };
 }
