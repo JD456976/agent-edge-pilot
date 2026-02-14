@@ -24,19 +24,31 @@ function formatCurrency(n: number) {
   return n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
 }
 
-function DealCard({ deal }: { deal: Deal; onClick: () => void }) {
-  const userComm = deal.userCommission ?? deal.commission;
+interface DealCardProps {
+  deal: Deal;
+  onClick: () => void;
+}
+
+function DealCard({ deal, onClick }: DealCardProps) {
+  const userComm = deal.userCommission ?? (() => {
+    if (import.meta.env.DEV) {
+      console.warn(`[DealCard] userCommission missing for deal "${deal.id}", falling back to $0`);
+    }
+    return 0;
+  })();
+  const totalComm = deal.commission;
+
   return (
-    <button onClick={arguments[0].onClick} className="w-full text-left p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors space-y-2">
+    <button onClick={onClick} className="w-full text-left p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors space-y-2">
       <p className="text-sm font-semibold leading-tight">{deal.title}</p>
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <DollarSign className="h-3 w-3" />
         <span>${deal.price.toLocaleString()}</span>
         <span className="text-opportunity font-medium">{formatCurrency(userComm)} your comm.</span>
       </div>
-      {deal.userCommission !== undefined && deal.userCommission !== deal.commission && (
+      {userComm !== totalComm && (
         <div className="text-[10px] text-muted-foreground">
-          Total: {formatCurrency(deal.commission)}
+          Total: {formatCurrency(totalComm)}
         </div>
       )}
       <div className="flex items-center justify-between">
