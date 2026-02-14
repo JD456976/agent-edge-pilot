@@ -36,6 +36,9 @@ export interface Lead {
   createdAt?: string;
   lastActivityAt?: string;
   leadTemperature?: LeadTemperature;
+  importedFrom?: string | null;
+  importRunId?: string | null;
+  importedAt?: string | null;
 }
 
 export interface Deal {
@@ -55,6 +58,9 @@ export interface Deal {
   riskFlags?: string[];
   milestoneStatus?: MilestoneStatus;
   organizationId?: string;
+  importedFrom?: string | null;
+  importRunId?: string | null;
+  importedAt?: string | null;
 }
 
 export interface DealParticipant {
@@ -100,6 +106,9 @@ export interface Task {
   relatedDealId?: string;
   completedAt?: string;
   assignedToUserId: string;
+  importedFrom?: string | null;
+  importRunId?: string | null;
+  importedAt?: string | null;
 }
 
 export interface Alert {

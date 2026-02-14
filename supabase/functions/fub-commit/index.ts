@@ -58,7 +58,9 @@ Deno.serve(async (req) => {
       throw new Error(`Unresolved conflicts: ${unresolvedLeads.length} leads, ${unresolvedDeals.length} deals, ${unresolvedTasks.length} tasks. Resolve before committing.`);
     }
 
-    let committed = { leads: 0, deals: 0, tasks: 0, participants: 0 };
+    const committed = { leads: 0, deals: 0, tasks: 0, participants: 0 };
+    const failures: { type: string; title: string; error: string; retryable: boolean }[] = [];
+    const importedAt = new Date().toISOString();
 
     // --- COMMIT LEADS ---
     for (const sl of (stagedLeads || [])) {
@@ -67,24 +69,35 @@ Deno.serve(async (req) => {
 
       if (resolution === "skip") continue;
 
-      if (resolution === "create_new") {
-        await svc.from("leads").insert({
-          assigned_to_user_id: userId,
-          name: norm.name || "Unknown",
-          source: norm.source || "FUB Import",
-          engagement_score: norm.engagementScore || 0,
-          last_contact_at: norm.lastContactAt || new Date().toISOString(),
-          status_tags: ["fub-import"],
+      try {
+        if (resolution === "create_new") {
+          await svc.from("leads").insert({
+            assigned_to_user_id: userId,
+            name: norm.name || "Unknown",
+            source: norm.source || "FUB Import",
+            engagement_score: norm.engagementScore || 0,
+            last_contact_at: norm.lastContactAt || new Date().toISOString(),
+            status_tags: ["fub-import"],
+            imported_from: "fub",
+            import_run_id: import_run_id,
+            imported_at: importedAt,
+          });
+          committed.leads++;
+        } else if (resolution === "match_existing" && sl.matched_lead_id) {
+          await svc.from("leads").update({
+            source: norm.source || undefined,
+            last_contact_at: norm.lastContactAt || undefined,
+            last_activity_at: new Date().toISOString(),
+          }).eq("id", sl.matched_lead_id).eq("assigned_to_user_id", userId);
+          committed.leads++;
+        }
+      } catch (e: any) {
+        failures.push({
+          type: "lead",
+          title: norm.name || "Unknown Lead",
+          error: e.message || "Unknown error",
+          retryable: /timeout|5\d\d|429/i.test(e.message || ""),
         });
-        committed.leads++;
-      } else if (resolution === "match_existing" && sl.matched_lead_id) {
-        // Update non-sensitive fields only
-        await svc.from("leads").update({
-          source: norm.source || undefined,
-          last_contact_at: norm.lastContactAt || undefined,
-          last_activity_at: new Date().toISOString(),
-        }).eq("id", sl.matched_lead_id).eq("assigned_to_user_id", userId);
-        committed.leads++;
       }
     }
 
@@ -95,34 +108,44 @@ Deno.serve(async (req) => {
 
       if (resolution === "skip") continue;
 
-      if (resolution === "create_new") {
-        const { data: newDeal } = await svc.from("deals").insert({
-          assigned_to_user_id: userId,
-          title: norm.title || "Untitled Deal",
-          price: norm.price || 0,
-          stage: norm.stage || "offer",
-          close_date: norm.closeDate || new Date(Date.now() + 30 * 86400000).toISOString(),
-        }).select("id").single();
+      try {
+        if (resolution === "create_new") {
+          const { data: newDeal } = await svc.from("deals").insert({
+            assigned_to_user_id: userId,
+            title: norm.title || "Untitled Deal",
+            price: norm.price || 0,
+            stage: norm.stage || "offer",
+            close_date: norm.closeDate || new Date(Date.now() + 30 * 86400000).toISOString(),
+            imported_from: "fub",
+            import_run_id: import_run_id,
+            imported_at: importedAt,
+          }).select("id").single();
 
-        // Create participant for importing user
-        if (newDeal) {
-          await svc.from("deal_participants").insert({
-            deal_id: newDeal.id,
-            user_id: userId,
-            role: "primary_agent",
-            split_percent: 100,
-          });
-          committed.participants++;
+          if (newDeal) {
+            await svc.from("deal_participants").insert({
+              deal_id: newDeal.id,
+              user_id: userId,
+              role: "primary_agent",
+              split_percent: 100,
+            });
+            committed.participants++;
+          }
+          committed.deals++;
+        } else if (resolution === "match_existing" && sd.matched_deal_id) {
+          const updates: any = {};
+          if (norm.price) updates.price = norm.price;
+          if (norm.closeDate) updates.close_date = norm.closeDate;
+          updates.last_touched_at = new Date().toISOString();
+          await svc.from("deals").update(updates).eq("id", sd.matched_deal_id).eq("assigned_to_user_id", userId);
+          committed.deals++;
         }
-        committed.deals++;
-      } else if (resolution === "match_existing" && sd.matched_deal_id) {
-        // Update non-sensitive fields only (never overwrite commission)
-        const updates: any = {};
-        if (norm.price) updates.price = norm.price;
-        if (norm.closeDate) updates.close_date = norm.closeDate;
-        updates.last_touched_at = new Date().toISOString();
-        await svc.from("deals").update(updates).eq("id", sd.matched_deal_id).eq("assigned_to_user_id", userId);
-        committed.deals++;
+      } catch (e: any) {
+        failures.push({
+          type: "deal",
+          title: norm.title || "Unknown Deal",
+          error: e.message || "Unknown error",
+          retryable: /timeout|5\d\d|429/i.test(e.message || ""),
+        });
       }
     }
 
@@ -133,20 +156,32 @@ Deno.serve(async (req) => {
 
       if (resolution === "skip") continue;
 
-      if (resolution === "create_new") {
-        await svc.from("tasks").insert({
-          assigned_to_user_id: userId,
-          title: norm.title || "Untitled Task",
-          type: norm.type || "follow_up",
-          due_at: norm.dueAt || new Date().toISOString(),
-          completed_at: norm.completedAt || null,
+      try {
+        if (resolution === "create_new") {
+          await svc.from("tasks").insert({
+            assigned_to_user_id: userId,
+            title: norm.title || "Untitled Task",
+            type: norm.type || "follow_up",
+            due_at: norm.dueAt || new Date().toISOString(),
+            completed_at: norm.completedAt || null,
+            imported_from: "fub",
+            import_run_id: import_run_id,
+            imported_at: importedAt,
+          });
+          committed.tasks++;
+        } else if (resolution === "match_existing" && st.matched_task_id) {
+          const updates: any = { due_at: norm.dueAt };
+          if (norm.completedAt) updates.completed_at = norm.completedAt;
+          await svc.from("tasks").update(updates).eq("id", st.matched_task_id).eq("assigned_to_user_id", userId);
+          committed.tasks++;
+        }
+      } catch (e: any) {
+        failures.push({
+          type: "task",
+          title: norm.title || "Unknown Task",
+          error: e.message || "Unknown error",
+          retryable: /timeout|5\d\d|429/i.test(e.message || ""),
         });
-        committed.tasks++;
-      } else if (resolution === "match_existing" && st.matched_task_id) {
-        const updates: any = { due_at: norm.dueAt };
-        if (norm.completedAt) updates.completed_at = norm.completedAt;
-        await svc.from("tasks").update(updates).eq("id", st.matched_task_id).eq("assigned_to_user_id", userId);
-        committed.tasks++;
       }
     }
 
@@ -163,11 +198,11 @@ Deno.serve(async (req) => {
     await svc.from("admin_audit_events").insert({
       admin_user_id: userId,
       action: "import_committed",
-      metadata: { import_run_id, committed },
+      metadata: { import_run_id, committed, failures: failures.length },
     });
 
     return new Response(
-      JSON.stringify({ success: true, committed }),
+      JSON.stringify({ success: true, committed, failures: failures.length > 0 ? failures : undefined }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

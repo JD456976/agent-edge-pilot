@@ -178,6 +178,9 @@ export type Database = {
           commission_rate: number | null
           created_at: string
           id: string
+          import_run_id: string | null
+          imported_at: string | null
+          imported_from: string | null
           last_touched_at: string | null
           milestone_appraisal: string | null
           milestone_financing: string | null
@@ -197,6 +200,9 @@ export type Database = {
           commission_rate?: number | null
           created_at?: string
           id?: string
+          import_run_id?: string | null
+          imported_at?: string | null
+          imported_from?: string | null
           last_touched_at?: string | null
           milestone_appraisal?: string | null
           milestone_financing?: string | null
@@ -216,6 +222,9 @@ export type Database = {
           commission_rate?: number | null
           created_at?: string
           id?: string
+          import_run_id?: string | null
+          imported_at?: string | null
+          imported_from?: string | null
           last_touched_at?: string | null
           milestone_appraisal?: string | null
           milestone_financing?: string | null
@@ -248,6 +257,8 @@ export type Database = {
           notes: string | null
           source_counts: Json | null
           status: string
+          undone_at: string | null
+          undone_by: string | null
           user_id: string
         }
         Insert: {
@@ -259,6 +270,8 @@ export type Database = {
           notes?: string | null
           source_counts?: Json | null
           status?: string
+          undone_at?: string | null
+          undone_by?: string | null
           user_id: string
         }
         Update: {
@@ -270,6 +283,8 @@ export type Database = {
           notes?: string | null
           source_counts?: Json | null
           status?: string
+          undone_at?: string | null
+          undone_by?: string | null
           user_id?: string
         }
         Relationships: []
@@ -421,6 +436,9 @@ export type Database = {
           created_at: string
           engagement_score: number
           id: string
+          import_run_id: string | null
+          imported_at: string | null
+          imported_from: string | null
           last_activity_at: string | null
           last_contact_at: string
           lead_temperature:
@@ -437,6 +455,9 @@ export type Database = {
           created_at?: string
           engagement_score?: number
           id?: string
+          import_run_id?: string | null
+          imported_at?: string | null
+          imported_from?: string | null
           last_activity_at?: string | null
           last_contact_at?: string
           lead_temperature?:
@@ -453,6 +474,9 @@ export type Database = {
           created_at?: string
           engagement_score?: number
           id?: string
+          import_run_id?: string | null
+          imported_at?: string | null
+          imported_from?: string | null
           last_activity_at?: string | null
           last_contact_at?: string
           lead_temperature?:
@@ -538,6 +562,9 @@ export type Database = {
           created_at: string
           due_at: string
           id: string
+          import_run_id: string | null
+          imported_at: string | null
+          imported_from: string | null
           related_deal_id: string | null
           related_lead_id: string | null
           title: string
@@ -549,6 +576,9 @@ export type Database = {
           created_at?: string
           due_at?: string
           id?: string
+          import_run_id?: string | null
+          imported_at?: string | null
+          imported_from?: string | null
           related_deal_id?: string | null
           related_lead_id?: string | null
           title: string
@@ -560,6 +590,9 @@ export type Database = {
           created_at?: string
           due_at?: string
           id?: string
+          import_run_id?: string | null
+          imported_at?: string | null
+          imported_from?: string | null
           related_deal_id?: string | null
           related_lead_id?: string | null
           title?: string

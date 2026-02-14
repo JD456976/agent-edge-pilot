@@ -32,6 +32,9 @@ function mapLead(row: any): Lead {
     assignedToUserId: row.assigned_to_user_id || '',
     createdAt: row.created_at, lastActivityAt: row.last_activity_at || undefined,
     leadTemperature: row.lead_temperature || undefined,
+    importedFrom: row.imported_from || null,
+    importRunId: row.import_run_id || null,
+    importedAt: row.imported_at || null,
   };
 }
 
@@ -52,6 +55,9 @@ function mapDeal(row: any, userCommission?: number): Deal {
       appraisal: row.milestone_appraisal || 'unknown',
     },
     organizationId: row.organization_id || undefined,
+    importedFrom: row.imported_from || null,
+    importRunId: row.import_run_id || null,
+    importedAt: row.imported_at || null,
   };
 }
 
@@ -62,6 +68,9 @@ function mapTask(row: any): Task {
     relatedDealId: row.related_deal_id || undefined,
     completedAt: row.completed_at || undefined,
     assignedToUserId: row.assigned_to_user_id || '',
+    importedFrom: row.imported_from || null,
+    importRunId: row.import_run_id || null,
+    importedAt: row.imported_at || null,
   };
 }
 
