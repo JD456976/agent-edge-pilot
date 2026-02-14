@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.fub-save-key]
 verify_jwt = false
+
+[functions.fub-stage]
+verify_jwt = false
+
+[functions.fub-commit]
+verify_jwt = false
