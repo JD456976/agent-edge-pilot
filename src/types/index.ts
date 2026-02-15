@@ -57,6 +57,7 @@ export interface Deal {
   createdAt?: string;
   lastTouchedAt?: string;
   riskFlags?: string[];
+  side?: string;
   milestoneStatus?: MilestoneStatus;
   organizationId?: string;
   importedFrom?: string | null;

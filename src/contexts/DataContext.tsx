@@ -51,6 +51,7 @@ function mapDeal(row: any, userCommission?: number): Deal {
     assignedToUserId: row.assigned_to_user_id || '',
     createdAt: row.created_at, lastTouchedAt: row.last_touched_at || undefined,
     riskFlags: row.risk_flags || [],
+    side: row.side || 'buy',
     milestoneStatus: {
       inspection: row.milestone_inspection || 'unknown',
       financing: row.milestone_financing || 'unknown',

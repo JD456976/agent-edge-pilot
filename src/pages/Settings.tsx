@@ -14,6 +14,8 @@ import { FubImportReview } from '@/components/FubImportReview';
 import { ImportMatchingRules, ImportDryRunPanel } from '@/components/ImportSettings';
 import { ScoringCalibrationPanel } from '@/components/ScoringCalibrationPanel';
 import { NetworkSettingsSection } from '@/components/NetworkSettingsSection';
+import { MarketSettingsSection } from '@/components/MarketSettingsSection';
+import { useMarketConditions } from '@/hooks/useMarketConditions';
 import { useSessionMode, type SessionMode } from '@/hooks/useSessionMode';
 import { toast } from '@/hooks/use-toast';
 import { callEdgeFunction, type EdgeFunctionError } from '@/lib/edgeClient';
@@ -31,6 +33,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { currentMode, autoMode, override, setModeOverride } = useSessionMode();
+  const { conditions: marketConditions, updateConditions: updateMarketConditions, resetConditions: resetMarketConditions } = useMarketConditions();
 
   // FUB integration state
   const [integration, setIntegration] = useState<IntegrationState>({ status: 'disconnected', last4: null, lastValidated: null });
@@ -295,6 +298,13 @@ export default function Settings() {
 
       {/* Network Benchmarks */}
       <NetworkSettingsSection />
+
+      {/* Market Conditions */}
+      <MarketSettingsSection
+        conditions={marketConditions}
+        onUpdate={updateMarketConditions}
+        onReset={resetMarketConditions}
+      />
 
       {/* Daily Operating Mode */}
       <section className="rounded-lg border border-border bg-card p-4 mb-4">
