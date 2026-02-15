@@ -1,7 +1,9 @@
 import { ReactNode, useState, useEffect, useRef, useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush } from 'lucide-react';
+import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush, Bell } from 'lucide-react';
+import { NotificationBell } from '@/components/NotificationBell';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useWorkspace, type WorkspaceType } from '@/contexts/WorkspaceContext';
@@ -189,21 +191,48 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Main content area */}
       <div className="md:pl-56 min-h-screen flex flex-col">
         {/* Mobile header */}
-        <header className="md:hidden flex items-center justify-between px-4 h-14 border-b border-border bg-card sticky top-0 z-20">
+        <header className="md:hidden flex items-center justify-between px-3 h-14 border-b border-border bg-card sticky top-0 z-20">
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
               <LayoutDashboard className="h-3.5 w-3.5 text-primary-foreground" />
             </div>
             <span className="font-bold text-sm">Deal Pilot</span>
           </div>
-          <div className="flex items-center gap-1">
-            <SkinSelector />
+          <div className="flex items-center gap-0.5">
+            <NotificationBell alerts={alerts} />
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center">
-              <User className="h-3.5 w-3.5 text-primary" />
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors" aria-label="Account menu">
+                  <User className="h-4 w-4 text-primary" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {user?.email && (
+                  <>
+                    <div className="px-2 py-1.5">
+                      <p className="text-sm font-medium truncate">{user.email}</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem onClick={() => { closeWorkspace(); openWorkspace('settings'); }}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { /* skin selector could open here */ }}>
+                  <Paintbrush className="h-4 w-4 mr-2" />
+                  Change Skin
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
