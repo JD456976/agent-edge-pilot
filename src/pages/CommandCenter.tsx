@@ -47,8 +47,10 @@ import { ExecutionQueuePanel } from '@/components/ExecutionQueuePanel';
 import { LearningTransparencyPanel } from '@/components/LearningTransparencyPanel';
 import { NetworkBenchmarksPanel } from '@/components/NetworkBenchmarksPanel';
 import { CohortPlaybooksPanel } from '@/components/CohortPlaybooksPanel';
+import { MarketConditionsPanel } from '@/components/MarketConditionsPanel';
 import { useAgentLearning } from '@/hooks/useAgentLearning';
 import { useNetworkTelemetry } from '@/hooks/useNetworkTelemetry';
+import { useMarketConditions } from '@/hooks/useMarketConditions';
 import { useNetworkPlaybooks, type NetworkPlaybook } from '@/hooks/useNetworkPlaybooks';
 import { computeOpportunityBatch, type OpportunityHeatResult, type UserCommissionDefaults } from '@/lib/leadMoneyModel';
 import { computeForecastBatch } from '@/lib/forecastModel';
@@ -149,6 +151,9 @@ export default function CommandCenter() {
 
   // Network Effect Layer
   const { participation: networkParticipation } = useNetworkTelemetry();
+
+  // Market Conditions Layer
+  const { conditions: marketConditions } = useMarketConditions();
 
   const activeDeals = deals.filter(d => d.stage !== 'closed');
   const totalRevenue = activeDeals.reduce((s, d) => s + d.commission, 0);
@@ -895,6 +900,16 @@ export default function CommandCenter() {
             const result = moneyResults.find(r => r.dealId === threat.dealId);
             if (deal && result) handleMoneySelect(result, deal);
           }}
+        />
+      </PanelErrorBoundary>
+
+      {/* Market Awareness Panel */}
+      <PanelErrorBoundary>
+        <MarketConditionsPanel
+          conditions={marketConditions}
+          deals={deals}
+          leads={leads}
+          moneyResults={moneyResults}
         />
       </PanelErrorBoundary>
 
