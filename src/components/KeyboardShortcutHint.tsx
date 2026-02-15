@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Keyboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const HINT_KEY = 'dp-shortcuts-hint-dismissed';
 
 export function KeyboardShortcutHint() {
   const [visible, setVisible] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
+    // Keyboard shortcuts are irrelevant on mobile
+    if (isMobile) return;
     if (localStorage.getItem(HINT_KEY)) return;
     const timer = setTimeout(() => setVisible(true), 5000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isMobile]);
 
   if (!visible) return null;
 
@@ -24,11 +28,10 @@ export function KeyboardShortcutHint() {
     <button
       onClick={() => {
         dismiss();
-        // Trigger the ? shortcut
         document.dispatchEvent(new KeyboardEvent('keydown', { key: '?' }));
       }}
       className={cn(
-        'fixed bottom-20 md:bottom-6 right-6 z-20',
+        'fixed bottom-6 right-6 z-20',
         'flex items-center gap-2 px-3 py-2 rounded-full',
         'bg-card border border-border shadow-lg',
         'text-xs text-muted-foreground hover:text-foreground',
