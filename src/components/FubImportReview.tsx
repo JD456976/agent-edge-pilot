@@ -10,6 +10,8 @@ import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader2, CheckCircle2, AlertTriangle, Plus, SkipForward, Link, XCircle, Info } from 'lucide-react';
 import { ImportCompletionModal, type ImportResult } from '@/components/ImportCompletionModal';
 import { markImportCompleted } from '@/hooks/useImportHighlight';
+import { callEdgeFunction, type EdgeFunctionError } from '@/lib/edgeClient';
+import { EdgeErrorDisplay } from '@/components/EdgeErrorDisplay';
 
 interface ImportReviewProps {
   runId: string;
@@ -53,20 +55,18 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
     await loadData();
   };
 
+  const [commitError, setCommitError] = useState<EdgeFunctionError | null>(null);
+
   const handleCommit = async () => {
     setCommitting(true);
+    setCommitError(null);
     commitStartTime.current = Date.now();
     try {
-      const res = await supabase.functions.invoke('fub-commit', {
-        body: { import_run_id: runId },
-      });
-      if (res.error) throw new Error(res.error.message);
-      if (res.data?.error) throw new Error(res.data.error);
+      const data = await callEdgeFunction<any>('fub-commit', { import_run_id: runId });
 
       const durationMs = Date.now() - commitStartTime.current;
-      const committed = res.data.committed;
+      const committed = data.committed;
 
-      // Calculate skipped and matched from staged data
       const skippedLeads = stagedLeads.filter(l => (l.resolution || (l.match_status === 'conflict' ? null : undefined)) === 'skip').length;
       const skippedDeals = stagedDeals.filter(d => (d.resolution || (d.match_status === 'conflict' ? null : undefined)) === 'skip').length;
       const skippedTasks = stagedTasks.filter(t => (t.resolution || (t.match_status === 'conflict' ? null : undefined)) === 'skip').length;
@@ -74,7 +74,6 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
       const matchedDeals = stagedDeals.filter(d => d.match_status === 'matched').length;
       const matchedTasks = stagedTasks.filter(t => t.match_status === 'matched').length;
 
-      // Mark import completed for Command Center badge
       if (!isReviewer) {
         markImportCompleted();
       }
@@ -85,14 +84,15 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
         skipped: { leads: skippedLeads, deals: skippedDeals, tasks: skippedTasks },
         matched: { leads: matchedLeads, deals: matchedDeals, tasks: matchedTasks },
         isReviewer,
-        partialFailures: res.data.failures || undefined,
+        partialFailures: data.failures || undefined,
         durationMs,
         committedAt: new Date().toISOString(),
       });
 
       await loadData();
     } catch (err: any) {
-      toast({ title: 'Commit failed', description: err.message, variant: 'destructive' });
+      if (err?.kind) { setCommitError(err); }
+      toast({ title: 'Commit failed', description: err?.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setCommitting(false);
     }
@@ -263,6 +263,13 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
           </div>
         </div>
       </div>
+
+      {/* Commit error display */}
+      {commitError && (
+        <div className="mb-4">
+          <EdgeErrorDisplay error={commitError} functionName="fub-commit" />
+        </div>
+      )}
 
       {/* Reviewer warning */}
       {isReviewer && (
