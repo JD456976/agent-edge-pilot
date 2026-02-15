@@ -3,9 +3,10 @@ import { Shield, TrendingUp, Flame, BarChart3, Zap, RefreshCw, CheckCircle, Exte
 import { Button } from '@/components/ui/button';
 import { useEntitlement } from '@/contexts/EntitlementContext';
 import { PRICE_DISPLAY, TRIAL_DURATION_DAYS } from '@/lib/subscription/products';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getProducts, type StoreProduct } from '@/lib/subscription/subscriptionService';
 
-const PRO_FEATURES = [
+const APP_HIGHLIGHTS = [
   { icon: Shield, label: 'Money at Risk alerts' },
   { icon: Flame, label: 'Opportunity Heat tracking' },
   { icon: TrendingUp, label: 'Income Forecast engine' },
@@ -24,6 +25,23 @@ export default function Paywall({ onDismiss, showDismiss = true }: PaywallProps)
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [localizedPrice, setLocalizedPrice] = useState<string | null>(null);
+
+  // Fetch localized price from StoreKit on native
+  useEffect(() => {
+    (async () => {
+      try {
+        const products = await getProducts();
+        if (products.length > 0) {
+          setLocalizedPrice(products[0].price);
+        }
+      } catch {
+        // Fall back to hardcoded price
+      }
+    })();
+  }, []);
+
+  const displayPrice = localizedPrice || PRICE_DISPLAY;
 
   const handlePurchase = async () => {
     setError(null);
@@ -92,9 +110,12 @@ export default function Paywall({ onDismiss, showDismiss = true }: PaywallProps)
           <p className="text-muted-foreground text-lg">Your income command center</p>
         </div>
 
-        {/* Features */}
+        {/* What's included */}
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          {PRO_FEATURES.map((f, i) => (
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+            Everything included
+          </p>
+          {APP_HIGHLIGHTS.map((f, i) => (
             <motion.div
               key={f.label}
               initial={{ opacity: 0, x: -10 }}
@@ -110,11 +131,14 @@ export default function Paywall({ onDismiss, showDismiss = true }: PaywallProps)
           ))}
         </div>
 
-        {/* Pricing */}
+        {/* Pricing — uses localized StoreKit price when available */}
         <div className="text-center space-y-1">
-          <p className="text-2xl font-bold">{PRICE_DISPLAY}</p>
+          <p className="text-2xl font-bold">{displayPrice}</p>
           <p className="text-sm text-muted-foreground">
-            after a {TRIAL_DURATION_DAYS}-day free trial
+            Start with a {TRIAL_DURATION_DAYS}-day free trial · Cancel anytime
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Full access during trial — no features locked
           </p>
         </div>
 
@@ -122,14 +146,6 @@ export default function Paywall({ onDismiss, showDismiss = true }: PaywallProps)
         {error && (
           <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 text-center">
             <p className="text-sm text-destructive">{error}</p>
-            <div className="flex gap-2 justify-center mt-2">
-              <Button variant="ghost" size="sm" onClick={handlePurchase}>
-                Try again
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleRestore}>
-                Restore purchases
-              </Button>
-            </div>
           </div>
         )}
 
@@ -172,8 +188,8 @@ export default function Paywall({ onDismiss, showDismiss = true }: PaywallProps)
         <div className="text-center space-y-2 pt-2">
           <p className="text-[10px] text-muted-foreground leading-relaxed">
             Payment will be charged to your Apple ID account at confirmation of purchase.
-            Subscription automatically renews unless canceled at least 24 hours before the end
-            of the current period. Cancel anytime in Settings → Apple ID → Subscriptions.
+            Subscription automatically renews at {displayPrice} unless canceled at least 24 hours
+            before the end of the current period. Cancel anytime in Settings → Apple ID → Subscriptions.
           </p>
 
           <div className="flex items-center justify-center gap-4 text-[10px]">

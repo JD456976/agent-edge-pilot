@@ -15,8 +15,8 @@ export function SubscriptionStatusSection() {
       <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border">
         <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0" />
         <div>
-          <p className="text-sm font-medium">Pro inactive</p>
-          <p className="text-xs text-muted-foreground">Subscribe to unlock all features</p>
+          <p className="text-sm font-medium">No active subscription</p>
+          <p className="text-xs text-muted-foreground">Start a {TRIAL_DURATION_DAYS}-day free trial to access Deal Pilot</p>
         </div>
       </div>
     );
@@ -45,7 +45,7 @@ export function SubscriptionStatusSection() {
     <div className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10">
       <CheckCircle className="h-5 w-5 text-primary shrink-0" />
       <div>
-        <p className="text-sm font-medium">Pro active</p>
+        <p className="text-sm font-medium">Subscription active</p>
         <p className="text-xs text-muted-foreground">
           {willRenew && expiresAt
             ? `Renews ${format(expiresAt, 'MMM d, yyyy')}`

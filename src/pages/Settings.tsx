@@ -539,6 +539,14 @@ export default function Settings() {
       <section className="rounded-lg border border-border bg-card p-4 mb-4">
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Shield className="h-4 w-4" /> Subscription</h2>
         <SubscriptionStatusSection />
+        <a
+          href="https://apps.apple.com/account/subscriptions"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 flex items-center justify-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
+        >
+          Manage Subscription <ExternalLink className="h-3.5 w-3.5" />
+        </a>
       </section>
 
       {/* Legal & Support Links */}
