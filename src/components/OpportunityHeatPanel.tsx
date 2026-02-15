@@ -1,9 +1,11 @@
 import { useMemo, useState, useEffect } from 'react';
-import { TrendingUp, Flame, Settings, ChevronRight, X, Check, Plus } from 'lucide-react';
+import { TrendingUp, Flame, Settings, ChevronRight, X, Check, Plus, Phone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CommissionDefaultsModal } from '@/components/CommissionDefaultsModal';
+import { LogTouchModal } from '@/components/LogTouchModal';
+import { ActivityTrail } from '@/components/ActivityTrail';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { Lead, Task } from '@/types';
@@ -50,6 +52,7 @@ function OpportunityDrawer({ result, lead, onClose, onStartAction }: {
   onClose: () => void;
   onStartAction: (lead: Lead, result: OpportunityHeatResult) => void;
 }) {
+  const [showTouch, setShowTouch] = useState(false);
   const heat = HEAT_BADGE[result.heatLevel];
 
   return (
@@ -141,6 +144,9 @@ function OpportunityDrawer({ result, lead, onClose, onStartAction }: {
                   `Follow up with ${lead.name}`}
               </p>
             </div>
+
+            {/* Activity Trail */}
+            <ActivityTrail entityType="lead" entityId={lead.id} />
           </div>
         </ScrollArea>
 
@@ -150,11 +156,23 @@ function OpportunityDrawer({ result, lead, onClose, onStartAction }: {
             <Plus className="h-3.5 w-3.5 mr-1.5" />
             Start Action
           </Button>
-          <Button size="sm" variant="outline" className="flex-1" onClick={onClose}>
+          <Button size="sm" variant="outline" onClick={() => setShowTouch(true)}>
+            <Phone className="h-3.5 w-3.5 mr-1" />
+            Log Touch
+          </Button>
+          <Button size="sm" variant="outline" onClick={onClose}>
             Close
           </Button>
         </div>
       </div>
+
+      <LogTouchModal
+        open={showTouch}
+        onClose={() => setShowTouch(false)}
+        entityType="lead"
+        entityId={lead.id}
+        entityTitle={lead.name}
+      />
     </>
   );
 }

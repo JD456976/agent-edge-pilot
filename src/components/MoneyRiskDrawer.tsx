@@ -1,8 +1,11 @@
-import { X, DollarSign, Shield, AlertTriangle, Check, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
+import { X, DollarSign, Shield, AlertTriangle, Check, TrendingUp, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Deal } from '@/types';
 import { suggestAction, type MoneyModelResult } from '@/lib/moneyModel';
+import { LogTouchModal } from '@/components/LogTouchModal';
+import { ActivityTrail } from '@/components/ActivityTrail';
 
 interface Props {
   result: MoneyModelResult | null;
@@ -36,6 +39,8 @@ function RiskBar({ label, value, maxValue = 100 }: { label: string; value: numbe
 }
 
 export function MoneyRiskDrawer({ result, deal, onClose, onStartAction }: Props) {
+  const [showTouch, setShowTouch] = useState(false);
+
   if (!result || !deal) return null;
 
   const suggested = suggestAction(result, deal);
@@ -126,6 +131,9 @@ export function MoneyRiskDrawer({ result, deal, onClose, onStartAction }: Props)
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Suggested Next Action</p>
             <p className="text-sm font-medium">{suggested.title}</p>
           </div>
+
+          {/* Activity Trail */}
+          <ActivityTrail entityType="deal" entityId={deal.id} />
         </div>
 
         {/* Actions */}
@@ -134,11 +142,23 @@ export function MoneyRiskDrawer({ result, deal, onClose, onStartAction }: Props)
             <TrendingUp className="h-3.5 w-3.5 mr-1.5" />
             Start Action
           </Button>
-          <Button size="sm" variant="outline" className="flex-1" onClick={onClose}>
+          <Button size="sm" variant="outline" onClick={() => setShowTouch(true)}>
+            <Phone className="h-3.5 w-3.5 mr-1" />
+            Log Touch
+          </Button>
+          <Button size="sm" variant="outline" onClick={onClose}>
             Close
           </Button>
         </div>
       </div>
+
+      <LogTouchModal
+        open={showTouch}
+        onClose={() => setShowTouch(false)}
+        entityType="deal"
+        entityId={deal.id}
+        entityTitle={deal.title}
+      />
     </>
   );
 }

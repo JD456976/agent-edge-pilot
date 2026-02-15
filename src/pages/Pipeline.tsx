@@ -3,13 +3,15 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/EmptyState';
-import { Target, DollarSign, Calendar, X, Users, Check } from 'lucide-react';
+import { Target, DollarSign, Calendar, X, Users, Check, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Deal, DealStage, RiskLevel, DealParticipant } from '@/types';
 import { PARTICIPANT_ROLE_LABELS } from '@/types';
 import { ImportSourceBadge } from '@/components/ImportSourceBadge';
 import { DealCommissionEditor, type DealCommissionState, type ParticipantEdit } from '@/components/DealCommissionEditor';
 import { CommissionDebugPanel } from '@/components/CommissionDebugPanel';
+import { LogTouchModal } from '@/components/LogTouchModal';
+import { ActivityTrail } from '@/components/ActivityTrail';
 import { resolvePersonalCommission } from '@/lib/commissionResolver';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -149,6 +151,7 @@ function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAd
   const [showOutcomeNote, setShowOutcomeNote] = useState(false);
   const [outcomeNote, setOutcomeNote] = useState('');
   const [markingOutcome, setMarkingOutcome] = useState(false);
+  const [showTouch, setShowTouch] = useState(false);
 
   const handleOutcome = async (type: 'closed' | 'cancelled') => {
     setMarkingOutcome(true);
@@ -231,6 +234,16 @@ function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAd
           resolution={resolvePersonalCommission(deal, participants, user?.id || '')}
         />
 
+        {/* Log Touch */}
+        <div className="mt-3 pt-3 border-t border-border">
+          <Button size="sm" variant="outline" className="text-xs" onClick={() => setShowTouch(true)}>
+            <Phone className="h-3 w-3 mr-1" /> Log Touch
+          </Button>
+        </div>
+
+        {/* Activity Trail */}
+        <ActivityTrail entityType="deal" entityId={deal.id} />
+
         {tasks.length > 0 && (
           <div className="mt-4 pt-4 border-t border-border">
             <h3 className="text-sm font-semibold mb-2">Related Tasks</h3>
@@ -242,6 +255,14 @@ function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAd
           </div>
         )}
       </div>
+
+      <LogTouchModal
+        open={showTouch}
+        onClose={() => setShowTouch(false)}
+        entityType="deal"
+        entityId={deal.id}
+        entityTitle={deal.title}
+      />
     </div>
   );
 }

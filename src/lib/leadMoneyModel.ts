@@ -181,6 +181,16 @@ export function computeOpportunityHeatScore(
     reasons.push(`New data available from CRM (+${w.drift})`);
   }
 
+  // Recent touch boost (within 24h adds +10)
+  const lastTouched = (lead as any).lastTouchedAt;
+  if (lastTouched) {
+    const hoursSinceTouch = (now.getTime() - new Date(lastTouched).getTime()) / (1000 * 60 * 60);
+    if (hoursSinceTouch <= 24) {
+      score += 10;
+      reasons.push('Recent touch within 24h (+10)');
+    }
+  }
+
   return {
     score: clampNumber(score, 0, 100),
     reasons,
