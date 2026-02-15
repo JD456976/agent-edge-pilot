@@ -85,6 +85,8 @@ import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { getAutonomyLevel, type PreparedAction } from '@/lib/preparedActions';
 import { computeMoneyModelBatch, suggestAction, type MoneyModelResult } from '@/lib/moneyModel';
+import { useEntityNavigation } from '@/contexts/EntityNavigationContext';
+import { LazyPanel } from '@/components/LazyPanel';
 import type { RiskLevel, Deal, Lead, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 const SNOOZE_STORAGE_KEY = 'dp-snooze-counts';
@@ -123,6 +125,7 @@ export default function CommandCenter() {
   const [moneyDrawerResult, setMoneyDrawerResult] = useState<MoneyModelResult | null>(null);
   const [moneyDrawerDeal, setMoneyDrawerDeal] = useState<Deal | null>(null);
   const navigate = useNavigate();
+  const { pendingNavigation, clearNavigation } = useEntityNavigation();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickAddPrefill, setQuickAddPrefill] = useState<{ title?: string; leadId?: string; dealId?: string }>({});
   const [showLogTouch, setShowLogTouch] = useState(false);
@@ -217,6 +220,7 @@ export default function CommandCenter() {
 
   const panels = useMemo(() => buildCommandCenterPanels(leads, deals, tasks, alerts), [leads, deals, tasks, alerts]);
 
+
   // Agent Learning Layer
   const { calibration, snapshot: learningSnapshot, trackTaskCompletion, trackTaskIgnored, resetLearning } = useAgentLearning(deals, leads, tasks);
 
@@ -292,6 +296,26 @@ export default function CommandCenter() {
   const topOpportunity = useMemo(() => {
     return opportunityResults[0] || null;
   }, [opportunityResults]);
+
+  // Handle entity navigation from Command Palette
+  useEffect(() => {
+    if (!pendingNavigation) return;
+    const { entityId, entityType } = pendingNavigation;
+    if (entityType === 'deal') {
+      const deal = deals.find(d => d.id === entityId);
+      if (deal) {
+        const mr = moneyResults.find(r => r.dealId === entityId) || null;
+        setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: mr });
+      }
+    } else {
+      const lead = leads.find(l => l.id === entityId);
+      if (lead) {
+        const or = opportunityResults.find(r => r.leadId === entityId) || null;
+        setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: or });
+      }
+    }
+    clearNavigation();
+  }, [pendingNavigation, clearNavigation, deals, leads, moneyResults, opportunityResults]);
 
   // Apply Playbook handler
   const handleApplyPlaybook = useCallback(async (playbook: NetworkPlaybook, situation: { entityId: string; entityType: 'lead' | 'deal'; entityTitle: string }) => {
@@ -1140,7 +1164,9 @@ export default function CommandCenter() {
               return (
                 <SortablePanel key={panelId} id={panelId} editMode={editMode} fullWidth={isFullWidth}>
                   <PanelErrorBoundary>
-                    {content}
+                    <LazyPanel skeletonLines={isFullWidth ? 4 : 3}>
+                      {content}
+                    </LazyPanel>
                   </PanelErrorBoundary>
                 </SortablePanel>
               );

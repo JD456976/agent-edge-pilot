@@ -4,7 +4,9 @@ import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, 
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useWorkspace, type WorkspaceType } from '@/contexts/WorkspaceContext';
+import { useEntityNavigation } from '@/contexts/EntityNavigationContext';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { CommandPalette } from '@/components/CommandPalette';
 import { QuickAddModal } from '@/components/QuickAddModal';
@@ -26,6 +28,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { activeWorkspace, openWorkspace, closeWorkspace } = useWorkspace();
+  const { requestOpenEntity } = useEntityNavigation();
   const location = useLocation();
   const navigate = useNavigate();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -65,31 +68,45 @@ export function AppLayout({ children }: { children: ReactNode }) {
           {items.map(item => {
             const key = item.workspace ?? item.path ?? 'home';
             return (
-              <button
-                key={key}
-                onClick={() => handleNavClick(item)}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left',
-                  isActive(item)
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </button>
+              <Tooltip key={key}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleNavClick(item)}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left',
+                      isActive(item)
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">{item.label}</TooltipContent>
+              </Tooltip>
             );
           })}
         </nav>
         <div className="p-3 border-t border-border space-y-2">
-          <button onClick={toggleTheme} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors">
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-          </button>
-          <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors">
-            <LogOut className="h-4 w-4" />
-            Sign Out
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={toggleTheme} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors">
+                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">Toggle theme</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors">
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">Sign out of your account</TooltipContent>
+          </Tooltip>
         </div>
       </aside>
 
@@ -144,10 +161,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Global Command Palette (Cmd+K / Ctrl+K) */}
       <CommandPalette
         onOpenEntity={(entityId, entityType) => {
-          // Navigate to Command Center and close any workspace overlay
-          if (location.pathname !== '/') navigate('/');
+          // Navigate to Command Center, close workspace, and request entity open
           closeWorkspace();
-          // The Command Center will handle entity display via its own state
+          if (location.pathname !== '/') navigate('/');
+          requestOpenEntity(entityId, entityType);
         }}
         onCreateTask={() => setShowQuickAdd(true)}
         onLogTouch={() => setShowQuickAdd(true)}
