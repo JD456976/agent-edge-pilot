@@ -8,6 +8,7 @@ export interface BenchmarkMetrics {
   deal_close_rate?: number | null;
   autopilot_completion_rate?: number | null;
   follow_up_task_completion_rate?: number | null;
+  risk_recovery_rate_7d?: number | null;
   cohort_event_count?: number;
 }
 

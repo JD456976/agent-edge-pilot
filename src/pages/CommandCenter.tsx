@@ -61,6 +61,7 @@ import { IncomePatternsPanel } from '@/components/IncomePatternsPanel';
 import { useAgentProfile } from '@/hooks/useAgentProfile';
 import { computeIncomePatterns } from '@/lib/incomePatternsEngine';
 import { MarketConditionsPanel } from '@/components/MarketConditionsPanel';
+import { MarketSignalsPanel } from '@/components/MarketSignalsPanel';
 import { SortablePanel } from '@/components/SortablePanel';
 import { SelfOptNudges } from '@/components/SelfOptNudges';
 import { PanelLayoutControls } from '@/components/PanelLayoutControls';
@@ -113,6 +114,7 @@ const PAIRED_PANELS: Set<PanelId> = new Set([
   'deal-failure', 'ghosting-risk',
   'referral-conversion', 'listing-performance',
   'time-allocation', 'opportunity-radar',
+  'market-signals',
 ]);
 
 export default function CommandCenter() {
@@ -851,6 +853,14 @@ export default function CommandCenter() {
       case 'income-patterns':
         return (
           <IncomePatternsPanel patterns={incomePatterns} />
+        );
+      case 'market-signals':
+        return (
+          <MarketSignalsPanel
+            deals={deals}
+            leads={leads}
+            moneyResults={moneyResults}
+          />
         );
       case 'end-of-day':
         return null; // EOD is handled separately in mode cards
