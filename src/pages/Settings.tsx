@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
+import { SkinSelector } from '@/components/SkinSelector';
 
 
 function ProfileSection() {
@@ -280,10 +281,10 @@ export default function Settings() {
         </div>
       )}
 
-      {/* Theme */}
+      {/* Theme & Skin */}
       <section className="rounded-lg border border-border bg-card p-4 mb-4">
         <h2 className="text-sm font-semibold mb-3">Appearance</h2>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             {theme === 'dark' ? <Moon className="h-4 w-4 text-muted-foreground" /> : <Sun className="h-4 w-4 text-muted-foreground" />}
             <span className="text-sm">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
@@ -291,6 +292,9 @@ export default function Settings() {
           <button onClick={toggleTheme} className="relative inline-flex h-6 w-11 items-center rounded-full bg-muted transition-colors">
             <span className={`inline-block h-4 w-4 transform rounded-full bg-primary transition-transform ${theme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
           </button>
+        </div>
+        <div className="pt-2 border-t border-border">
+          <SkinSelector />
         </div>
       </section>
 
@@ -578,7 +582,7 @@ export default function Settings() {
         </div>
       </section>
 
-      <p className="text-center text-[10px] text-muted-foreground mb-8">Deal Pilot v1.0 · © {new Date().getFullYear()}</p>
+      <p className="text-center text-[10px] text-muted-foreground mb-8">Deal Pilot v1.0.0 (Build 1) · © {new Date().getFullYear()}</p>
     </div>
   );
 }
