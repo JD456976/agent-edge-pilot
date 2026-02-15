@@ -17,10 +17,13 @@ import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { QuickAddModal } from '@/components/QuickAddModal';
 import { FubDriftCard } from '@/components/FubDriftCard';
 import { FubWatchlistPanel } from '@/components/FubWatchlistPanel';
+import { MoneyAtRiskPanel } from '@/components/MoneyAtRiskPanel';
+import { MoneyRiskDrawer } from '@/components/MoneyRiskDrawer';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import type { RiskLevel, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
+import { computeMoneyModelBatch, suggestAction, type MoneyModelResult } from '@/lib/moneyModel';
+import type { RiskLevel, Deal, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 const SNOOZE_STORAGE_KEY = 'dp-snooze-counts';
 
@@ -42,7 +45,9 @@ type DetailItem =
 
 export default function CommandCenter() {
   const { user } = useAuth();
-  const { leads, deals, tasks, alerts, hasData, seedDemoData, completeTask } = useData();
+  const { leads, deals, tasks, alerts, dealParticipants, hasData, seedDemoData, completeTask, addTask } = useData();
+  const [moneyDrawerResult, setMoneyDrawerResult] = useState<MoneyModelResult | null>(null);
+  const [moneyDrawerDeal, setMoneyDrawerDeal] = useState<Deal | null>(null);
   const navigate = useNavigate();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -97,6 +102,40 @@ export default function CommandCenter() {
   const activeDeals = deals.filter(d => d.stage !== 'closed');
   const totalRevenue = activeDeals.reduce((s, d) => s + d.commission, 0);
   const dealsNeedingAttention = panels.dealsAtRisk.length;
+
+  // Money Model
+  const moneyResults = useMemo(() => {
+    if (!user?.id) return [];
+    return computeMoneyModelBatch(activeDeals, dealParticipants, user.id);
+  }, [activeDeals, dealParticipants, user?.id]);
+
+  const topMoneyAtRisk = useMemo(() => {
+    const sorted = [...moneyResults].filter(r => r.personalCommissionAtRisk > 0)
+      .sort((a, b) => b.personalCommissionAtRisk - a.personalCommissionAtRisk);
+    return sorted[0] || null;
+  }, [moneyResults]);
+
+  const handleMoneySelect = useCallback((result: MoneyModelResult, deal: Deal) => {
+    setMoneyDrawerResult(result);
+    setMoneyDrawerDeal(deal);
+  }, []);
+
+  const handleStartAction = useCallback(async (deal: Deal, result: MoneyModelResult) => {
+    const suggested = suggestAction(result, deal);
+    const dueDate = result.riskScore >= 70
+      ? new Date().toISOString()
+      : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    await addTask({
+      title: suggested.title,
+      type: suggested.type as any,
+      dueAt: dueDate,
+      relatedDealId: deal.id,
+      assignedToUserId: user?.id || '',
+    });
+    toast({ description: 'Task created from money risk analysis', duration: 3000 });
+    setMoneyDrawerResult(null);
+    setMoneyDrawerDeal(null);
+  }, [addTask, user?.id]);
 
   const briefing = useMemo(() => getDailyBriefing(panels, tasks, deals, leads), [panels, tasks, deals, leads]);
   const missedYesterday = useMemo(() => getMissedYesterdayCount(tasks, deals, previousSnapshot), [tasks, deals, previousSnapshot]);
@@ -230,7 +269,20 @@ export default function CommandCenter() {
         }}
         snoozedIds={snoozedIds}
         onSnooze={handleSnooze}
+        topMoneyAtRisk={topMoneyAtRisk}
+        deals={deals}
+        onMoneyAction={handleMoneySelect}
       />
+
+      {/* Money At Risk Panel */}
+      <PanelErrorBoundary>
+        <MoneyAtRiskPanel
+          deals={deals}
+          participants={dealParticipants}
+          userId={user?.id || ''}
+          onSelect={handleMoneySelect}
+        />
+      </PanelErrorBoundary>
 
       {/* 4-Panel Grid + Pipeline Watch */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -438,6 +490,14 @@ export default function CommandCenter() {
           showPostActionToast('handled');
         }}
         snoozeCount={selectedItem ? getSnoozeCount(selectedItem.kind === 'action' ? selectedItem.data.id : '') : 0}
+      />
+
+      {/* Money Risk Drawer */}
+      <MoneyRiskDrawer
+        result={moneyDrawerResult}
+        deal={moneyDrawerDeal}
+        onClose={() => { setMoneyDrawerResult(null); setMoneyDrawerDeal(null); }}
+        onStartAction={handleStartAction}
       />
 
       {/* Quick Add Modal */}
