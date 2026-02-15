@@ -24,7 +24,9 @@ export type PanelId =
   | 'market-conditions'
   | 'learning-transparency'
   | 'network-benchmarks'
-  | 'weekly-review';
+  | 'weekly-review'
+  | 'agent-profile'
+  | 'income-patterns';
 
 export const DEFAULT_PANEL_ORDER: PanelId[] = [
   'autopilot',
@@ -48,6 +50,8 @@ export const DEFAULT_PANEL_ORDER: PanelId[] = [
   'market-conditions',
   'learning-transparency',
   'network-benchmarks',
+  'agent-profile',
+  'income-patterns',
   'weekly-review',
   'end-of-day',
 ];

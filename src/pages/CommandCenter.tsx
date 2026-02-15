@@ -56,6 +56,10 @@ import { useSelfOptimizing } from '@/hooks/useSelfOptimizing';
 import { computeStrategicOverview } from '@/lib/strategicEngine';
 import { NetworkBenchmarksPanel } from '@/components/NetworkBenchmarksPanel';
 import { CohortPlaybooksPanel } from '@/components/CohortPlaybooksPanel';
+import { AgentProfilePanel } from '@/components/AgentProfilePanel';
+import { IncomePatternsPanel } from '@/components/IncomePatternsPanel';
+import { useAgentProfile } from '@/hooks/useAgentProfile';
+import { computeIncomePatterns } from '@/lib/incomePatternsEngine';
 import { MarketConditionsPanel } from '@/components/MarketConditionsPanel';
 import { SortablePanel } from '@/components/SortablePanel';
 import { SelfOptNudges } from '@/components/SelfOptNudges';
@@ -352,6 +356,12 @@ export default function CommandCenter() {
   }, [overdueTasks, dueSoonTasks, untouchedHotLeads, forecast, totalMoneyAtRisk, momentum]);
 
   const stabilityResult = useMemo(() => computeStabilityScore(stabilityInputs), [stabilityInputs]);
+
+  // Agent Intelligence Profile
+  const { profile: agentProfile, loading: agentProfileLoading, exportProfile: exportAgentProfile, resetProfile: resetAgentProfile } = useAgentProfile(user?.id, deals, leads, tasks, stabilityResult, forecast, moneyResults);
+
+  // Income Patterns
+  const incomePatterns = useMemo(() => computeIncomePatterns(deals, tasks, forecast, stabilityResult, moneyResults), [deals, tasks, forecast, stabilityResult, moneyResults]);
 
   // Strategic Overview
   const strategicOverview = useMemo(() => {
@@ -829,12 +839,25 @@ export default function CommandCenter() {
             totalMoneyAtRisk={totalMoneyAtRisk}
           />
         );
+      case 'agent-profile':
+        return (
+          <AgentProfilePanel
+            profile={agentProfile}
+            loading={agentProfileLoading}
+            onExport={exportAgentProfile}
+            onReset={resetAgentProfile}
+          />
+        );
+      case 'income-patterns':
+        return (
+          <IncomePatternsPanel patterns={incomePatterns} />
+        );
       case 'end-of-day':
         return null; // EOD is handled separately in mode cards
       default:
         return null;
     }
-  }, [panels, snoozedIds, handleSnooze, topMoneyAtRisk, deals, leads, tasks, handleMoneySelect, topOpportunity, handleOpportunityAction, stabilityResult, stabilityInputs, overdueTasks, dueSoonTasks, totalMoneyAtRisk, handleAutopilotCreateTask, burnoutCritical, predictiveSignals, handleOpenExecution, moneyResults, opportunityResults, dealParticipants, user?.id, refreshData, dealChanges, leadChanges, riskWeights, oppWeights, forecast, userDefaults, marketConditions, learningSnapshot, resetLearning, completeTask, showPostActionToast, navigate, handleForecastCreateTask]);
+  }, [panels, snoozedIds, handleSnooze, topMoneyAtRisk, deals, leads, tasks, handleMoneySelect, topOpportunity, handleOpportunityAction, stabilityResult, stabilityInputs, overdueTasks, dueSoonTasks, totalMoneyAtRisk, handleAutopilotCreateTask, burnoutCritical, predictiveSignals, handleOpenExecution, moneyResults, opportunityResults, dealParticipants, user?.id, refreshData, dealChanges, leadChanges, riskWeights, oppWeights, forecast, userDefaults, marketConditions, learningSnapshot, resetLearning, completeTask, showPostActionToast, navigate, handleForecastCreateTask, agentProfile, agentProfileLoading, exportAgentProfile, resetAgentProfile, incomePatterns]);
 
   if (loading) {
     return (

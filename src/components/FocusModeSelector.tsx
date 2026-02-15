@@ -55,6 +55,7 @@ const STRATEGIC_PANELS: Set<PanelId> = new Set([
   'referral-conversion', 'listing-performance',
   'market-conditions', 'network-benchmarks',
   'weekly-review', 'learning-transparency',
+  'agent-profile', 'income-patterns',
 ]);
 
 const MINIMAL_PANELS: Set<PanelId> = new Set([
