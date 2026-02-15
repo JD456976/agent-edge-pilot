@@ -3,6 +3,9 @@
 @tailwind utilities;
 
 @layer base {
+  /* ═══════════════════════════════════════════════════
+     SKIN: Command Center (default) — Financial, data-dense
+     ═══════════════════════════════════════════════════ */
   :root {
     --background: 210 40% 98%;
     --foreground: 222 47% 11%;
@@ -25,7 +28,6 @@
     --ring: 217 91% 50%;
     --radius: 0.75rem;
 
-    /* Status colors */
     --urgent: 0 84% 60%;
     --urgent-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
@@ -34,12 +36,9 @@
     --opportunity-foreground: 0 0% 100%;
     --time-sensitive: 263 70% 55%;
     --time-sensitive-foreground: 0 0% 100%;
-
-    /* Financial accent — gold for money signals */
     --gold: 43 96% 56%;
     --gold-foreground: 43 96% 12%;
 
-    /* Sidebar */
     --sidebar-background: 215 20% 96%;
     --sidebar-foreground: 222 47% 11%;
     --sidebar-primary: 217 91% 50%;
@@ -71,7 +70,6 @@
     --input: 222 25% 16%;
     --ring: 217 91% 60%;
 
-    /* Status colors (slightly adjusted for dark) */
     --urgent: 0 84% 60%;
     --urgent-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
@@ -80,8 +78,6 @@
     --opportunity-foreground: 0 0% 100%;
     --time-sensitive: 263 70% 55%;
     --time-sensitive-foreground: 0 0% 100%;
-
-    /* Financial accent */
     --gold: 43 96% 56%;
     --gold-foreground: 43 96% 12%;
 
@@ -93,6 +89,94 @@
     --sidebar-accent-foreground: 210 40% 96%;
     --sidebar-border: 222 25% 14%;
     --sidebar-ring: 217 91% 60%;
+  }
+
+  /* ═══════════════════════════════════════════════════
+     SKIN: Dark Luxury — Linear/Vercel-inspired, glass depth
+     ═══════════════════════════════════════════════════ */
+  [data-skin="luxury"] {
+    --background: 0 0% 97%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 9%;
+    --radius: 0.625rem;
+
+    --urgent: 0 72% 51%;
+    --urgent-foreground: 0 0% 100%;
+    --warning: 25 95% 53%;
+    --warning-foreground: 0 0% 100%;
+    --opportunity: 145 63% 42%;
+    --opportunity-foreground: 0 0% 100%;
+    --time-sensitive: 270 60% 55%;
+    --time-sensitive-foreground: 0 0% 100%;
+    --gold: 43 96% 56%;
+    --gold-foreground: 43 96% 12%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 9%;
+    --sidebar-primary: 0 0% 9%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 0 0% 9%;
+  }
+
+  [data-skin="luxury"].dark {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 93%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 93%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 4%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 93%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 50%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 93%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 14%;
+    --input: 0 0% 14%;
+    --ring: 0 0% 100%;
+
+    --urgent: 0 72% 51%;
+    --urgent-foreground: 0 0% 100%;
+    --warning: 25 95% 53%;
+    --warning-foreground: 0 0% 100%;
+    --opportunity: 145 63% 42%;
+    --opportunity-foreground: 0 0% 100%;
+    --time-sensitive: 270 60% 55%;
+    --time-sensitive-foreground: 0 0% 100%;
+    --gold: 43 96% 56%;
+    --gold-foreground: 43 96% 12%;
+
+    --sidebar-background: 0 0% 3%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 93%;
+    --sidebar-border: 0 0% 12%;
+    --sidebar-ring: 0 0% 100%;
   }
 }
 
@@ -120,7 +204,6 @@
     background: hsl(var(--muted-foreground) / 0.35);
   }
 
-  /* Firefox scrollbar */
   * {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
@@ -156,6 +239,19 @@
       0 0 0 1px hsl(var(--border)),
       0 2px 8px -2px hsl(0 0% 0% / 0.3),
       0 1px 2px -1px hsl(0 0% 0% / 0.2);
+  }
+
+  /* Luxury skin glass card */
+  [data-skin="luxury"] .card-elevated {
+    box-shadow:
+      0 0 0 1px hsl(var(--border) / 0.5),
+      0 1px 3px 0 hsl(var(--foreground) / 0.04);
+  }
+  [data-skin="luxury"].dark .card-elevated {
+    box-shadow:
+      0 0 0 1px hsl(var(--border)),
+      0 4px 16px -4px hsl(0 0% 0% / 0.5),
+      0 1px 3px -1px hsl(0 0% 0% / 0.3);
   }
 
   /* Staggered fade-in for panel grids */

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { CommandPalette } from '@/components/CommandPalette';
+import { SkinSelector } from '@/components/SkinSelector';
 import { QuickAddModal } from '@/components/QuickAddModal';
 
 type NavItem = { label: string; icon: React.ElementType } & (
@@ -88,7 +89,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <div className="p-3 border-t border-border space-y-2">
+        <div className="p-3 border-t border-border space-y-1">
+          <SkinSelector />
           <Tooltip>
             <TooltipTrigger asChild>
               <button onClick={toggleTheme} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors">
