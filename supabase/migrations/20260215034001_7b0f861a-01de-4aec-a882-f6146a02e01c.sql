@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN command_center_layout jsonb DEFAULT NULL;
