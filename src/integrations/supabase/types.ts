@@ -80,6 +80,8 @@ export type Database = {
           organization_id: string | null
           related_deal_id: string | null
           related_lead_id: string | null
+          seed_batch_id: string | null
+          seeded: boolean
           title: string
           type: Database["public"]["Enums"]["alert_type"]
         }
@@ -91,6 +93,8 @@ export type Database = {
           organization_id?: string | null
           related_deal_id?: string | null
           related_lead_id?: string | null
+          seed_batch_id?: string | null
+          seeded?: boolean
           title: string
           type?: Database["public"]["Enums"]["alert_type"]
         }
@@ -102,6 +106,8 @@ export type Database = {
           organization_id?: string | null
           related_deal_id?: string | null
           related_lead_id?: string | null
+          seed_batch_id?: string | null
+          seeded?: boolean
           title?: string
           type?: Database["public"]["Enums"]["alert_type"]
         }
@@ -261,6 +267,8 @@ export type Database = {
           referral_fee_percent: number | null
           risk_flags: string[] | null
           risk_level: Database["public"]["Enums"]["risk_level"]
+          seed_batch_id: string | null
+          seeded: boolean
           side: string
           stage: Database["public"]["Enums"]["deal_stage"]
           title: string
@@ -289,6 +297,8 @@ export type Database = {
           referral_fee_percent?: number | null
           risk_flags?: string[] | null
           risk_level?: Database["public"]["Enums"]["risk_level"]
+          seed_batch_id?: string | null
+          seeded?: boolean
           side?: string
           stage?: Database["public"]["Enums"]["deal_stage"]
           title: string
@@ -317,6 +327,8 @@ export type Database = {
           referral_fee_percent?: number | null
           risk_flags?: string[] | null
           risk_level?: Database["public"]["Enums"]["risk_level"]
+          seed_batch_id?: string | null
+          seeded?: boolean
           side?: string
           stage?: Database["public"]["Enums"]["deal_stage"]
           title?: string
@@ -729,6 +741,8 @@ export type Database = {
           notes: string | null
           organization_id: string | null
           outcome_note: string | null
+          seed_batch_id: string | null
+          seeded: boolean
           source: string
           status_tags: string[] | null
         }
@@ -754,6 +768,8 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           outcome_note?: string | null
+          seed_batch_id?: string | null
+          seeded?: boolean
           source?: string
           status_tags?: string[] | null
         }
@@ -779,6 +795,8 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           outcome_note?: string | null
+          seed_batch_id?: string | null
+          seeded?: boolean
           source?: string
           status_tags?: string[] | null
         }
@@ -1139,6 +1157,8 @@ export type Database = {
           last_modified_by: string | null
           related_deal_id: string | null
           related_lead_id: string | null
+          seed_batch_id: string | null
+          seeded: boolean
           title: string
           type: Database["public"]["Enums"]["task_type"]
         }
@@ -1156,6 +1176,8 @@ export type Database = {
           last_modified_by?: string | null
           related_deal_id?: string | null
           related_lead_id?: string | null
+          seed_batch_id?: string | null
+          seeded?: boolean
           title: string
           type?: Database["public"]["Enums"]["task_type"]
         }
@@ -1173,6 +1195,8 @@ export type Database = {
           last_modified_by?: string | null
           related_deal_id?: string | null
           related_lead_id?: string | null
+          seed_batch_id?: string | null
+          seeded?: boolean
           title?: string
           type?: Database["public"]["Enums"]["task_type"]
         }
