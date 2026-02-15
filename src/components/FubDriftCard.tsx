@@ -16,9 +16,10 @@ interface DeltaSummary {
 
 interface FubDriftCardProps {
   hasIntegration: boolean;
+  onScopedStageComplete?: (runId: string) => void;
 }
 
-export function FubDriftCard({ hasIntegration }: FubDriftCardProps) {
+export function FubDriftCard({ hasIntegration, onScopedStageComplete }: FubDriftCardProps) {
   const [summary, setSummary] = useState<DeltaSummary | null>(null);
   const [allItems, setAllItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -226,6 +227,10 @@ export function FubDriftCard({ hasIntegration }: FubDriftCardProps) {
           lastSuccessfulCheck={lastSuccessfulCheck}
           onClose={() => setShowReview(false)}
           onRefresh={runDeltaCheck}
+          onScopedStageComplete={(runId) => {
+            setShowReview(false);
+            onScopedStageComplete?.(runId);
+          }}
         />
       )}
     </>

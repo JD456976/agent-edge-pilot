@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const CURRENT_MAPPING_VERSION = 1;
+const MAX_SCOPED_PER_TYPE = 50;
 
 async function fetchFub(apiKey: string, endpoint: string, limit = 50) {
   const res = await fetch(
@@ -22,6 +23,22 @@ async function fetchFub(apiKey: string, endpoint: string, limit = 50) {
   if (!res.ok) return [];
   const data = await res.json();
   return data.people || data.deals || data.tasks || data[endpoint] || [];
+}
+
+async function fetchFubById(apiKey: string, endpoint: string, id: string) {
+  const res = await fetch(
+    `https://api.followupboss.com/v1/${endpoint}/${id}`,
+    {
+      headers: {
+        Authorization: `Basic ${btoa(apiKey + ":")}`,
+        Accept: "application/json",
+      },
+    }
+  );
+  if (res.status === 429) throw new Error("rate_limited");
+  if (res.status === 404) return null;
+  if (!res.ok) return null;
+  return await res.json();
 }
 
 function normalizeLead(p: any) {
@@ -70,7 +87,6 @@ function fuzzyNameMatch(a: string, b: string): boolean {
   const na = normalize(a);
   const nb = normalize(b);
   if (na === nb) return true;
-  // Simple contains check for partial matches
   if (na.length > 3 && nb.length > 3) {
     return na.includes(nb) || nb.includes(na);
   }
@@ -96,6 +112,130 @@ const DEFAULT_RULES: DedupRules = {
   task_title_due_date: true,
   task_title_only: false,
 };
+
+// ---- Matching helpers ----
+function matchLead(norm: any, existingLeads: any[], rules: DedupRules) {
+  let match_status = "new";
+  let matched_lead_id: string | null = null;
+
+  if (!existingLeads) return { match_status, matched_lead_id };
+
+  if (rules.lead_email_match && norm.email) {
+    const emailMatch = existingLeads.find((l: any) =>
+      l.name?.toLowerCase() === norm.name.toLowerCase()
+    );
+    if (emailMatch) { match_status = "matched"; matched_lead_id = emailMatch.id; }
+  }
+
+  if (match_status === "new" && rules.lead_phone_match && norm.phone) {
+    const phoneNameMatch = existingLeads.find((l: any) =>
+      l.name?.toLowerCase() === norm.name.toLowerCase()
+    );
+    if (phoneNameMatch) { match_status = "matched"; matched_lead_id = phoneNameMatch.id; }
+  }
+
+  if (match_status === "new" && rules.lead_name_fuzzy) {
+    const fuzzyMatch = existingLeads.find((l: any) =>
+      fuzzyNameMatch(l.name || "", norm.name)
+    );
+    if (fuzzyMatch) { match_status = "conflict"; matched_lead_id = fuzzyMatch.id; }
+  }
+
+  if (match_status === "new") {
+    const nameMatch = existingLeads.find((l: any) => {
+      if (l.name?.toLowerCase() !== norm.name.toLowerCase()) return false;
+      if (norm.source && l.source !== norm.source) return false;
+      const created = new Date(l.created_at);
+      const diff = Math.abs(Date.now() - created.getTime());
+      return diff < 30 * 24 * 60 * 60 * 1000;
+    });
+    if (nameMatch) { match_status = "conflict"; matched_lead_id = nameMatch.id; }
+  }
+
+  return { match_status, matched_lead_id };
+}
+
+function matchDeal(norm: any, existingDeals: any[], rules: DedupRules) {
+  let match_status = "new";
+  let matched_deal_id: string | null = null;
+
+  if (!existingDeals) return { match_status, matched_deal_id };
+
+  if (rules.deal_title_close_date) {
+    const titleMatch = existingDeals.find((ed: any) =>
+      ed.title?.toLowerCase() === norm.title.toLowerCase()
+    );
+    if (titleMatch) {
+      if (norm.closeDate && titleMatch.close_date) {
+        const diff = Math.abs(new Date(norm.closeDate).getTime() - new Date(titleMatch.close_date).getTime());
+        match_status = diff < 30 * 24 * 60 * 60 * 1000 ? "matched" : "conflict";
+      } else {
+        match_status = "conflict";
+      }
+      matched_deal_id = titleMatch.id;
+    }
+  }
+
+  if (match_status === "new" && rules.deal_address_match && norm.address) {
+    const addrMatch = existingDeals.find((ed: any) =>
+      ed.title?.toLowerCase().includes(norm.address.toLowerCase())
+    );
+    if (addrMatch) { match_status = "conflict"; matched_deal_id = addrMatch.id; }
+  }
+
+  return { match_status, matched_deal_id };
+}
+
+function matchTask(norm: any, existingTasks: any[], rules: DedupRules) {
+  let match_status = "new";
+  let matched_task_id: string | null = null;
+
+  if (!existingTasks) return { match_status, matched_task_id };
+
+  if (rules.task_title_due_date) {
+    const titleMatch = existingTasks.find((et: any) =>
+      et.title?.toLowerCase() === norm.title.toLowerCase() &&
+      norm.dueAt && et.due_at &&
+      Math.abs(new Date(norm.dueAt).getTime() - new Date(et.due_at).getTime()) < 24 * 60 * 60 * 1000
+    );
+    if (titleMatch) { match_status = "matched"; matched_task_id = titleMatch.id; }
+  }
+
+  if (match_status === "new" && rules.task_title_only) {
+    const titleOnly = existingTasks.find((et: any) =>
+      et.title?.toLowerCase() === norm.title.toLowerCase()
+    );
+    if (titleOnly) { match_status = "conflict"; matched_task_id = titleOnly.id; }
+  }
+
+  return { match_status, matched_task_id };
+}
+
+// ---- Scoped fetch: fetch individual items by FUB ID ----
+async function fetchScopedItems(apiKey: string, selectedLeadIds: string[], selectedDealIds: string[], selectedTaskIds: string[]) {
+  const notFound: { type: string; fub_id: string }[] = [];
+
+  const fetchAll = async (ids: string[], endpoint: string, type: string) => {
+    const results: any[] = [];
+    for (const id of ids) {
+      const item = await fetchFubById(apiKey, endpoint, id);
+      if (item) {
+        results.push(item);
+      } else {
+        notFound.push({ type, fub_id: id });
+      }
+    }
+    return results;
+  };
+
+  const [rawPeople, rawDeals, rawTasks] = await Promise.all([
+    fetchAll(selectedLeadIds, "people", "lead"),
+    fetchAll(selectedDealIds, "deals", "deal"),
+    fetchAll(selectedTaskIds, "tasks", "task"),
+  ]);
+
+  return { rawPeople, rawDeals, rawTasks, notFound };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -137,23 +277,48 @@ Deno.serve(async (req) => {
       .select("*").eq("user_id", userId).maybeSingle();
     const rules: DedupRules = userRules || DEFAULT_RULES;
 
-    let body: { limit?: number; since?: string } = {};
+    let body: { limit?: number; since?: string; scope?: string; selected?: { leads?: string[]; deals?: string[]; tasks?: string[] } } = {};
     try { body = await req.json(); } catch { /* defaults */ }
+
+    const isScoped = body.scope === "selected" && body.selected;
     const limit = Math.min(body.limit || 50, 200);
 
-    // Fetch FUB data
-    const [rawPeople, rawDeals, rawTasks] = await Promise.all([
-      fetchFub(apiKey, "people", limit),
-      fetchFub(apiKey, "deals", limit),
-      fetchFub(apiKey, "tasks", limit),
-    ]);
+    let rawPeople: any[] = [];
+    let rawDeals: any[] = [];
+    let rawTasks: any[] = [];
+    let notFound: { type: string; fub_id: string }[] = [];
+
+    if (isScoped && body.selected) {
+      const selectedLeads = (body.selected.leads || []).slice(0, MAX_SCOPED_PER_TYPE);
+      const selectedDeals = (body.selected.deals || []).slice(0, MAX_SCOPED_PER_TYPE);
+      const selectedTasks = (body.selected.tasks || []).slice(0, MAX_SCOPED_PER_TYPE);
+
+      const result = await fetchScopedItems(apiKey, selectedLeads, selectedDeals, selectedTasks);
+      rawPeople = result.rawPeople;
+      rawDeals = result.rawDeals;
+      rawTasks = result.rawTasks;
+      notFound = result.notFound;
+    } else {
+      // Full mode (existing behavior)
+      [rawPeople, rawDeals, rawTasks] = await Promise.all([
+        fetchFub(apiKey, "people", limit),
+        fetchFub(apiKey, "deals", limit),
+        fetchFub(apiKey, "tasks", limit),
+      ]);
+    }
 
     // Create import run
     const { data: run, error: runErr } = await svc.from("fub_import_runs").insert({
       user_id: userId,
       status: "staged",
-      source_counts: { leads: rawPeople.length, deals: rawDeals.length, tasks: rawTasks.length },
+      source_counts: {
+        leads: rawPeople.length,
+        deals: rawDeals.length,
+        tasks: rawTasks.length,
+        ...(isScoped ? { scoped: true, not_found: notFound.length } : {}),
+      },
       mapping_version: CURRENT_MAPPING_VERSION,
+      notes: isScoped ? "Scoped import from drift review" : null,
     }).select("id").single();
     if (runErr || !run) throw new Error("Failed to create import run");
 
@@ -170,158 +335,35 @@ Deno.serve(async (req) => {
       .select("id, title, due_at")
       .eq("assigned_to_user_id", userId);
 
-    // Stage leads with configurable matching
+    // Stage leads
     const stagedLeads = rawPeople.map((p: any) => {
       const norm = normalizeLead(p);
-      let match_status = "new";
-      let matched_lead_id: string | null = null;
-
-      if (existingLeads) {
-        // Email exact match
-        if (rules.lead_email_match && norm.email) {
-          const emailMatch = existingLeads.find((l: any) =>
-            l.name?.toLowerCase() === norm.name.toLowerCase()
-          );
-          if (emailMatch) {
-            match_status = "matched";
-            matched_lead_id = emailMatch.id;
-          }
-        }
-
-        // Phone exact match
-        if (match_status === "new" && rules.lead_phone_match && norm.phone) {
-          // Phone matching would require phone column on leads - use name fallback
-          const phoneNameMatch = existingLeads.find((l: any) =>
-            l.name?.toLowerCase() === norm.name.toLowerCase()
-          );
-          if (phoneNameMatch) {
-            match_status = "matched";
-            matched_lead_id = phoneNameMatch.id;
-          }
-        }
-
-        // Name fuzzy match
-        if (match_status === "new" && rules.lead_name_fuzzy) {
-          const fuzzyMatch = existingLeads.find((l: any) =>
-            fuzzyNameMatch(l.name || "", norm.name)
-          );
-          if (fuzzyMatch) {
-            match_status = "conflict";
-            matched_lead_id = fuzzyMatch.id;
-          }
-        }
-
-        // Default name + source match (fallback if no rule matched yet)
-        if (match_status === "new") {
-          const nameMatch = existingLeads.find((l: any) => {
-            if (l.name?.toLowerCase() !== norm.name.toLowerCase()) return false;
-            if (norm.source && l.source !== norm.source) return false;
-            const created = new Date(l.created_at);
-            const diff = Math.abs(Date.now() - created.getTime());
-            return diff < 30 * 24 * 60 * 60 * 1000;
-          });
-          if (nameMatch) {
-            match_status = "conflict";
-            matched_lead_id = nameMatch.id;
-          }
-        }
-      }
-
+      const { match_status, matched_lead_id } = matchLead(norm, existingLeads || [], rules);
       return {
-        user_id: userId,
-        import_run_id: run.id,
-        fub_id: String(p.id),
-        payload: p,
-        normalized: norm,
-        match_status,
-        matched_lead_id,
+        user_id: userId, import_run_id: run.id, fub_id: String(p.id),
+        payload: p, normalized: norm, match_status, matched_lead_id,
         mapping_version: CURRENT_MAPPING_VERSION,
       };
     });
 
-    // Stage deals with configurable matching
+    // Stage deals
     const stagedDeals = rawDeals.map((d: any) => {
       const norm = normalizeDeal(d);
-      let match_status = "new";
-      let matched_deal_id: string | null = null;
-
-      if (existingDeals) {
-        if (rules.deal_title_close_date) {
-          const titleMatch = existingDeals.find((ed: any) =>
-            ed.title?.toLowerCase() === norm.title.toLowerCase()
-          );
-          if (titleMatch) {
-            if (norm.closeDate && titleMatch.close_date) {
-              const diff = Math.abs(new Date(norm.closeDate).getTime() - new Date(titleMatch.close_date).getTime());
-              match_status = diff < 30 * 24 * 60 * 60 * 1000 ? "matched" : "conflict";
-            } else {
-              match_status = "conflict";
-            }
-            matched_deal_id = titleMatch.id;
-          }
-        }
-
-        if (match_status === "new" && rules.deal_address_match && norm.address) {
-          const addrMatch = existingDeals.find((ed: any) =>
-            ed.title?.toLowerCase().includes(norm.address.toLowerCase())
-          );
-          if (addrMatch) {
-            match_status = "conflict";
-            matched_deal_id = addrMatch.id;
-          }
-        }
-      }
-
+      const { match_status, matched_deal_id } = matchDeal(norm, existingDeals || [], rules);
       return {
-        user_id: userId,
-        import_run_id: run.id,
-        fub_id: String(d.id),
-        payload: d,
-        normalized: norm,
-        match_status,
-        matched_deal_id,
+        user_id: userId, import_run_id: run.id, fub_id: String(d.id),
+        payload: d, normalized: norm, match_status, matched_deal_id,
         mapping_version: CURRENT_MAPPING_VERSION,
       };
     });
 
-    // Stage tasks with configurable matching
+    // Stage tasks
     const stagedTasks = rawTasks.map((t: any) => {
       const norm = normalizeTask(t);
-      let match_status = "new";
-      let matched_task_id: string | null = null;
-
-      if (existingTasks) {
-        if (rules.task_title_due_date) {
-          const titleMatch = existingTasks.find((et: any) =>
-            et.title?.toLowerCase() === norm.title.toLowerCase() &&
-            norm.dueAt && et.due_at &&
-            Math.abs(new Date(norm.dueAt).getTime() - new Date(et.due_at).getTime()) < 24 * 60 * 60 * 1000
-          );
-          if (titleMatch) {
-            match_status = "matched";
-            matched_task_id = titleMatch.id;
-          }
-        }
-
-        if (match_status === "new" && rules.task_title_only) {
-          const titleOnly = existingTasks.find((et: any) =>
-            et.title?.toLowerCase() === norm.title.toLowerCase()
-          );
-          if (titleOnly) {
-            match_status = "conflict";
-            matched_task_id = titleOnly.id;
-          }
-        }
-      }
-
+      const { match_status, matched_task_id } = matchTask(norm, existingTasks || [], rules);
       return {
-        user_id: userId,
-        import_run_id: run.id,
-        fub_id: String(t.id),
-        payload: t,
-        normalized: norm,
-        match_status,
-        matched_task_id,
+        user_id: userId, import_run_id: run.id, fub_id: String(t.id),
+        payload: t, normalized: norm, match_status, matched_task_id,
         mapping_version: CURRENT_MAPPING_VERSION,
       };
     });
@@ -336,15 +378,25 @@ Deno.serve(async (req) => {
     // Audit log
     await svc.from("admin_audit_events").insert({
       admin_user_id: userId,
-      action: "import_staged",
+      action: isScoped ? "drift_stage_selected" : "import_staged",
       metadata: {
         import_run_id: run.id,
         leads: stagedLeads.length,
         deals: stagedDeals.length,
         tasks: stagedTasks.length,
         mapping_version: CURRENT_MAPPING_VERSION,
+        ...(isScoped ? { scoped: true, requested: body.selected } : {}),
       },
     });
+
+    // Log not-found items separately if any
+    if (notFound.length > 0) {
+      await svc.from("admin_audit_events").insert({
+        admin_user_id: userId,
+        action: "stage_selected_not_found",
+        metadata: { import_run_id: run.id, not_found: notFound },
+      });
+    }
 
     // Update sync state
     await svc.from("fub_sync_state").upsert({
@@ -353,15 +405,29 @@ Deno.serve(async (req) => {
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
 
+    const countsByStatus = (items: any[]) => ({
+      total: items.length,
+      new: items.filter(i => i.match_status === "new").length,
+      matched: items.filter(i => i.match_status === "matched").length,
+      conflict: items.filter(i => i.match_status === "conflict").length,
+    });
+
     return new Response(
       JSON.stringify({
         import_run_id: run.id,
         mapping_version: CURRENT_MAPPING_VERSION,
+        scoped: !!isScoped,
         counts: {
-          leads: { total: stagedLeads.length, new: stagedLeads.filter(l => l.match_status === "new").length, matched: stagedLeads.filter(l => l.match_status === "matched").length, conflict: stagedLeads.filter(l => l.match_status === "conflict").length },
-          deals: { total: stagedDeals.length, new: stagedDeals.filter(d => d.match_status === "new").length, matched: stagedDeals.filter(d => d.match_status === "matched").length, conflict: stagedDeals.filter(d => d.match_status === "conflict").length },
-          tasks: { total: stagedTasks.length, new: stagedTasks.filter(t => t.match_status === "new").length, matched: stagedTasks.filter(t => t.match_status === "matched").length, conflict: stagedTasks.filter(t => t.match_status === "conflict").length },
+          leads: countsByStatus(stagedLeads),
+          deals: countsByStatus(stagedDeals),
+          tasks: countsByStatus(stagedTasks),
         },
+        not_found: notFound.length > 0 ? notFound : undefined,
+        requested: isScoped ? {
+          leads: (body.selected?.leads || []).length,
+          deals: (body.selected?.deals || []).length,
+          tasks: (body.selected?.tasks || []).length,
+        } : undefined,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
