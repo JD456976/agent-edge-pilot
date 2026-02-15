@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, X, ChevronRight, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -64,13 +64,18 @@ export function WorkspaceOverlayShell({ title, subtitle, open, onClose, children
               onClick={onClose}
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline text-xs">Back to Command Center</span>
+              <span className="hidden sm:inline text-xs">Back</span>
             </Button>
             <div className="h-4 w-px bg-border hidden sm:block" />
-            <div className="hidden sm:block">
-              <h2 className="text-sm font-semibold leading-none">{title}</h2>
-              {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
-            </div>
+            {/* Breadcrumb */}
+            <nav className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground" aria-label="Breadcrumb">
+              <button onClick={onClose} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                <LayoutDashboard className="h-3 w-3" />
+                <span>Home</span>
+              </button>
+              <ChevronRight className="h-3 w-3" />
+              <span className="font-medium text-foreground">{title}</span>
+            </nav>
           </div>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
             <X className="h-4 w-4" />

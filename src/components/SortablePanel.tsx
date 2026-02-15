@@ -1,7 +1,7 @@
 import React, { memo, useState, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const DRAG_HINT_KEY = 'dp-drag-hint-shown';
@@ -12,9 +12,15 @@ interface SortablePanelProps {
   editMode: boolean;
   /** If true, this panel spans full width (not part of a grid pair) */
   fullWidth?: boolean;
+  /** Panel label for collapse header */
+  label?: string;
+  /** Whether the panel is collapsed */
+  isCollapsed?: boolean;
+  /** Toggle collapse callback */
+  onToggleCollapse?: () => void;
 }
 
-export const SortablePanel = memo(function SortablePanel({ id, children, editMode, fullWidth }: SortablePanelProps) {
+export const SortablePanel = memo(function SortablePanel({ id, children, editMode, fullWidth, label, isCollapsed, onToggleCollapse }: SortablePanelProps) {
   const {
     attributes,
     listeners,
@@ -69,10 +75,31 @@ export const SortablePanel = memo(function SortablePanel({ id, children, editMod
           <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
       )}
+      {/* Collapsible header */}
+      {onToggleCollapse && isCollapsed && (
+        <button
+          onClick={onToggleCollapse}
+          className="w-full flex items-center justify-between p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+        >
+          <span className="text-sm font-medium text-muted-foreground">{label || id}</span>
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground rotate-[-90deg]" />
+        </button>
+      )}
       {/* pointer-events: auto ensures card content is interactive even if parent has constraints */}
-      <div className="pointer-events-auto">
-        {children}
-      </div>
+      {!isCollapsed && (
+        <div className="pointer-events-auto relative">
+          {onToggleCollapse && (
+            <button
+              onClick={onToggleCollapse}
+              className="absolute top-2 right-10 z-10 p-1 rounded-md hover:bg-accent/50 transition-colors opacity-0 group-hover/sortable:opacity-100"
+              aria-label="Collapse panel"
+            >
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
+          )}
+          {children}
+        </div>
+      )}
     </div>
   );
 });
