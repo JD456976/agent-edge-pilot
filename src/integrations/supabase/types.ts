@@ -103,6 +103,7 @@ export type Database = {
           default_referral_fee: number | null
           default_split: number | null
           id: string
+          typical_price_mid: number | null
           updated_at: string
           user_id: string
         }
@@ -112,6 +113,7 @@ export type Database = {
           default_referral_fee?: number | null
           default_split?: number | null
           id?: string
+          typical_price_mid?: number | null
           updated_at?: string
           user_id: string
         }
@@ -121,6 +123,7 @@ export type Database = {
           default_referral_fee?: number | null
           default_split?: number | null
           id?: string
+          typical_price_mid?: number | null
           updated_at?: string
           user_id?: string
         }

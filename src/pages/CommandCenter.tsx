@@ -19,11 +19,13 @@ import { FubDriftCard } from '@/components/FubDriftCard';
 import { FubWatchlistPanel } from '@/components/FubWatchlistPanel';
 import { MoneyAtRiskPanel } from '@/components/MoneyAtRiskPanel';
 import { MoneyRiskDrawer } from '@/components/MoneyRiskDrawer';
+import { OpportunityHeatPanel } from '@/components/OpportunityHeatPanel';
+import { computeOpportunityBatch, type OpportunityHeatResult, type UserCommissionDefaults } from '@/lib/leadMoneyModel';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { computeMoneyModelBatch, suggestAction, type MoneyModelResult } from '@/lib/moneyModel';
-import type { RiskLevel, Deal, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
+import type { RiskLevel, Deal, Lead, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 const SNOOZE_STORAGE_KEY = 'dp-snooze-counts';
 
@@ -115,10 +117,49 @@ export default function CommandCenter() {
     return sorted[0] || null;
   }, [moneyResults]);
 
+  // Opportunity Model
+  const [userDefaults, setUserDefaults] = useState<UserCommissionDefaults | undefined>();
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from('commission_defaults').select('*').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setUserDefaults({
+            typicalCommissionRate: data.default_commission_rate ? Number(data.default_commission_rate) : undefined,
+            typicalSplitPct: data.default_split ? Number(data.default_split) : undefined,
+            typicalReferralFeePct: data.default_referral_fee ? Number(data.default_referral_fee) : undefined,
+            typicalPriceMid: (data as any).typical_price_mid ? Number((data as any).typical_price_mid) : undefined,
+          });
+        }
+      });
+  }, [user?.id]);
+
+  const opportunityResults = useMemo(() => {
+    if (!user?.id) return [];
+    return computeOpportunityBatch(leads, tasks, userDefaults);
+  }, [leads, tasks, userDefaults, user?.id]);
+
+  const topOpportunity = useMemo(() => {
+    return opportunityResults[0] || null;
+  }, [opportunityResults]);
+
   const handleMoneySelect = useCallback((result: MoneyModelResult, deal: Deal) => {
     setMoneyDrawerResult(result);
     setMoneyDrawerDeal(deal);
   }, []);
+
+  const handleOpportunityAction = useCallback(async (lead: Lead, result: OpportunityHeatResult) => {
+    const taskType = lead.leadTemperature === 'hot' ? 'call' : 'follow_up';
+    const title = lead.leadTemperature === 'hot' ? `Call ${lead.name} — hot lead` : `Follow up with ${lead.name}`;
+    await addTask({
+      title,
+      type: taskType as any,
+      dueAt: new Date().toISOString(),
+      relatedLeadId: lead.id,
+      assignedToUserId: user?.id || '',
+    });
+    toast({ description: `Task created: ${title}`, duration: 3000 });
+  }, [addTask, user?.id]);
 
   const handleStartAction = useCallback(async (deal: Deal, result: MoneyModelResult) => {
     const suggested = suggestAction(result, deal);
@@ -272,19 +313,32 @@ export default function CommandCenter() {
         topMoneyAtRisk={topMoneyAtRisk}
         deals={deals}
         onMoneyAction={handleMoneySelect}
+        topOpportunity={topOpportunity}
+        leads={leads}
+        onOpportunityAction={handleOpportunityAction}
       />
 
-      {/* Money At Risk Panel */}
-      <PanelErrorBoundary>
-        <MoneyAtRiskPanel
-          deals={deals}
-          participants={dealParticipants}
-          userId={user?.id || ''}
-          onSelect={handleMoneySelect}
-          onAddCommissionToDeals={() => navigate('/pipeline')}
-          refreshData={refreshData}
-        />
-      </PanelErrorBoundary>
+      {/* Money At Risk + Opportunities */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <PanelErrorBoundary>
+          <MoneyAtRiskPanel
+            deals={deals}
+            participants={dealParticipants}
+            userId={user?.id || ''}
+            onSelect={handleMoneySelect}
+            onAddCommissionToDeals={() => navigate('/pipeline')}
+            refreshData={refreshData}
+          />
+        </PanelErrorBoundary>
+        <PanelErrorBoundary>
+          <OpportunityHeatPanel
+            leads={leads}
+            tasks={tasks}
+            userId={user?.id || ''}
+            onStartAction={handleOpportunityAction}
+          />
+        </PanelErrorBoundary>
+      </div>
 
       {/* 4-Panel Grid + Pipeline Watch */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -380,41 +434,7 @@ export default function CommandCenter() {
         </div>
         </PanelErrorBoundary>
 
-        {/* Opportunities Heating Up */}
-        <PanelErrorBoundary>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp className="h-4 w-4 text-opportunity" />
-            <h2 className="text-sm font-semibold">Opportunities Heating Up</h2>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">Leads showing strong buying or selling signals.</p>
-          {panels.opportunities.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">No hot leads right now</p>
-          ) : (
-            <div className="space-y-2">
-              {panels.opportunities.map(item => (
-                <div
-                  key={item.lead.id}
-                  className="flex items-center justify-between p-2 rounded-md hover:bg-accent/50 transition-colors cursor-pointer"
-                  onClick={() => setSelectedItem({ kind: 'opportunity', data: item })}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{item.lead.name}</p>
-                    <p className="text-xs text-muted-foreground">{item.topReason}</p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-muted-foreground">🔥</span>
-                    <div className="w-12 h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full rounded-full bg-opportunity" style={{ width: `${item.scores.opportunityScore}%` }} />
-                    </div>
-                    <span className="text-xs text-muted-foreground w-7 text-right">{item.scores.opportunityScore}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        </PanelErrorBoundary>
+        {/* Opportunities moved to dedicated panel above */}
 
         {/* Speed Alerts */}
         <PanelErrorBoundary>
