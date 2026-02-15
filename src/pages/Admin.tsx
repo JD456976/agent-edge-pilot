@@ -2,15 +2,17 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ShieldCheck, Users, Target, ListChecks, Database, Plus, Trash2, AlertTriangle, Building2, UsersRound, ScrollText } from 'lucide-react';
+import { ShieldCheck, Users, Target, ListChecks, Database, Plus, Trash2, AlertTriangle, Building2, UsersRound, ScrollText, ChevronRight, Crown } from 'lucide-react';
 import { ImportHealthPanel } from '@/components/ImportHealthPanel';
 import { UserManagementPanel } from '@/components/admin/UserManagementPanel';
+import { CreateTeamModal } from '@/components/admin/CreateTeamModal';
+import { TeamDetailSheet } from '@/components/admin/TeamDetailSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import type { UserRole, Organization, Team, TeamMember } from '@/types';
+import type { Organization, Team, TeamMember } from '@/types';
 import { TEAM_ROLE_LABELS } from '@/types';
 
 function MetricCard({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string | number }) {
@@ -33,8 +35,14 @@ interface AuditEvent {
   metadata: Record<string, unknown>;
 }
 
+interface ProfileOption {
+  userId: string;
+  name: string;
+  email: string;
+}
+
 export default function Admin() {
-  const { user, profiles, fetchProfiles, logAdminAction } = useAuth();
+  const { user, profiles, fetchProfiles, logAdminAction, isReviewer } = useAuth();
   const { leads, deals, tasks, seedDemoData, wipeData } = useData();
   const [showWipeConfirm, setShowWipeConfirm] = useState(false);
   const [wipeConfirmText, setWipeConfirmText] = useState('');
@@ -44,10 +52,10 @@ export default function Admin() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [newOrgName, setNewOrgName] = useState('');
-  const [newTeamName, setNewTeamName] = useState('');
   const [showCreateOrg, setShowCreateOrg] = useState(false);
   const [showCreateTeam, setShowCreateTeam] = useState(false);
-  const [selectedOrgId, setSelectedOrgId] = useState<string>('');
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [availableUsers, setAvailableUsers] = useState<ProfileOption[]>([]);
 
   // Audit log
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
@@ -65,17 +73,26 @@ export default function Admin() {
       supabase.from('organizations').select('*'),
       supabase.from('teams').select('*'),
       supabase.from('team_members').select('*'),
-      supabase.from('profiles').select('user_id, name, email'),
+      supabase.from('profiles').select('user_id, name, email, is_protected, status'),
     ]);
 
     if (orgs) setOrganizations(orgs.map(o => ({ id: o.id, name: o.name, ownerUserId: o.owner_user_id || undefined, createdAt: o.created_at })));
     if (tms) setTeams(tms.map(t => ({ id: t.id, organizationId: t.organization_id, name: t.name, teamLeaderUserId: t.team_leader_user_id || undefined, createdAt: t.created_at })));
+
+    const profileMap = new Map<string, { name: string; email: string }>();
+    const users: ProfileOption[] = [];
+    allProfiles?.forEach(p => {
+      profileMap.set(p.user_id, { name: p.name || '', email: p.email });
+      if ((p as any).status !== 'removed' && !(p as any).is_deleted) {
+        users.push({ userId: p.user_id, name: p.name || '', email: p.email });
+      }
+    });
+    setAvailableUsers(users);
+
     if (members) {
-      const profileMap = new Map<string, string>();
-      allProfiles?.forEach(p => profileMap.set(p.user_id, p.name || p.email));
       setTeamMembers(members.map(m => ({
         id: m.id, teamId: m.team_id, userId: m.user_id,
-        userName: profileMap.get(m.user_id) || 'Unknown',
+        userName: profileMap.get(m.user_id)?.name || profileMap.get(m.user_id)?.email || 'Unknown',
         role: m.role as any,
         defaultSplitPercent: m.default_split_percent ? Number(m.default_split_percent) : undefined,
       })));
@@ -97,23 +114,6 @@ export default function Admin() {
     await logAdminAction('create_organization', { name: newOrgName.trim() });
     setNewOrgName('');
     setShowCreateOrg(false);
-    await loadOrgData();
-    await loadAuditLog();
-  };
-
-  const createTeam = async () => {
-    if (!newTeamName.trim() || !selectedOrgId) return;
-    await supabase.from('teams').insert({ name: newTeamName.trim(), organization_id: selectedOrgId, team_leader_user_id: user!.id });
-    await logAdminAction('create_team', { name: newTeamName.trim(), organizationId: selectedOrgId });
-    setNewTeamName('');
-    setShowCreateTeam(false);
-    await loadOrgData();
-    await loadAuditLog();
-  };
-
-  const addMemberToTeam = async (teamId: string, userId: string) => {
-    await supabase.from('team_members').insert({ team_id: teamId, user_id: userId, role: 'agent' as any });
-    await logAdminAction('add_team_member', { teamId, userId });
     await loadOrgData();
     await loadAuditLog();
   };
@@ -145,7 +145,12 @@ export default function Admin() {
       seed_demo_data: 'Seeded demo data',
       wipe_data: 'Wiped test data',
       create_organization: 'Created organization',
-      create_team: 'Created team',
+      team_created: 'Created team',
+      team_renamed: 'Renamed team',
+      team_members_added: 'Added team members',
+      team_member_added: 'Added team member',
+      team_member_removed: 'Removed team member',
+      team_member_role_changed: 'Changed team member role',
       add_team_member: 'Added team member',
       role_change: 'Changed user role',
       role_changed: 'Changed user role',
@@ -157,6 +162,9 @@ export default function Admin() {
     };
     return map[action] || action;
   };
+
+  const selectedTeam = selectedTeamId ? teams.find(t => t.id === selectedTeamId) : null;
+  const selectedTeamOrg = selectedTeam ? organizations.find(o => o.id === selectedTeam.organizationId) : null;
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
@@ -171,7 +179,7 @@ export default function Admin() {
         <MetricCard icon={ListChecks} label="Tasks" value={tasks.length} />
       </div>
 
-      {/* User Management Panel (new CRUD system) */}
+      {/* User Management Panel */}
       <UserManagementPanel />
 
       {/* Data Tools */}
@@ -243,64 +251,55 @@ export default function Admin() {
       <section className="rounded-lg border border-border bg-card p-4 mb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold flex items-center gap-2"><UsersRound className="h-4 w-4" /> Teams</h2>
-          <Button size="sm" variant="outline" onClick={() => setShowCreateTeam(true)} disabled={organizations.length === 0}>
-            <Plus className="h-4 w-4 mr-1" /> Create
+          <Button size="sm" variant="outline" onClick={() => setShowCreateTeam(true)} disabled={organizations.length === 0 || isReviewer}>
+            <Plus className="h-4 w-4 mr-1" /> Create Team
           </Button>
         </div>
-        {showCreateTeam && (
-          <div className="mb-4 p-4 rounded-lg border border-border bg-muted/50 space-y-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Organization</Label>
-              <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
-                <SelectTrigger><SelectValue placeholder="Select organization" /></SelectTrigger>
-                <SelectContent>
-                  {organizations.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Team Name</Label>
-              <Input size={1} value={newTeamName} onChange={e => setNewTeamName(e.target.value)} placeholder="Listing Team" />
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={createTeam}>Create</Button>
-              <Button size="sm" variant="outline" onClick={() => setShowCreateTeam(false)}>Cancel</Button>
-            </div>
-          </div>
-        )}
         {teams.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No teams yet</p>
+          <div className="text-center py-8 border border-dashed border-border rounded-lg">
+            <UsersRound className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">No teams yet</p>
+            {organizations.length > 0 && !isReviewer && (
+              <Button size="sm" variant="outline" className="mt-2" onClick={() => setShowCreateTeam(true)}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Create your first team
+              </Button>
+            )}
+          </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {teams.map(team => {
               const members = teamMembers.filter(m => m.teamId === team.id);
               const org = organizations.find(o => o.id === team.organizationId);
-              const nonMembers = profiles.filter(p => !members.some(m => m.userId === p.id));
+              const leaderCount = members.filter(m => m.role === 'leader').length;
               return (
-                <div key={team.id} className="p-3 rounded-lg border border-border">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <p className="text-sm font-medium">{team.name}</p>
+                <div
+                  key={team.id}
+                  className="p-3 rounded-lg border border-border hover:border-primary/30 hover:bg-accent/30 cursor-pointer transition-all group"
+                  onClick={() => setSelectedTeamId(team.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-sm font-medium">{team.name}</p>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{members.length} member{members.length !== 1 ? 's' : ''}</Badge>
+                      </div>
                       <p className="text-xs text-muted-foreground">{org?.name}</p>
                     </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    {members.map(m => (
-                      <div key={m.id} className="flex items-center justify-between text-sm pl-2">
-                        <span>{m.userName}</span>
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 capitalize">{TEAM_ROLE_LABELS[m.role]}</Badge>
+                    <div className="flex items-center gap-2">
+                      {/* Member avatars preview */}
+                      <div className="flex items-center gap-1">
+                        {members.slice(0, 3).map(m => (
+                          <div key={m.id} className="flex items-center gap-1 text-xs text-muted-foreground">
+                            {m.role === 'leader' && <Crown className="h-3 w-3 text-warning" />}
+                            <span className="max-w-[60px] truncate">{m.userName?.split(' ')[0]}</span>
+                          </div>
+                        ))}
+                        {members.length > 3 && (
+                          <span className="text-[10px] text-muted-foreground">+{members.length - 3}</span>
+                        )}
                       </div>
-                    ))}
-                    {nonMembers.length > 0 && (
-                      <Select onValueChange={(userId) => addMemberToTeam(team.id, userId)}>
-                        <SelectTrigger className="h-8 text-xs mt-2">
-                          <SelectValue placeholder="+ Add member" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {nonMembers.map(p => <SelectItem key={p.id} value={p.id}>{p.name || p.email} ({p.email})</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    )}
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </div>
                   </div>
                 </div>
               );
@@ -336,6 +335,38 @@ export default function Admin() {
           </div>
         )}
       </section>
+
+      {/* Create Team Modal */}
+      {showCreateTeam && (
+        <CreateTeamModal
+          organizations={organizations.map(o => ({ id: o.id, name: o.name }))}
+          availableUsers={availableUsers}
+          defaultOrgId={organizations[0]?.id}
+          onClose={() => setShowCreateTeam(false)}
+          onCreated={() => {
+            setShowCreateTeam(false);
+            loadOrgData();
+            loadAuditLog();
+          }}
+        />
+      )}
+
+      {/* Team Detail Sheet */}
+      {selectedTeam && (
+        <TeamDetailSheet
+          teamId={selectedTeam.id}
+          teamName={selectedTeam.name}
+          orgName={selectedTeamOrg?.name || ''}
+          createdAt={selectedTeam.createdAt}
+          availableUsers={availableUsers}
+          isReviewer={isReviewer}
+          onClose={() => setSelectedTeamId(null)}
+          onChanged={() => {
+            loadOrgData();
+            loadAuditLog();
+          }}
+        />
+      )}
     </div>
   );
 }

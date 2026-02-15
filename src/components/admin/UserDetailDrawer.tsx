@@ -1,0 +1,247 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Loader2, ShieldCheck } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import type { UserRole } from '@/types';
+
+interface Props {
+  userId: string;
+  onClose: () => void;
+  onSaved: () => void;
+  isReviewer: boolean;
+}
+
+interface UserDetail {
+  name: string;
+  email: string;
+  role: UserRole;
+  status: string;
+  isProtected: boolean;
+  createdAt: string;
+  teams: { teamId: string; teamName: string; teamRole: string }[];
+}
+
+export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props) {
+  const { user, logAdminAction } = useAuth();
+  const { toast } = useToast();
+  const [detail, setDetail] = useState<UserDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Editable fields
+  const [name, setName] = useState('');
+  const [role, setRole] = useState<string>('agent');
+  const [status, setStatus] = useState('active');
+  const [allTeams, setAllTeams] = useState<{ id: string; name: string }[]>([]);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    loadDetail();
+  }, [userId]);
+
+  const loadDetail = async () => {
+    setLoading(true);
+    const [{ data: profile }, { data: roleData }, { data: memberRows }, { data: teams }] = await Promise.all([
+      supabase.from('profiles').select('*').eq('user_id', userId).single(),
+      supabase.from('user_roles').select('role').eq('user_id', userId).single(),
+      supabase.from('team_members').select('team_id, role').eq('user_id', userId),
+      supabase.from('teams').select('id, name'),
+    ]);
+
+    if (teams) setAllTeams(teams.map(t => ({ id: t.id, name: t.name })));
+
+    if (profile) {
+      const teamNameMap = new Map<string, string>();
+      teams?.forEach(t => teamNameMap.set(t.id, t.name));
+
+      const userTeams = (memberRows || []).map(m => ({
+        teamId: m.team_id,
+        teamName: teamNameMap.get(m.team_id) || 'Unknown',
+        teamRole: m.role,
+      }));
+
+      const d: UserDetail = {
+        name: profile.name,
+        email: profile.email,
+        role: (roleData?.role as UserRole) || 'agent',
+        status: (profile as any).status || 'active',
+        isProtected: profile.is_protected,
+        createdAt: profile.created_at,
+        teams: userTeams,
+      };
+
+      setDetail(d);
+      setName(d.name);
+      setRole(d.role);
+      setStatus(d.status);
+      setSelectedTeamIds(userTeams.map(t => t.teamId));
+    }
+    setLoading(false);
+  };
+
+  const handleSave = async () => {
+    if (!detail || isReviewer) return;
+    setSaving(true);
+
+    try {
+      // Name
+      if (name !== detail.name) {
+        await supabase.from('profiles').update({ name } as any).eq('user_id', userId);
+        await logAdminAction('user_updated', { userId, field: 'name', from: detail.name, to: name });
+      }
+
+      // Role
+      if (role !== detail.role && !detail.isProtected) {
+        await supabase.from('user_roles').delete().eq('user_id', userId);
+        await supabase.from('user_roles').insert({ user_id: userId, role: role as any });
+        await logAdminAction('role_changed', { userId, from: detail.role, to: role });
+      }
+
+      // Status
+      if (status !== detail.status && !detail.isProtected) {
+        await supabase.from('profiles').update({ status } as any).eq('user_id', userId);
+        await logAdminAction(status === 'disabled' ? 'user_disabled' : 'user_updated', { userId, status });
+      }
+
+      // Teams
+      const prevTeams = new Set(detail.teams.map(t => t.teamId));
+      const nextTeams = new Set(selectedTeamIds);
+      const toAdd = selectedTeamIds.filter(t => !prevTeams.has(t));
+      const toRemove = detail.teams.filter(t => !nextTeams.has(t.teamId)).map(t => t.teamId);
+
+      if (toAdd.length > 0) {
+        await supabase.from('team_members').insert(
+          toAdd.map(tid => ({ team_id: tid, user_id: userId, role: 'agent' as any }))
+        );
+        await logAdminAction('team_membership_changed', { userId, added: toAdd });
+      }
+      if (toRemove.length > 0) {
+        for (const tid of toRemove) {
+          await supabase.from('team_members').delete().eq('team_id', tid).eq('user_id', userId);
+        }
+        await logAdminAction('team_membership_changed', { userId, removed: toRemove });
+      }
+
+      toast({ title: 'User updated' });
+      onSaved();
+    } catch (err: any) {
+      toast({ title: 'Update failed', description: err.message, variant: 'destructive' });
+    }
+    setSaving(false);
+  };
+
+  const toggleTeam = (teamId: string) => {
+    setSelectedTeamIds(prev =>
+      prev.includes(teamId) ? prev.filter(t => t !== teamId) : [...prev, teamId]
+    );
+  };
+
+  const isSelf = userId === user?.id;
+
+  return (
+    <Sheet open onOpenChange={onClose}>
+      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+        <SheetHeader className="mb-4">
+          <SheetTitle className="text-base flex items-center gap-2">
+            User Detail
+            {detail?.isProtected && (
+              <Badge variant="outline" className="text-[10px]">
+                <ShieldCheck className="h-3 w-3 mr-0.5" /> Protected
+              </Badge>
+            )}
+          </SheetTitle>
+        </SheetHeader>
+
+        {loading || !detail ? (
+          <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
+        ) : (
+          <div className="space-y-5">
+            {isReviewer && (
+              <Badge variant="secondary" className="text-[10px]">Reviewer Mode — actions disabled</Badge>
+            )}
+
+            {/* Email (read-only) */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Email</Label>
+              <Input value={detail.email} disabled className="opacity-60" />
+            </div>
+
+            {/* Name */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Full Name</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} disabled={isReviewer} />
+            </div>
+
+            {/* Role */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Role</Label>
+              <Select value={role} onValueChange={setRole} disabled={detail.isProtected || isReviewer || isSelf}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="agent">Agent</SelectItem>
+                  <SelectItem value="reviewer">Reviewer</SelectItem>
+                  <SelectItem value="beta">Beta</SelectItem>
+                </SelectContent>
+              </Select>
+              {detail.isProtected && <p className="text-[10px] text-muted-foreground">Protected users cannot have their role changed</p>}
+            </div>
+
+            {/* Status */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Status</Label>
+              <Select value={status} onValueChange={setStatus} disabled={detail.isProtected || isReviewer || isSelf}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="disabled">Disabled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Team membership */}
+            {allTeams.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs">Team Membership</Label>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {allTeams.map(team => (
+                    <div key={team.id} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={selectedTeamIds.includes(team.id)}
+                        onCheckedChange={() => toggleTeam(team.id)}
+                        disabled={isReviewer}
+                      />
+                      <span className="text-sm">{team.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Created date */}
+            <div>
+              <p className="text-[10px] text-muted-foreground">Created</p>
+              <p className="text-sm">{new Date(detail.createdAt).toLocaleDateString()}</p>
+            </div>
+
+            {/* Save */}
+            {!isReviewer && (
+              <Button className="w-full" onClick={handleSave} disabled={saving}>
+                {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                Save Changes
+              </Button>
+            )}
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
