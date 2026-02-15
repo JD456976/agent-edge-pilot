@@ -271,4 +271,30 @@
   .stagger-in > *:nth-child(6) { animation-delay: 250ms; }
   .stagger-in > *:nth-child(7) { animation-delay: 300ms; }
   .stagger-in > *:nth-child(8) { animation-delay: 350ms; }
+
+  /* Guided tour highlight ring */
+  .tour-highlight {
+    position: relative;
+    z-index: 61;
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.3), 0 0 0 8px hsl(var(--primary) / 0.1);
+    border-radius: var(--radius);
+    transition: box-shadow 0.3s ease;
+  }
+
+  /* Focus ring improvements for accessibility */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: var(--radius);
+  }
+
+  /* Pull-to-refresh visual indicator */
+  .pull-indicator {
+    @apply flex items-center justify-center py-2 text-xs text-muted-foreground;
+  }
+
+  /* Bottom sheet feel for mobile drawers */
+  .bottom-sheet-handle {
+    @apply w-10 h-1 rounded-full bg-muted-foreground/20 mx-auto mb-3;
+  }
 }
