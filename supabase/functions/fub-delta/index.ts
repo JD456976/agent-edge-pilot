@@ -160,12 +160,31 @@ Deno.serve(async (req) => {
       ]);
     } catch (e: any) {
       if (e.message === "rate_limited") {
+        // Normalize the stored summary into the stable shape
+        const raw = syncState?.last_delta_summary || {};
+        const rawCounts = (raw as any)?.counts ?? {};
+        const normalizedCounts = {
+          new: Number(rawCounts.new ?? rawCounts.new_items ?? 0) || 0,
+          updated: Number(rawCounts.updated ?? rawCounts.updated_items ?? 0) || 0,
+          conflicts: Number(rawCounts.conflict ?? rawCounts.conflicts ?? 0) || 0,
+          total: 0,
+        };
+        normalizedCounts.total = normalizedCounts.new + normalizedCounts.updated + normalizedCounts.conflicts;
+
         return new Response(JSON.stringify({
+          ok: false,
           error: "rate_limited",
-          last_summary: syncState?.last_delta_summary || null,
-          last_check: syncState?.last_delta_check_at || null,
-          last_successful_check: syncState?.last_successful_check_at || null,
-          drift_reason: syncState?.drift_reason || null,
+          severity: (raw as any)?.severity ?? "quiet",
+          drift_reason: syncState?.drift_reason ?? (raw as any)?.drift_reason ?? "",
+          timestamps: {
+            checked_at: syncState?.last_delta_check_at ?? null,
+            last_successful_at: syncState?.last_successful_check_at ?? null,
+            using_summary_from: syncState?.last_successful_check_at ?? null,
+          },
+          counts: normalizedCounts,
+          top_items: Array.isArray((raw as any)?.top_items) ? (raw as any).top_items : [],
+          all_items: [],
+          by_type: { leads: [], deals: [], tasks: [] },
         }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       throw e;
@@ -320,8 +339,26 @@ Deno.serve(async (req) => {
       metadata: { counts, severity, drift_reason },
     });
 
+    // Build by_type grouping
+    const byType = {
+      leads: deltas.filter(d => d.entity_type === "lead"),
+      deals: deltas.filter(d => d.entity_type === "deal"),
+      tasks: deltas.filter(d => d.entity_type === "task"),
+    };
+
     return new Response(
-      JSON.stringify({ ...summary, all_items: deltas }),
+      JSON.stringify({
+        ok: true,
+        severity,
+        drift_reason,
+        timestamps: { checked_at: checkedAt, last_successful_at: checkedAt },
+        counts: { new: counts.new, updated: counts.updated, conflicts: counts.conflict, total: counts.total },
+        top_items: topItems,
+        all_items: deltas,
+        by_type: byType,
+        // Legacy compat
+        checked_at: checkedAt,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

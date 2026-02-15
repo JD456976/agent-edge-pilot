@@ -31,11 +31,11 @@ interface DeltaItem {
 }
 
 interface DeltaSummary {
-  counts: { new: number; updated: number; conflict: number; total: number };
+  counts: { new: number; updated: number; conflict?: number; conflicts?: number; total: number };
   severity: 'quiet' | 'moderate' | 'attention_needed';
   drift_reason?: string;
-  top_items: any[];
-  checked_at: string;
+  top_items?: any[];
+  checked_at?: string | null;
 }
 
 interface Props {
