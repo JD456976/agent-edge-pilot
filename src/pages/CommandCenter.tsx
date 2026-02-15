@@ -60,6 +60,12 @@ import { MarketConditionsPanel } from '@/components/MarketConditionsPanel';
 import { SortablePanel } from '@/components/SortablePanel';
 import { SelfOptNudges } from '@/components/SelfOptNudges';
 import { PanelLayoutControls } from '@/components/PanelLayoutControls';
+import { MorningBriefCard } from '@/components/MorningBriefCard';
+import { WhatThisMeansPanel } from '@/components/WhatThisMeansPanel';
+import { IncomeControlMeter } from '@/components/IncomeControlMeter';
+import { FocusModeSelector, isPanelVisibleInMode } from '@/components/FocusModeSelector';
+import { useFocusMode } from '@/hooks/useFocusMode';
+import { useHabitTracking } from '@/hooks/useHabitTracking';
 import { useAgentLearning } from '@/hooks/useAgentLearning';
 import { useNetworkTelemetry } from '@/hooks/useNetworkTelemetry';
 import { useMarketConditions } from '@/hooks/useMarketConditions';
@@ -129,6 +135,12 @@ export default function CommandCenter() {
   const [editMode, setEditMode] = useState(false);
   const [autonomyLevel] = useState(() => getAutonomyLevel());
   const [showWeeklyPlanner, setShowWeeklyPlanner] = useState(false);
+
+  // Focus Mode
+  const { focusMode, updateFocusMode } = useFocusMode();
+
+  // Habit Tracking
+  const { stats: habitStats, markBriefViewed, markEodCompleted } = useHabitTracking();
 
   // Strategic settings
   const { settings: strategicSettings } = useStrategicSettings(user?.id);
@@ -884,11 +896,36 @@ export default function CommandCenter() {
             onApplyPreset={applyPreset}
             onReset={resetToDefault}
           />
+          <FocusModeSelector mode={focusMode} onModeChange={updateFocusMode} />
           <Button size="sm" variant="outline" onClick={() => setShowQuickAdd(true)}>
             <Plus className="h-3.5 w-3.5 mr-1" /> Quick Add
           </Button>
         </div>
       </div>
+
+      {/* Income Control Meter */}
+      <IncomeControlMeter
+        stabilityResult={stabilityResult}
+        totalMoneyAtRisk={totalMoneyAtRisk}
+        totalRevenue={totalRevenue}
+        overdueCount={overdueTasks.length}
+      />
+
+      {/* Morning Brief (first session of the day) */}
+      {currentMode === 'morning' && (
+        <MorningBriefCard
+          deals={deals}
+          leads={leads}
+          tasks={tasks}
+          moneyResults={moneyResults}
+          opportunityResults={opportunityResults}
+          stabilityResult={stabilityResult}
+          totalMoneyAtRisk={totalMoneyAtRisk}
+          previousSnapshot={previousSnapshot}
+          onStartActions={() => { markBriefViewed(); }}
+          onReviewDetail={() => { markBriefViewed(); navigate('/?workspace=work'); }}
+        />
+      )}
 
       {/* Daily Intelligence Briefing */}
       <div className="rounded-lg border border-border bg-card p-4 space-y-2">
@@ -989,6 +1026,17 @@ export default function CommandCenter() {
         />
       )}
 
+      {/* What This Means Today */}
+      <WhatThisMeansPanel
+        deals={deals}
+        leads={leads}
+        tasks={tasks}
+        moneyResults={moneyResults}
+        opportunityResults={opportunityResults}
+        stabilityResult={stabilityResult}
+        totalMoneyAtRisk={totalMoneyAtRisk}
+      />
+
       {/* Daily Flight Plan */}
       <PanelErrorBoundary>
         <DailyFlightPlan
@@ -1035,6 +1083,7 @@ export default function CommandCenter() {
         <SortableContext items={panelOrder} strategy={verticalListSortingStrategy}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {panelOrder.map(panelId => {
+              if (!isPanelVisibleInMode(panelId, focusMode)) return null;
               const content = renderPanel(panelId);
               if (!content) return null;
               const isFullWidth = !PAIRED_PANELS.has(panelId);
@@ -1277,7 +1326,7 @@ export default function CommandCenter() {
       {/* End of Day Review Drawer */}
       <EndOfDayReviewDrawer
         open={showEodReview}
-        onClose={() => setShowEodReview(false)}
+        onClose={() => { setShowEodReview(false); markEodCompleted(); }}
         overdueTasks={eodSummary.overdueTasks}
         untouchedHotLeads={eodSummary.untouchedHotLeads}
         computedAt={eodSummary.computedAt}
