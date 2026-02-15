@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle2, Circle, RefreshCw, Plus, Target, DollarSign, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Circle, RefreshCw, Plus, Target, DollarSign, ArrowRight, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ChecklistStep {
   id: string;
@@ -40,6 +41,8 @@ export function GettingStartedChecklist({
   onLoadDemo,
 }: GettingStartedChecklistProps) {
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === 'true');
+  const isMobile = useIsMobile();
+  const [expanded, setExpanded] = useState(!isMobile);
 
   const steps: ChecklistStep[] = [
     {
@@ -100,23 +103,27 @@ export function GettingStartedChecklist({
       animate={{ opacity: 1, y: 0 }}
       className="rounded-lg border border-border bg-card p-4"
     >
-      <div className="flex items-center justify-between mb-3">
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="flex items-center justify-between w-full mb-3"
+      >
         <div>
-          <h3 className="text-sm font-semibold">Getting Started</h3>
+          <h3 className="text-sm font-semibold text-left">Getting Started</h3>
           <p className="text-xs text-muted-foreground">{completedCount} of {steps.length} complete</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={onLoadDemo}>
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-9 min-w-[44px]" onClick={(e) => { e.stopPropagation(); onLoadDemo(); }}>
             Load demo data
           </Button>
           <button
-            onClick={() => { setDismissed(true); localStorage.setItem(DISMISS_KEY, 'true'); }}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            onClick={(e) => { e.stopPropagation(); setDismissed(true); localStorage.setItem(DISMISS_KEY, 'true'); }}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors px-1"
           >
             Dismiss
           </button>
+          <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', expanded && 'rotate-180')} />
         </div>
-      </div>
+      </button>
 
       {/* Progress bar */}
       <div className="h-1.5 bg-muted rounded-full mb-4 overflow-hidden">
@@ -128,7 +135,16 @@ export function GettingStartedChecklist({
         />
       </div>
 
-      <div className="space-y-2">
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-2">
         <AnimatePresence>
           {steps.map((step, i) => (
             <motion.div
@@ -151,14 +167,17 @@ export function GettingStartedChecklist({
                 <p className="text-[10px] text-muted-foreground leading-snug">{step.description}</p>
               </div>
               {!step.completed && step.action && (
-                <Button size="sm" variant="outline" className="text-xs shrink-0" onClick={step.action}>
+                <Button size="sm" variant="outline" className="text-xs shrink-0 h-9 min-w-[44px]" onClick={step.action}>
                   {step.actionLabel} <ArrowRight className="h-3 w-3 ml-1" />
                 </Button>
               )}
             </motion.div>
           ))}
         </AnimatePresence>
-      </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
