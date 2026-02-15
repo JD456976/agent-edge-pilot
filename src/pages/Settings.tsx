@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FubSyncPreviewModal } from '@/components/FubSyncPreviewModal';
@@ -23,6 +23,7 @@ export default function Settings() {
   const { user, logout, isReviewer, logAdminAction } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // FUB integration state
   const [integration, setIntegration] = useState<IntegrationState>({ status: 'disconnected', last4: null, lastValidated: null });
@@ -36,7 +37,7 @@ export default function Settings() {
 
   // Staging state
   const [staging, setStaging] = useState(false);
-  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [activeRunId, setActiveRunId] = useState<string | null>(() => searchParams.get('reviewRun'));
   const [pastRuns, setPastRuns] = useState<any[]>([]);
 
   // Load integration status + past runs

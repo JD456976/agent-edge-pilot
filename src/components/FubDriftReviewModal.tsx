@@ -43,6 +43,7 @@ interface Props {
   lastSuccessfulCheck: string | null;
   onClose: () => void;
   onRefresh: () => void;
+  onScopedStageComplete?: (runId: string) => void;
 }
 
 const STATUS_CONFIG = {
@@ -51,12 +52,15 @@ const STATUS_CONFIG = {
   conflict: { label: 'Potential Conflict', variant: 'urgent' as const },
 };
 
-export function FubDriftReviewModal({ items, summary, lastCheck, lastSuccessfulCheck, onClose, onRefresh }: Props) {
+const MAX_SCOPED_PER_TYPE = 50;
+
+export function FubDriftReviewModal({ items, summary, lastCheck, lastSuccessfulCheck, onClose, onRefresh, onScopedStageComplete }: Props) {
   const [ignoringIds, setIgnoringIds] = useState<Set<string>>(new Set());
   const [watchingIds, setWatchingIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [staging, setStaging] = useState(false);
   const [expandedDiffs, setExpandedDiffs] = useState<Set<string>>(new Set());
+  const [showLimitPrompt, setShowLimitPrompt] = useState(false);
 
   const leads = items.filter(i => i.entity_type === 'lead');
   const deals = items.filter(i => i.entity_type === 'deal');
@@ -81,6 +85,25 @@ export function FubDriftReviewModal({ items, summary, lastCheck, lastSuccessfulC
       keys.forEach(k => allSelected ? next.delete(k) : next.add(k));
       return next;
     });
+  };
+
+  // Build selected FUB IDs grouped by type
+  const getSelectedByType = () => {
+    const selected = { leads: [] as string[], deals: [] as string[], tasks: [] as string[] };
+    for (const key of selectedIds) {
+      const [type, fubId] = key.split(':');
+      if (type === 'lead') selected.leads.push(fubId);
+      else if (type === 'deal') selected.deals.push(fubId);
+      else if (type === 'task') selected.tasks.push(fubId);
+    }
+    return selected;
+  };
+
+  const exceedsLimit = () => {
+    const sel = getSelectedByType();
+    return sel.leads.length > MAX_SCOPED_PER_TYPE ||
+           sel.deals.length > MAX_SCOPED_PER_TYPE ||
+           sel.tasks.length > MAX_SCOPED_PER_TYPE;
   };
 
   const handleIgnore = useCallback(async (item: DeltaItem, scope: 'item' | 'type' | 'field_rule') => {
@@ -132,28 +155,62 @@ export function FubDriftReviewModal({ items, summary, lastCheck, lastSuccessfulC
     }
   }, []);
 
-  const handleStageSelected = useCallback(async () => {
-    if (selectedIds.size === 0) return;
+  const doScopedStage = useCallback(async (mode: 'selected' | 'full') => {
     setStaging(true);
+    setShowLimitPrompt(false);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      // Stage full dataset — scoped staging not yet supported
+      let reqBody: any;
+      if (mode === 'selected') {
+        const selected = getSelectedByType();
+        // Enforce limits
+        selected.leads = selected.leads.slice(0, MAX_SCOPED_PER_TYPE);
+        selected.deals = selected.deals.slice(0, MAX_SCOPED_PER_TYPE);
+        selected.tasks = selected.tasks.slice(0, MAX_SCOPED_PER_TYPE);
+        reqBody = { scope: "selected", selected };
+      } else {
+        reqBody = { limit: 50 };
+      }
+
       const res = await supabase.functions.invoke('fub-stage', {
         headers: { Authorization: `Bearer ${session.access_token}` },
-        body: { limit: 50 },
+        body: reqBody,
       });
 
       if (res.error) throw new Error(res.error.message);
-      toast({ description: `Staging initiated. ${selectedIds.size} items flagged for review.`, duration: 3000 });
+      if (res.data?.error) throw new Error(res.data.error);
+
+      const runId = res.data.import_run_id;
+      const notFound = res.data.not_found || [];
+      const staged = res.data.counts;
+
+      const totalStaged = (staged?.leads?.total || 0) + (staged?.deals?.total || 0) + (staged?.tasks?.total || 0);
+
+      let desc = `Scoped staging complete. ${totalStaged} item${totalStaged !== 1 ? 's' : ''} staged.`;
+      if (notFound.length > 0) {
+        desc += ` ${notFound.length} item${notFound.length !== 1 ? 's' : ''} not found in FUB.`;
+      }
+      toast({ description: desc, duration: 4000 });
+
       onClose();
+      onScopedStageComplete?.(runId);
     } catch (e: any) {
       toast({ description: e.message || 'Staging failed.', duration: 3000 });
     } finally {
       setStaging(false);
     }
-  }, [selectedIds, onClose]);
+  }, [selectedIds, onClose, onScopedStageComplete]);
+
+  const handleStageSelected = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    if (exceedsLimit()) {
+      setShowLimitPrompt(true);
+      return;
+    }
+    doScopedStage('selected');
+  }, [selectedIds, doScopedStage]);
 
   const formatDate = (iso: string) => {
     if (!iso) return '—';
@@ -266,10 +323,8 @@ export function FubDriftReviewModal({ items, summary, lastCheck, lastSuccessfulC
                 </div>
               </div>
 
-              {/* Field diffs viewer */}
               {renderFieldDiffs(item)}
 
-              {/* Fallback to simple change tags if no field_diffs */}
               {(!item.field_diffs || item.field_diffs.length === 0) && item.changes.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {item.changes.map((c, i) => (
@@ -363,6 +418,28 @@ export function FubDriftReviewModal({ items, summary, lastCheck, lastSuccessfulC
                 </Button>
               )}
             </div>
+
+            {/* Limit prompt */}
+            {showLimitPrompt && (
+              <div className="rounded-lg border border-border bg-muted/50 p-3 space-y-2 text-sm">
+                <p className="text-muted-foreground">
+                  That's a lot for one run. More than {MAX_SCOPED_PER_TYPE} items of a single type were selected.
+                </p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => doScopedStage('selected')} disabled={staging}>
+                    {staging && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                    Stage first {MAX_SCOPED_PER_TYPE} per type
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => doScopedStage('full')} disabled={staging}>
+                    {staging && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                    Stage all in full mode
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-xs" onClick={() => setShowLimitPrompt(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <Tabs defaultValue="all">
               <TabsList className="w-full">

@@ -19,6 +19,7 @@ import { FubDriftCard } from '@/components/FubDriftCard';
 import { FubWatchlistPanel } from '@/components/FubWatchlistPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 import type { RiskLevel, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 const SNOOZE_STORAGE_KEY = 'dp-snooze-counts';
@@ -42,6 +43,7 @@ type DetailItem =
 export default function CommandCenter() {
   const { user } = useAuth();
   const { leads, deals, tasks, alerts, hasData, seedDemoData, completeTask } = useData();
+  const navigate = useNavigate();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<DetailItem | null>(null);
@@ -416,7 +418,10 @@ export default function CommandCenter() {
       {hasFubIntegration && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <PanelErrorBoundary>
-            <FubDriftCard hasIntegration={hasFubIntegration} />
+            <FubDriftCard
+              hasIntegration={hasFubIntegration}
+              onScopedStageComplete={(runId) => navigate(`/settings?reviewRun=${runId}`)}
+            />
           </PanelErrorBoundary>
           <PanelErrorBoundary>
             <FubWatchlistPanel hasIntegration={hasFubIntegration} />

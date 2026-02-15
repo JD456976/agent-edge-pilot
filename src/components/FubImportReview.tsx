@@ -182,6 +182,9 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
     );
   };
 
+  const isScoped = !!(run?.source_counts as any)?.scoped;
+  const notFoundCount = (run?.source_counts as any)?.not_found || 0;
+
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
       <button onClick={onBack} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
@@ -190,7 +193,12 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
 
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl font-bold">Import Review</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold">Import Review</h1>
+            {isScoped && (
+              <Badge variant="outline" className="text-xs border-primary/40 text-primary">Scoped import</Badge>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
             Run {runId.slice(0, 8)}… •{' '}
             <Badge variant={run?.status === 'committed' ? 'default' : run?.status === 'cancelled' ? 'secondary' : 'outline'} className="text-xs">
@@ -199,6 +207,31 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
           </p>
         </div>
       </div>
+
+      {/* Not-found warning for scoped imports */}
+      {isScoped && notFoundCount > 0 && (
+        <details className="rounded-lg border border-border bg-muted/50 p-3 mb-4 text-sm">
+          <summary className="flex items-center gap-2 cursor-pointer text-muted-foreground">
+            <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
+            <span>{notFoundCount} item{notFoundCount !== 1 ? 's' : ''} could not be fetched from FUB</span>
+          </summary>
+          <p className="text-xs text-muted-foreground mt-2 pl-6">
+            These items may have been deleted or your permissions may have changed since the drift check.
+          </p>
+        </details>
+      )}
+
+      {/* Requested vs Staged for scoped imports */}
+      {isScoped && (
+        <div className="rounded-lg border border-border bg-card/50 p-3 mb-4">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Requested vs Staged</p>
+          <div className="flex gap-4 text-xs">
+            <span>Leads: {(run?.source_counts as any)?.leads ?? 0} staged</span>
+            <span>Deals: {(run?.source_counts as any)?.deals ?? 0} staged</span>
+            <span>Tasks: {(run?.source_counts as any)?.tasks ?? 0} staged</span>
+          </div>
+        </div>
+      )}
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3 mb-4">
