@@ -164,6 +164,8 @@ export default function Admin() {
       user_disabled: 'Disabled user',
       user_removed: 'Removed user',
       team_membership_changed: 'Changed team membership',
+      pro_access_granted: 'Granted Pro access',
+      pro_access_revoked: 'Revoked Pro access',
     };
     return map[action] || action;
   };
