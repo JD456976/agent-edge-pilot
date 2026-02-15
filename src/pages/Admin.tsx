@@ -4,6 +4,7 @@ import { useData } from '@/contexts/DataContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ShieldCheck, Users, Target, ListChecks, Database, Plus, Trash2, AlertTriangle, Building2, UsersRound, ScrollText } from 'lucide-react';
 import { ImportHealthPanel } from '@/components/ImportHealthPanel';
+import { UserManagementPanel } from '@/components/admin/UserManagementPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,7 +34,7 @@ interface AuditEvent {
 }
 
 export default function Admin() {
-  const { user, profiles, fetchProfiles, updateUserRole, logAdminAction } = useAuth();
+  const { user, profiles, fetchProfiles, logAdminAction } = useAuth();
   const { leads, deals, tasks, seedDemoData, wipeData } = useData();
   const [showWipeConfirm, setShowWipeConfirm] = useState(false);
   const [wipeConfirmText, setWipeConfirmText] = useState('');
@@ -60,16 +61,18 @@ export default function Admin() {
   }, [user?.role]);
 
   const loadOrgData = async () => {
-    const [{ data: orgs }, { data: tms }, { data: members }] = await Promise.all([
+    const [{ data: orgs }, { data: tms }, { data: members }, { data: allProfiles }] = await Promise.all([
       supabase.from('organizations').select('*'),
       supabase.from('teams').select('*'),
       supabase.from('team_members').select('*'),
+      supabase.from('profiles').select('user_id, name, email'),
     ]);
 
     if (orgs) setOrganizations(orgs.map(o => ({ id: o.id, name: o.name, ownerUserId: o.owner_user_id || undefined, createdAt: o.created_at })));
     if (tms) setTeams(tms.map(t => ({ id: t.id, organizationId: t.organization_id, name: t.name, teamLeaderUserId: t.team_leader_user_id || undefined, createdAt: t.created_at })));
     if (members) {
-      const profileMap = new Map(profiles.map(p => [p.id, p.name]));
+      const profileMap = new Map<string, string>();
+      allProfiles?.forEach(p => profileMap.set(p.user_id, p.name || p.email));
       setTeamMembers(members.map(m => ({
         id: m.id, teamId: m.team_id, userId: m.user_id,
         userName: profileMap.get(m.user_id) || 'Unknown',
@@ -84,7 +87,7 @@ export default function Admin() {
       .from('admin_audit_events' as any)
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50);
     if (data) setAuditEvents(data as unknown as AuditEvent[]);
   };
 
@@ -127,9 +130,6 @@ export default function Admin() {
     await loadAuditLog();
   };
 
-  // Determine protected profiles
-  const protectedEmails = new Set(['jason.craig@chinattirealty.com']);
-
   if (user?.role !== 'admin') {
     return (
       <div className="max-w-3xl mx-auto text-center py-20">
@@ -148,6 +148,12 @@ export default function Admin() {
       create_team: 'Created team',
       add_team_member: 'Added team member',
       role_change: 'Changed user role',
+      role_changed: 'Changed user role',
+      user_invited: 'Invited user',
+      user_updated: 'Updated user',
+      user_disabled: 'Disabled user',
+      user_removed: 'Removed user',
+      team_membership_changed: 'Changed team membership',
     };
     return map[action] || action;
   };
@@ -164,6 +170,9 @@ export default function Admin() {
         <MetricCard icon={Target} label="Deals" value={deals.length} />
         <MetricCard icon={ListChecks} label="Tasks" value={tasks.length} />
       </div>
+
+      {/* User Management Panel (new CRUD system) */}
+      <UserManagementPanel />
 
       {/* Data Tools */}
       <section className="rounded-lg border border-border bg-card p-4 mb-6">
@@ -288,7 +297,7 @@ export default function Admin() {
                           <SelectValue placeholder="+ Add member" />
                         </SelectTrigger>
                         <SelectContent>
-                          {nonMembers.map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.email})</SelectItem>)}
+                          {nonMembers.map(p => <SelectItem key={p.id} value={p.id}>{p.name || p.email} ({p.email})</SelectItem>)}
                         </SelectContent>
                       </Select>
                     )}
@@ -298,41 +307,6 @@ export default function Admin() {
             })}
           </div>
         )}
-      </section>
-
-      {/* User Management */}
-      <section className="rounded-lg border border-border bg-card p-4 mb-6">
-        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Users className="h-4 w-4" /> User Management</h2>
-        <div className="space-y-1">
-          {profiles.map(u => {
-            const isUserProtected = protectedEmails.has(u.email) || (u as any).isProtected;
-            return (
-              <div key={u.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-accent/50 transition-colors">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">{u.name || u.email}</p>
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 capitalize">{u.role}</Badge>
-                    {isUserProtected && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Protected</Badge>}
-                  </div>
-                  <p className="text-xs text-muted-foreground">{u.email}</p>
-                </div>
-                {u.id !== user?.id && !isUserProtected && (
-                  <Select value={u.role} onValueChange={(v) => updateUserRole(u.id, v as UserRole)}>
-                    <SelectTrigger className="w-28 h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="agent">Agent</SelectItem>
-                      <SelectItem value="reviewer">Reviewer</SelectItem>
-                      <SelectItem value="beta">Beta</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            );
-          })}
-        </div>
       </section>
 
       {/* Import Health */}

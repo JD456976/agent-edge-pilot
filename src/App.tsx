@@ -41,6 +41,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user) return <Navigate to="/login" replace />;
+  if (!user.isActive) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center max-w-sm">
+          <p className="text-lg font-semibold mb-2">Account Disabled</p>
+          <p className="text-sm text-muted-foreground">Your account has been disabled. Please contact your administrator.</p>
+        </div>
+      </div>
+    );
+  }
 
   // Show onboarding modal if not completed (reviewers skip — handled via auto-seed)
   if (!onboardingDone && !isReviewer) {
