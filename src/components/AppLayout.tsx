@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,6 +6,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useWorkspace, type WorkspaceType } from '@/contexts/WorkspaceContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { CommandPalette } from '@/components/CommandPalette';
+import { QuickAddModal } from '@/components/QuickAddModal';
 
 type NavItem = { label: string; icon: React.ElementType } & (
   | { path: string; workspace?: undefined }
@@ -26,6 +28,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { activeWorkspace, openWorkspace, closeWorkspace } = useWorkspace();
   const location = useLocation();
   const navigate = useNavigate();
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
 
   const items = NAV_ITEMS;
 
@@ -137,6 +140,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
           })}
         </div>
       </nav>
+
+      {/* Global Command Palette (Cmd+K / Ctrl+K) */}
+      <CommandPalette
+        onOpenEntity={(entityId, entityType) => {
+          if (location.pathname !== '/') navigate('/');
+          closeWorkspace();
+        }}
+        onCreateTask={() => setShowQuickAdd(true)}
+        onLogTouch={() => setShowQuickAdd(true)}
+      />
+
+      {showQuickAdd && (
+        <QuickAddModal defaultType="task" onClose={() => setShowQuickAdd(false)} />
+      )}
     </div>
   );
 }

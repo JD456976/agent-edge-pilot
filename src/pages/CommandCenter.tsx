@@ -45,7 +45,7 @@ import { TimeAllocationEngine } from '@/components/TimeAllocationEngine';
 import { OpportunityRadarPanel } from '@/components/OpportunityRadarPanel';
 import { IncomeProtectionShield } from '@/components/IncomeProtectionShield';
 import { WeeklyCommandReview } from '@/components/WeeklyCommandReview';
-import { ActionWorkspaceDrawer } from '@/components/ActionWorkspaceDrawer';
+import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
 import { PreparedActionsCard } from '@/components/PreparedActionsCard';
 import { ExecutionQueuePanel } from '@/components/ExecutionQueuePanel';
 import { LearningTransparencyPanel } from '@/components/LearningTransparencyPanel';
@@ -955,7 +955,24 @@ export default function CommandCenter() {
           stabilityResult={stabilityResult}
           totalMoneyAtRisk={totalMoneyAtRisk}
           previousSnapshot={previousSnapshot}
-          onStartActions={() => { markBriefViewed(); }}
+          onStartActions={() => {
+            markBriefViewed();
+            // Launch first recommended action into workspace
+            if (topMoneyAtRisk) {
+              const deal = deals.find(d => d.id === topMoneyAtRisk.dealId);
+              if (deal) {
+                setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: topMoneyAtRisk });
+                return;
+              }
+            }
+            if (topOpportunity) {
+              const lead = leads.find(l => l.id === topOpportunity.leadId);
+              if (lead) {
+                setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: topOpportunity });
+                return;
+              }
+            }
+          }}
           onReviewDetail={() => { markBriefViewed(); navigate('/?workspace=work'); }}
         />
       )}
@@ -1377,8 +1394,8 @@ export default function CommandCenter() {
         onNavigateToTasks={() => navigate('/?workspace=work')}
       />
 
-      {/* Action Workspace Drawer */}
-      <ActionWorkspaceDrawer
+      {/* Action Composer Drawer */}
+      <ActionComposerDrawer
         open={!!executionEntity}
         onClose={() => setExecutionEntity(null)}
         entity={executionEntity?.entity || null}
