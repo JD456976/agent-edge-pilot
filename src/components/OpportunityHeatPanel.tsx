@@ -258,7 +258,12 @@ export function OpportunityHeatPanel({ leads, tasks, userId, onStartAction, lead
       )}
 
       {results.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-4 text-center">No hot leads right now</p>
+        <div className="flex flex-col items-center text-center py-6 px-4">
+          <div className="mb-3 rounded-2xl bg-muted p-3">
+            <TrendingUp className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <p className="text-sm text-muted-foreground max-w-xs">Connect your CRM or log touches to activate opportunity detection.</p>
+        </div>
       ) : (
         <div className="space-y-2">
           {results.map(result => {

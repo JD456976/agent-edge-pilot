@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar, Volume2, Trash2, AlertTriangle, Shield, FileText, HelpCircle, ExternalLink, Camera, Bell, BellOff } from 'lucide-react';
+import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar, Volume2, Trash2, AlertTriangle, Shield, FileText, HelpCircle, ExternalLink, Camera, Bell, BellOff, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -395,6 +395,27 @@ export default function Settings() {
             </div>
           </div>
         )}
+      </section>
+
+      {/* Command Center View */}
+      <section className="rounded-lg border border-border bg-card p-4 mb-4">
+        <h2 className="text-sm font-semibold mb-1 flex items-center gap-2"><Layers className="h-4 w-4" /> Command Center View</h2>
+        <p className="text-xs text-muted-foreground mb-3">
+          Minimal Mode progressively shows panels as your data grows. Override to see all panels immediately.
+        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Full View Override</p>
+            <p className="text-xs text-muted-foreground">Show all panels regardless of maturity level</p>
+          </div>
+          <Switch
+            checked={(() => { try { return localStorage.getItem('dp-full-view') === 'true'; } catch { return false; } })()}
+            onCheckedChange={(v) => {
+              localStorage.setItem('dp-full-view', v ? 'true' : 'false');
+              toast({ description: v ? 'Full View enabled — all panels visible.' : 'Adaptive view restored.', duration: 3000 });
+            }}
+          />
+        </div>
       </section>
 
       {/* Noise Controls */}
