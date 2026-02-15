@@ -19,6 +19,7 @@ import { QuickAddModal } from '@/components/QuickAddModal';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog';
 import { GuidedTour } from '@/components/GuidedTour';
+import { WhatsNewModal } from '@/components/WhatsNewModal';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { usePushNotifications, checkOverdueTasks } from '@/hooks/usePushNotifications';
@@ -286,6 +287,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
       {/* First-session guided tour */}
       <GuidedTour />
+
+      {/* What's New changelog */}
+      <WhatsNewModal />
 
       {/* Keyboard shortcut hint for new users */}
       <KeyboardShortcutHint />
