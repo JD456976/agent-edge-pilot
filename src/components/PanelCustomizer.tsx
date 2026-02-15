@@ -124,12 +124,7 @@ export const PanelCustomizer = memo(function PanelCustomizer({
     <Sheet open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <SheetContent side="bottom" className="h-[85vh] md:h-[70vh] md:max-w-lg md:mx-auto md:rounded-t-xl p-0 flex flex-col">
         <SheetHeader className="px-4 pt-4 pb-2 border-b border-border shrink-0">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="text-base font-semibold">Customize Panels</SheetTitle>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <SheetTitle className="text-base font-semibold">Customize Panels</SheetTitle>
           <p className="text-xs text-muted-foreground">
             {visibleCount} of {totalCount} panels visible · Drag to reorder, toggle to show/hide
           </p>
