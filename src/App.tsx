@@ -21,6 +21,7 @@ import Sync from "@/pages/Sync";
 import Insights from "@/pages/Insights";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
+import Install from "@/pages/Install";
 
 const queryClient = new QueryClient();
 
@@ -119,6 +120,7 @@ function AppRoutes() {
       <Route path="/tasks" element={<Navigate to="/?workspace=work" replace />} />
       <Route path="/settings" element={<Navigate to="/?workspace=settings" replace />} />
       <Route path="/admin" element={<Navigate to="/?workspace=settings" replace />} />
+      <Route path="/install" element={<Install />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
