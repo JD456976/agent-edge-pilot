@@ -32,6 +32,10 @@ import { IncomeVolatilityPanel } from '@/components/IncomeVolatilityPanel';
 import { LeadDecayPanel } from '@/components/LeadDecayPanel';
 import { PipelineFragilityPanel } from '@/components/PipelineFragilityPanel';
 import { OperationalLoadPanel } from '@/components/OperationalLoadPanel';
+import { DealFailurePanel, hasCriticalFailureRisk } from '@/components/DealFailurePanel';
+import { GhostingRiskPanel, hasHighGhostingRisk } from '@/components/GhostingRiskPanel';
+import { ReferralConversionPanel } from '@/components/ReferralConversionPanel';
+import { ListingPerformancePanel } from '@/components/ListingPerformancePanel';
 import { computeOpportunityBatch, type OpportunityHeatResult, type UserCommissionDefaults } from '@/lib/leadMoneyModel';
 import { computeForecastBatch } from '@/lib/forecastModel';
 import { computeStabilityScore, type StabilityInputs } from '@/lib/stabilityModel';
@@ -251,6 +255,18 @@ export default function CommandCenter() {
     else if (stabilityResult.score < 60) score += 10;
     return score >= 70;
   }, [tasks, stabilityResult.score]);
+
+  // Predictive signals for Autopilot
+  const predictiveSignals = useMemo(() => {
+    const signals: { type: 'failure' | 'ghosting' | 'fragility' | 'volatility' | 'decay'; label: string; severity: 'high' | 'medium' }[] = [];
+    if (hasCriticalFailureRisk(deals, tasks, moneyResults)) {
+      signals.push({ type: 'failure', label: 'A deal is at critical failure risk. Protect income now.', severity: 'high' });
+    }
+    if (hasHighGhostingRisk(leads, tasks, deals)) {
+      signals.push({ type: 'ghosting', label: 'A key client is at risk of going silent. Re-engage immediately.', severity: 'high' });
+    }
+    return signals;
+  }, [deals, tasks, moneyResults, leads]);
 
   const handleMoneySelect = useCallback((result: MoneyModelResult, deal: Deal) => {
     setMoneyDrawerResult(result);
@@ -543,6 +559,7 @@ export default function CommandCenter() {
         onStabilityAction={() => {}}
         onCreateTask={handleAutopilotCreateTask}
         burnoutCritical={burnoutCritical}
+        predictiveSignals={predictiveSignals}
       />
 
       {/* Money At Risk + Opportunities */}
@@ -648,6 +665,48 @@ export default function CommandCenter() {
             stabilityResult={stabilityResult}
             stabilityScore={stabilityResult.score}
             totalMoneyAtRisk={totalMoneyAtRisk}
+          />
+        </PanelErrorBoundary>
+      </div>
+
+      {/* Predictive Intelligence: Deal Failure + Ghosting Risk */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <PanelErrorBoundary>
+          <DealFailurePanel
+            deals={deals}
+            tasks={tasks}
+            moneyResults={moneyResults}
+            onCreateTask={(title, dealId) => handleAutopilotCreateTask(title, dealId)}
+          />
+        </PanelErrorBoundary>
+        <PanelErrorBoundary>
+          <GhostingRiskPanel
+            leads={leads}
+            tasks={tasks}
+            deals={deals}
+            onLogTouch={(entityType, entityId, entityTitle) => {
+              setTouchTarget({ entityType, entityId, entityTitle });
+              setShowLogTouch(true);
+            }}
+            onCreateTask={(title, leadId) => handleAutopilotCreateTask(title, undefined, leadId)}
+          />
+        </PanelErrorBoundary>
+      </div>
+
+      {/* Referral Conversion + Listing Performance */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <PanelErrorBoundary>
+          <ReferralConversionPanel
+            leads={leads}
+            tasks={tasks}
+            opportunityResults={opportunityResults}
+            userDefaults={userDefaults}
+          />
+        </PanelErrorBoundary>
+        <PanelErrorBoundary>
+          <ListingPerformancePanel
+            deals={deals}
+            tasks={tasks}
           />
         </PanelErrorBoundary>
       </div>
