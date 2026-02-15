@@ -159,9 +159,15 @@ export function useNetworkPlaybooks(
   const [loading, setLoading] = useState(true);
 
   // Detect current situations
+  // Stabilize situations with a JSON key to prevent re-render loops
   const situations = useMemo(
     () => detectSituations(leads, deals, tasks, moneyResults),
     [leads, deals, tasks, moneyResults],
+  );
+
+  const situationKeys = useMemo(
+    () => situations.map(s => s.situationKey).sort().join(','),
+    [situations],
   );
 
   // Fetch matching playbooks from DB
@@ -171,16 +177,21 @@ export function useNetworkPlaybooks(
       setLoading(false);
       return;
     }
+
+    let cancelled = false;
+    const keys = situationKeys.split(',').filter(Boolean);
+    if (keys.length === 0) { setLoading(false); return; }
+
     (async () => {
-      const keys = situations.map(s => s.situationKey);
       const { data } = await (supabase.from('network_playbooks' as any)
         .select('*')
         .in('situation_key', keys)
         .order('created_at', { ascending: false })
         .limit(6) as any);
 
+      if (cancelled) return;
+
       if (data && data.length > 0) {
-        // Deduplicate by situation_key (take latest)
         const seen = new Set<string>();
         const unique: NetworkPlaybook[] = [];
         for (const row of data) {
@@ -201,7 +212,9 @@ export function useNetworkPlaybooks(
       }
       setLoading(false);
     })();
-  }, [user?.id, showPlaybooks, situations]);
+
+    return () => { cancelled = true; };
+  }, [user?.id, showPlaybooks, situationKeys]);
 
   return { playbooks, situations, loading };
 }

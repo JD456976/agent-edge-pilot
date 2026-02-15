@@ -82,6 +82,7 @@ export async function callEdgeFunction<T = any>(
         headers: {
           'x-request-id': requestId,
         },
+        signal: controller.signal,
       });
 
       clearTimeout(timer);

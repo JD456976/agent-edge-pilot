@@ -173,7 +173,7 @@ export function QuickAddModal({ defaultType = 'lead', onClose, prefillTaskTitle,
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Name *</Label>
-              <Input value={leadName} onChange={e => setLeadName(e.target.value)} placeholder="Contact name" autoFocus />
+              <Input value={leadName} onChange={e => setLeadName(e.target.value.slice(0, 100))} placeholder="Contact name" autoFocus maxLength={100} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Source</Label>
@@ -197,7 +197,7 @@ export function QuickAddModal({ defaultType = 'lead', onClose, prefillTaskTitle,
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Title *</Label>
-              <Input value={dealTitle} onChange={e => setDealTitle(e.target.value)} placeholder="e.g. 123 Main St" autoFocus />
+              <Input value={dealTitle} onChange={e => setDealTitle(e.target.value.slice(0, 150))} placeholder="e.g. 123 Main St" autoFocus maxLength={150} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Price ($)</Label>
@@ -219,7 +219,7 @@ export function QuickAddModal({ defaultType = 'lead', onClose, prefillTaskTitle,
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Title *</Label>
-              <Input value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder="What needs to be done?" autoFocus />
+              <Input value={taskTitle} onChange={e => setTaskTitle(e.target.value.slice(0, 200))} placeholder="What needs to be done?" autoFocus maxLength={200} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
