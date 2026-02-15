@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { BookOpen, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, DollarSign, AlertTriangle, Target, Lightbulb } from 'lucide-react';
+import { BookOpen, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, DollarSign, AlertTriangle, Target, Lightbulb, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useNetworkBenchmarks } from '@/hooks/useNetworkBenchmarks';
 import type { Deal, Lead, Task } from '@/types';
 import type { MoneyModelResult } from '@/lib/moneyModel';
 
@@ -19,6 +20,7 @@ function formatCurrency(n: number) {
 
 export function WeeklyCommandReview({ deals, leads, tasks, moneyResults, stabilityScore, totalMoneyAtRisk }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const { benchmark } = useNetworkBenchmarks();
 
   const review = useMemo(() => {
     const now = new Date();
@@ -127,6 +129,30 @@ export function WeeklyCommandReview({ deals, leads, tasks, moneyResults, stabili
               </div>
             ))}
           </div>
+
+          {/* Cohort Insights */}
+          {benchmark && benchmark.metrics && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <Globe className="h-3 w-3" /> Cohort Insights
+              </p>
+              {benchmark.metrics.median_time_to_first_touch_hot && (
+                <p className="text-xs text-muted-foreground">
+                  Agents in your cohort who touch hot leads within <span className="text-foreground font-medium">{benchmark.metrics.median_time_to_first_touch_hot.replace(/_/g, ' ')}</span> convert more often.
+                </p>
+              )}
+              {benchmark.metrics.deal_close_rate !== null && benchmark.metrics.deal_close_rate !== undefined && (
+                <p className="text-xs text-muted-foreground">
+                  Cohort deal close rate is around <span className="text-foreground font-medium">{Math.round(benchmark.metrics.deal_close_rate * 100)}%</span>. Consistent follow-ups improve this.
+                </p>
+              )}
+              {benchmark.metrics.autopilot_completion_rate !== null && benchmark.metrics.autopilot_completion_rate !== undefined && (
+                <p className="text-xs text-muted-foreground">
+                  Agents completing autopilot actions see better pipeline stability (<span className="text-foreground font-medium">{Math.round(benchmark.metrics.autopilot_completion_rate * 100)}%</span> completion rate).
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

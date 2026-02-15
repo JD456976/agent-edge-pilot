@@ -792,6 +792,123 @@ export type Database = {
           },
         ]
       }
+      network_benchmarks: {
+        Row: {
+          cohort_key: string
+          cohort_size: number
+          created_at: string
+          id: string
+          metrics: Json
+          period: string
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          cohort_key: string
+          cohort_size: number
+          created_at?: string
+          id?: string
+          metrics?: Json
+          period: string
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          cohort_key?: string
+          cohort_size?: number
+          created_at?: string
+          id?: string
+          metrics?: Json
+          period?: string
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      network_participation: {
+        Row: {
+          opted_in: boolean
+          opted_in_at: string | null
+          updated_at: string
+          use_network_priors: boolean
+          user_id: string
+        }
+        Insert: {
+          opted_in?: boolean
+          opted_in_at?: string | null
+          updated_at?: string
+          use_network_priors?: boolean
+          user_id: string
+        }
+        Update: {
+          opted_in?: boolean
+          opted_in_at?: string | null
+          updated_at?: string
+          use_network_priors?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      network_telemetry_events: {
+        Row: {
+          app_version: string
+          channel: string | null
+          created_at: string
+          entity_type: string
+          event_type: string
+          id: string
+          money_bucket: string | null
+          opportunity_bucket: string | null
+          org_id: string | null
+          outcome_bucket: string | null
+          region_bucket: string | null
+          response_time_bucket: string | null
+          risk_bucket: string | null
+          stage: string | null
+          time_to_action_bucket: string | null
+          user_id: string
+          workload_bucket: string | null
+        }
+        Insert: {
+          app_version?: string
+          channel?: string | null
+          created_at?: string
+          entity_type: string
+          event_type: string
+          id?: string
+          money_bucket?: string | null
+          opportunity_bucket?: string | null
+          org_id?: string | null
+          outcome_bucket?: string | null
+          region_bucket?: string | null
+          response_time_bucket?: string | null
+          risk_bucket?: string | null
+          stage?: string | null
+          time_to_action_bucket?: string | null
+          user_id: string
+          workload_bucket?: string | null
+        }
+        Update: {
+          app_version?: string
+          channel?: string | null
+          created_at?: string
+          entity_type?: string
+          event_type?: string
+          id?: string
+          money_bucket?: string | null
+          opportunity_bucket?: string | null
+          org_id?: string | null
+          outcome_bucket?: string | null
+          region_bucket?: string | null
+          response_time_bucket?: string | null
+          risk_bucket?: string | null
+          stage?: string | null
+          time_to_action_bucket?: string | null
+          user_id?: string
+          workload_bucket?: string | null
+        }
+        Relationships: []
+      }
       organizations: {
         Row: {
           created_at: string

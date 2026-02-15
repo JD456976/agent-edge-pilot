@@ -13,6 +13,7 @@ import { FubSyncPreviewModal } from '@/components/FubSyncPreviewModal';
 import { FubImportReview } from '@/components/FubImportReview';
 import { ImportMatchingRules, ImportDryRunPanel } from '@/components/ImportSettings';
 import { ScoringCalibrationPanel } from '@/components/ScoringCalibrationPanel';
+import { NetworkSettingsSection } from '@/components/NetworkSettingsSection';
 import { useSessionMode, type SessionMode } from '@/hooks/useSessionMode';
 import { toast } from '@/hooks/use-toast';
 import { callEdgeFunction, type EdgeFunctionError } from '@/lib/edgeClient';
@@ -291,6 +292,9 @@ export default function Settings() {
 
       {/* Scoring Calibration */}
       <ScoringCalibrationPanel />
+
+      {/* Network Benchmarks */}
+      <NetworkSettingsSection />
 
       {/* Daily Operating Mode */}
       <section className="rounded-lg border border-border bg-card p-4 mb-4">
