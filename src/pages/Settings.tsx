@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sun, Moon, User, Link2, LogOut, Info, Loader2, CheckCircle2, XCircle, AlertTriangle, Eye, Upload } from 'lucide-react';
+import { Sun, Moon, User, Link2, LogOut, Info, Loader2, CheckCircle2, XCircle, AlertTriangle, Eye, Upload, Wifi } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,6 +32,8 @@ export default function Settings() {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [validating, setValidating] = useState(false);
+  const [healthChecking, setHealthChecking] = useState(false);
+  const [healthResult, setHealthResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -218,7 +220,29 @@ export default function Settings() {
             <Button size="sm" variant="outline" onClick={handleSyncPreview} disabled={integration.status !== 'connected'}>
               <Eye className="h-4 w-4 mr-1" /> Preview
             </Button>
+            <Button size="sm" variant="outline" onClick={async () => {
+              setHealthChecking(true);
+              setHealthResult(null);
+              try {
+                const data = await callEdgeFunction<{ ok: boolean; requestId: string }>('health-check');
+                setHealthResult({ ok: true, message: `Connected (ID: ${data.requestId?.slice(0, 8) || 'ok'})` });
+              } catch (err: any) {
+                setHealthResult({ ok: false, message: err?.message || 'Connection failed' });
+              } finally {
+                setHealthChecking(false);
+              }
+            }} disabled={healthChecking}>
+              {healthChecking ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Wifi className="h-4 w-4 mr-1" />}
+              Test Backend Connection
+            </Button>
           </div>
+
+          {healthResult && (
+            <div className={`text-xs p-2 rounded-md ${healthResult.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-destructive/10 text-destructive'}`}>
+              {healthResult.ok ? <CheckCircle2 className="h-3 w-3 inline mr-1" /> : <XCircle className="h-3 w-3 inline mr-1" />}
+              {healthResult.message}
+            </div>
+          )}
 
           {/* Dry Run Estimate Panel */}
           {integration.status === 'connected' && (
