@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { TrendingUp, Flame, Settings, ChevronRight, X, Check, Plus, Phone } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { PanelHelpTooltip } from '@/components/PanelHelpTooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -83,7 +84,14 @@ function OpportunityDrawer({ result, lead, onClose, onStartAction }: {
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-lg border border-border p-3">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Heat Score</p>
-                <p className="text-lg font-bold text-opportunity">{result.opportunityScore}</p>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <p className="text-lg font-bold text-opportunity cursor-help">{result.opportunityScore}</p>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[240px] text-xs leading-relaxed">
+                    0–100 scale. Higher means stronger buying/selling signals. Based on engagement, lead temperature, and recency.
+                  </TooltipContent>
+                </Tooltip>
               </div>
               <div className="rounded-lg border border-border p-3">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Est. Commission</p>

@@ -191,12 +191,6 @@ export function FubDriftCard({ hasIntegration, onScopedStageComplete }: FubDrift
               )}
             </div>
 
-            {/* Dev-only debug */}
-            {import.meta.env.DEV && summary && (
-              <p className="text-[9px] text-muted-foreground/50 font-mono">
-                Schema: {Object.keys(summary).join(', ')}
-              </p>
-            )}
           </div>
         )}
       </div>

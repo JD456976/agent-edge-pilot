@@ -218,14 +218,14 @@ export function DailyFlightPlan({ deals, leads, tasks, moneyResults, opportunity
               <div className="flex items-center gap-1 shrink-0">
                 {step.entityType && step.entityType !== 'task' && step.entityId && onOpenExecution && (
                   <Button size="sm" variant="ghost" className="text-xs px-2" onClick={() => onOpenExecution(step.entityId!, step.entityType as 'deal' | 'lead')}>
-                    <FileText className="h-3 w-3 mr-1" /> Open Script
+                    <FileText className="h-3 w-3 mr-1" /> View Talking Points
                   </Button>
                 )}
                 <Button size="sm" variant="outline" className="text-xs" onClick={() => onStartAction?.(step)}>
                   {step.category === 'protect' ? (
-                    <><Phone className="h-3 w-3 mr-1" /> Call Now</>
+                    <><Phone className="h-3 w-3 mr-1" /> Start Action</>
                   ) : step.category === 'create' ? (
-                    <><MessageSquare className="h-3 w-3 mr-1" /> Engage Now</>
+                    <><MessageSquare className="h-3 w-3 mr-1" /> Start Action</>
                   ) : (
                     <><Shield className="h-3 w-3 mr-1" /> Create Follow-Up</>
                   )}
