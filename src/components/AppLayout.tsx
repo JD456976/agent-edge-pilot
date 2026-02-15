@@ -58,11 +58,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background">
       {/* Desktop sidebar */}
       <aside className="hidden md:fixed md:inset-y-0 md:left-0 md:flex md:w-56 md:flex-col border-r border-border bg-sidebar z-30">
-        <div className="flex items-center gap-2 px-4 h-14 border-b border-border">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+        <div className="flex items-center gap-2.5 px-4 h-14 border-b border-border">
+          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shadow-sm shadow-primary/20">
             <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="font-bold text-sm">Deal Pilot</span>
+          <span className="font-bold text-sm tracking-tight">Deal Pilot</span>
         </div>
         <nav className="flex-1 py-4 px-2 space-y-1">
           {items.map(item => {
