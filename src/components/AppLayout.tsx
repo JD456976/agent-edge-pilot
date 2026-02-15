@@ -26,6 +26,7 @@ import { usePushNotifications, checkOverdueTasks } from '@/hooks/usePushNotifica
 import { KeyboardShortcutHint } from '@/components/KeyboardShortcutHint';
 import { TrialBanner, RestrictedModeBanner } from '@/components/TrialBanner';
 import { useEntitlement } from '@/contexts/EntitlementContext';
+import { NotificationPermissionPrompt } from '@/components/NotificationPermissionPrompt';
 
 const PaywallLazy = lazy(() => import('@/pages/Paywall'));
 
@@ -109,15 +110,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
   useSwipeNavigation(isMobile);
   const { permission, requestPermission, sendNotification } = usePushNotifications();
   const lastCheckedRef = useRef<Set<string>>(new Set());
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
 
-  // Request notification permission on first load
+  // Show pre-permission rationale instead of requesting directly
   useEffect(() => {
     if (permission === 'default') {
-      // Delay to avoid intrusive prompt
-      const timer = setTimeout(() => requestPermission(), 10000);
+      const dismissed = localStorage.getItem('dp-notif-prompt-dismissed');
+      if (dismissed) return;
+      const timer = setTimeout(() => setShowNotifPrompt(true), 15000);
       return () => clearTimeout(timer);
     }
-  }, [permission, requestPermission]);
+  }, [permission]);
 
   // Check for overdue tasks every 5 minutes
   useEffect(() => {
@@ -229,9 +232,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   <Settings className="h-4 w-4 mr-2" />
                   Settings
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { /* skin selector could open here */ }}>
+                <DropdownMenuItem onClick={() => { closeWorkspace(); openWorkspace('settings'); }}>
                   <Paintbrush className="h-4 w-4 mr-2" />
-                  Change Skin
+                  Appearance
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
@@ -311,6 +314,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <div className="fixed inset-0 z-50 bg-background">
           <PaywallLazy onDismiss={() => setShowPaywall(false)} showDismiss />
         </div>
+      )}
+
+      {/* Notification permission rationale prompt */}
+      {showNotifPrompt && (
+        <NotificationPermissionPrompt
+          onAllow={async () => {
+            setShowNotifPrompt(false);
+            await requestPermission();
+          }}
+          onDismiss={() => {
+            setShowNotifPrompt(false);
+            localStorage.setItem('dp-notif-prompt-dismissed', Date.now().toString());
+          }}
+        />
       )}
     </div>
   );

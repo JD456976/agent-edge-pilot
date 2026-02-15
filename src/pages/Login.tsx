@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, ArrowRight, Mail, Shield, Zap, TrendingUp } from 'lucide-react';
+import { Target, ArrowRight, Mail, Shield, Zap, TrendingUp, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-type Tab = 'signin' | 'signup';
+type Tab = 'signin' | 'signup' | 'forgot';
 
 function AppleIcon({ className }: { className?: string }) {
   return (
@@ -55,6 +56,20 @@ export default function Login() {
       setError(result.error);
     } else {
       setSuccess('Check your email for a verification link, then sign in.');
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(''); setSuccess(''); setSubmitting(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    setSubmitting(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      setSuccess("If an account exists with that email, you'll receive a password reset link.");
     }
   };
 
@@ -167,29 +182,68 @@ export default function Login() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 mb-5 bg-muted rounded-lg p-1">
-            <button
-              onClick={() => { setTab('signin'); setError(''); setSuccess(''); }}
-              className={`flex-1 text-sm font-medium py-2 rounded-md transition-all duration-200 ${tab === 'signin' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => { setTab('signup'); setError(''); setSuccess(''); }}
-              className={`flex-1 text-sm font-medium py-2 rounded-md transition-all duration-200 ${tab === 'signup' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-            >
-              Sign Up
-            </button>
-          </div>
+          {tab !== 'forgot' && (
+            <div className="flex gap-1 mb-5 bg-muted rounded-lg p-1">
+              <button
+                onClick={() => { setTab('signin'); setError(''); setSuccess(''); }}
+                className={`flex-1 text-sm font-medium py-2 rounded-md transition-all duration-200 ${tab === 'signin' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => { setTab('signup'); setError(''); setSuccess(''); }}
+                className={`flex-1 text-sm font-medium py-2 rounded-md transition-all duration-200 ${tab === 'signup' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
 
-          {tab === 'signin' ? (
+          {tab === 'forgot' ? (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <button
+                type="button"
+                onClick={() => { setTab('signin'); setError(''); setSuccess(''); }}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> Back to sign in
+              </button>
+              <div>
+                <h3 className="text-base font-semibold mb-1">Reset your password</h3>
+                <p className="text-sm text-muted-foreground">Enter your email and we'll send you a reset link.</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email" className="text-xs font-medium">Email</Label>
+                <Input id="forgot-email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required className="h-10" />
+              </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              {success && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-muted text-sm">
+                  <Mail className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <span className="text-muted-foreground">{success}</span>
+                </div>
+              )}
+              <Button type="submit" className="w-full h-10 font-semibold" disabled={submitting}>
+                {submitting ? 'Sending...' : 'Send Reset Link'}
+              </Button>
+            </form>
+          ) : tab === 'signin' ? (
             <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-xs font-medium">Email</Label>
                 <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required className="h-10" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-xs font-medium">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-xs font-medium">Password</Label>
+                  <button
+                    type="button"
+                    onClick={() => { setTab('forgot'); setError(''); setSuccess(''); }}
+                    className="text-xs text-primary hover:text-primary/80 transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
                 <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required className="h-10" />
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
