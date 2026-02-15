@@ -28,6 +28,10 @@ import { MorningFocusCard, MiddayStabilizationCard, EodSafetyCard } from '@/comp
 import { LogTouchModal } from '@/components/LogTouchModal';
 import { TouchPickerModal } from '@/components/TouchPickerModal';
 import { EndOfDayReviewDrawer } from '@/components/EndOfDayReviewDrawer';
+import { IncomeVolatilityPanel } from '@/components/IncomeVolatilityPanel';
+import { LeadDecayPanel } from '@/components/LeadDecayPanel';
+import { PipelineFragilityPanel } from '@/components/PipelineFragilityPanel';
+import { OperationalLoadPanel } from '@/components/OperationalLoadPanel';
 import { computeOpportunityBatch, type OpportunityHeatResult, type UserCommissionDefaults } from '@/lib/leadMoneyModel';
 import { computeForecastBatch } from '@/lib/forecastModel';
 import { computeStabilityScore, type StabilityInputs } from '@/lib/stabilityModel';
@@ -232,6 +236,21 @@ export default function CommandCenter() {
   }, [overdueTasks, dueSoonTasks, untouchedHotLeads, forecast, totalMoneyAtRisk, momentum]);
 
   const stabilityResult = useMemo(() => computeStabilityScore(stabilityInputs), [stabilityInputs]);
+
+  // Operational load / burnout detection
+  const burnoutCritical = useMemo(() => {
+    const overdue = tasks.filter(t => !t.completedAt && new Date(t.dueAt) < new Date());
+    const tomorrow = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    const dueSoon = tasks.filter(t => !t.completedAt && new Date(t.dueAt) >= new Date() && new Date(t.dueAt) <= tomorrow);
+    let score = 0;
+    if (overdue.length >= 8) score += 30;
+    else if (overdue.length >= 4) score += 15;
+    if (dueSoon.length >= 10) score += 25;
+    else if (dueSoon.length >= 5) score += 10;
+    if (stabilityResult.score < 40) score += 20;
+    else if (stabilityResult.score < 60) score += 10;
+    return score >= 70;
+  }, [tasks, stabilityResult.score]);
 
   const handleMoneySelect = useCallback((result: MoneyModelResult, deal: Deal) => {
     setMoneyDrawerResult(result);
@@ -523,6 +542,7 @@ export default function CommandCenter() {
         totalMoneyAtRisk={totalMoneyAtRisk}
         onStabilityAction={() => {}}
         onCreateTask={handleAutopilotCreateTask}
+        burnoutCritical={burnoutCritical}
       />
 
       {/* Money At Risk + Opportunities */}
@@ -572,6 +592,62 @@ export default function CommandCenter() {
           <StabilityScorePanelV2
             inputs={stabilityInputs}
             onCreateTask={(title) => handleAutopilotCreateTask(title)}
+          />
+        </PanelErrorBoundary>
+      </div>
+
+      {/* Income Volatility + Pipeline Fragility */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <PanelErrorBoundary>
+          <IncomeVolatilityPanel
+            deals={deals}
+            participants={dealParticipants}
+            userId={user?.id || ''}
+            forecast={forecast}
+            typicalMonthlyIncome={userDefaults?.typicalPriceMid ? Math.round((userDefaults.typicalPriceMid * (userDefaults.typicalCommissionRate ?? 3) / 100) * (userDefaults.typicalSplitPct ?? 100) / 100) : 8000}
+            onOpenOpportunities={() => {
+              if (topOpportunity && leads.find(l => l.id === topOpportunity.leadId)) {
+                handleOpportunityAction(leads.find(l => l.id === topOpportunity.leadId)!, topOpportunity);
+              }
+            }}
+          />
+        </PanelErrorBoundary>
+        <PanelErrorBoundary>
+          <PipelineFragilityPanel
+            deals={deals}
+            moneyResults={moneyResults}
+            forecast={forecast}
+            onOpenOpportunities={() => {
+              if (topOpportunity && leads.find(l => l.id === topOpportunity.leadId)) {
+                handleOpportunityAction(leads.find(l => l.id === topOpportunity.leadId)!, topOpportunity);
+              }
+            }}
+          />
+        </PanelErrorBoundary>
+      </div>
+
+      {/* Lead Decay + Operational Load */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <PanelErrorBoundary>
+          <LeadDecayPanel
+            leads={leads}
+            tasks={tasks}
+            opportunityResults={opportunityResults}
+            onLogTouch={(entityType, entityId, entityTitle) => {
+              setTouchTarget({ entityType, entityId, entityTitle });
+              setShowLogTouch(true);
+            }}
+            onCreateTask={(title, leadId) => handleAutopilotCreateTask(title, undefined, leadId)}
+          />
+        </PanelErrorBoundary>
+        <PanelErrorBoundary>
+          <OperationalLoadPanel
+            tasks={tasks}
+            deals={deals}
+            leads={leads}
+            stabilityResult={stabilityResult}
+            stabilityScore={stabilityResult.score}
+            totalMoneyAtRisk={totalMoneyAtRisk}
           />
         </PanelErrorBoundary>
       </div>

@@ -42,6 +42,7 @@ interface Props {
   totalMoneyAtRisk?: number;
   onStabilityAction?: () => void;
   onCreateTask?: (title: string, dealId?: string, leadId?: string) => void;
+  burnoutCritical?: boolean;
 }
 
 function formatCurrency(n: number) {
@@ -150,14 +151,18 @@ export function AutopilotPanel({
   overdueTasksCount = 0, dueSoonCount = 0,
   totalMoneyAtRisk = 0,
   onStabilityAction, onCreateTask,
+  burnoutCritical = false,
 }: Props) {
   const [showSnooze, setShowSnooze] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
   const timeOfDay = useMemo(getTimeOfDay, []);
   const operatingMode = useMemo(
-    () => determineOperatingMode(stabilityScore, totalMoneyAtRisk),
-    [stabilityScore, totalMoneyAtRisk],
+    () => {
+      if (burnoutCritical) return 'crisis' as OperatingMode;
+      return determineOperatingMode(stabilityScore, totalMoneyAtRisk);
+    },
+    [stabilityScore, totalMoneyAtRisk, burnoutCritical],
   );
 
   const moneyDeal = useMemo(() => {
