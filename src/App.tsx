@@ -12,6 +12,7 @@ import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { EntityNavigationProvider } from "@/contexts/EntityNavigationContext";
 import { AppLayout } from "@/components/AppLayout";
 import { WorkspaceOverlayShell } from "@/components/WorkspaceOverlayShell";
+import { EntitlementProvider } from "@/contexts/EntitlementContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import Login from "@/pages/Login";
 import CommandCenter from "@/pages/CommandCenter";
@@ -133,20 +134,22 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <AuthProvider>
-        <DataProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <WorkspaceProvider>
-                <EntityNavigationProvider>
-                  <AppRoutes />
-                  <ReviewPrompt />
-                </EntityNavigationProvider>
-              </WorkspaceProvider>
-            </BrowserRouter>
-          </TooltipProvider>
-        </DataProvider>
+        <EntitlementProvider>
+          <DataProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <WorkspaceProvider>
+                  <EntityNavigationProvider>
+                    <AppRoutes />
+                    <ReviewPrompt />
+                  </EntityNavigationProvider>
+                </WorkspaceProvider>
+              </BrowserRouter>
+            </TooltipProvider>
+          </DataProvider>
+        </EntitlementProvider>
       </AuthProvider>
     </ThemeProvider>
   </QueryClientProvider>
