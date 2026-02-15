@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Plane, Shield, Flame, Wrench, Play, Clock, DollarSign } from 'lucide-react';
+import { Plane, Shield, Flame, Wrench, Play, Clock, DollarSign, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Deal, Lead, Task } from '@/types';
@@ -7,6 +7,7 @@ import type { MoneyModelResult } from '@/lib/moneyModel';
 import type { OpportunityHeatResult } from '@/lib/leadMoneyModel';
 import type { StabilityResult } from '@/lib/stabilityModel';
 import type { SessionMode } from '@/hooks/useSessionMode';
+import { computeExecutionConfidence, type ConfidenceLevel } from '@/lib/executionEngine';
 
 interface FlightStep {
   id: string;
@@ -17,6 +18,7 @@ interface FlightStep {
   estimatedImpact?: number;
   entityId?: string;
   entityType?: 'deal' | 'lead' | 'task';
+  confidence?: ConfidenceLevel;
 }
 
 interface Props {
@@ -29,6 +31,7 @@ interface Props {
   totalMoneyAtRisk: number;
   sessionMode: SessionMode;
   onStartAction?: (step: FlightStep) => void;
+  onOpenExecution?: (entityId: string, entityType: 'deal' | 'lead') => void;
 }
 
 function formatCurrency(n: number) {
@@ -47,7 +50,7 @@ const MODE_FOCUS: Record<SessionMode, { primary: FlightStep['category']; descrip
   evening: { primary: 'maintain', description: 'Focus on planning and cleanup' },
 };
 
-export function DailyFlightPlan({ deals, leads, tasks, moneyResults, opportunityResults, stabilityResult, totalMoneyAtRisk, sessionMode, onStartAction }: Props) {
+export function DailyFlightPlan({ deals, leads, tasks, moneyResults, opportunityResults, stabilityResult, totalMoneyAtRisk, sessionMode, onStartAction, onOpenExecution }: Props) {
   const steps = useMemo((): FlightStep[] => {
     const result: FlightStep[] = [];
     const now = new Date();
@@ -62,6 +65,7 @@ export function DailyFlightPlan({ deals, leads, tasks, moneyResults, opportunity
     for (const r of riskyResults) {
       const deal = deals.find(d => d.id === r.dealId);
       if (!deal) continue;
+      const conf = computeExecutionConfidence('deal', deal, r, null, tasks);
       result.push({
         id: `protect-${r.dealId}`,
         category: 'protect',
@@ -71,6 +75,7 @@ export function DailyFlightPlan({ deals, leads, tasks, moneyResults, opportunity
         estimatedImpact: r.personalCommissionAtRisk,
         entityId: deal.id,
         entityType: 'deal',
+        confidence: conf.level,
       });
     }
 
@@ -83,6 +88,7 @@ export function DailyFlightPlan({ deals, leads, tasks, moneyResults, opportunity
     for (const opp of topOpps) {
       const lead = leads.find(l => l.id === opp.leadId);
       if (!lead) continue;
+      const conf = computeExecutionConfidence('lead', lead, null, opp, tasks);
       result.push({
         id: `create-${opp.leadId}`,
         category: 'create',
@@ -92,6 +98,7 @@ export function DailyFlightPlan({ deals, leads, tasks, moneyResults, opportunity
         estimatedImpact: opp.opportunityValue,
         entityId: lead.id,
         entityType: 'lead',
+        confidence: conf.level,
       });
     }
 
@@ -195,6 +202,11 @@ export function DailyFlightPlan({ deals, leads, tasks, moneyResults, opportunity
                 <p className="text-sm font-medium leading-snug truncate">{step.title}</p>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-xs text-muted-foreground">{step.reason}</span>
+                  {step.confidence && (
+                    <span className={cn('text-[10px] font-medium', step.confidence === 'HIGH' ? 'text-opportunity' : step.confidence === 'MEDIUM' ? 'text-warning' : 'text-muted-foreground')}>
+                      {step.confidence}
+                    </span>
+                  )}
                   {step.estimatedImpact && (
                     <span className={cn('text-xs font-medium', step.category === 'protect' ? 'text-urgent' : 'text-opportunity')}>
                       {formatCurrency(step.estimatedImpact)}
@@ -203,9 +215,16 @@ export function DailyFlightPlan({ deals, leads, tasks, moneyResults, opportunity
                 </div>
                 <span className="text-[10px] text-muted-foreground">~{step.estimatedMinutes}min</span>
               </div>
-              <Button size="sm" variant="outline" className="text-xs shrink-0" onClick={() => onStartAction?.(step)}>
-                <Play className="h-3 w-3 mr-1" /> Start
-              </Button>
+              <div className="flex items-center gap-1 shrink-0">
+                {step.entityType && step.entityType !== 'task' && step.entityId && onOpenExecution && (
+                  <Button size="sm" variant="ghost" className="text-xs px-2" onClick={() => onOpenExecution(step.entityId!, step.entityType as 'deal' | 'lead')}>
+                    <FileText className="h-3 w-3" />
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => onStartAction?.(step)}>
+                  <Play className="h-3 w-3 mr-1" /> Start
+                </Button>
+              </div>
             </div>
           );
         })}
