@@ -44,12 +44,15 @@ import { DailyFlightPlan } from '@/components/DailyFlightPlan';
 import { TimeAllocationEngine } from '@/components/TimeAllocationEngine';
 import { OpportunityRadarPanel } from '@/components/OpportunityRadarPanel';
 import { IncomeProtectionShield } from '@/components/IncomeProtectionShield';
-import { AdaptiveStrategyMode } from '@/components/AdaptiveStrategyMode';
 import { WeeklyCommandReview } from '@/components/WeeklyCommandReview';
 import { ActionWorkspaceDrawer } from '@/components/ActionWorkspaceDrawer';
 import { PreparedActionsCard } from '@/components/PreparedActionsCard';
 import { ExecutionQueuePanel } from '@/components/ExecutionQueuePanel';
 import { LearningTransparencyPanel } from '@/components/LearningTransparencyPanel';
+import { StrategicOverviewPanel } from '@/components/StrategicOverviewPanel';
+import { WeeklyPlanningAssistant } from '@/components/WeeklyPlanningAssistant';
+import { useStrategicSettings } from '@/hooks/useStrategicSettings';
+import { computeStrategicOverview } from '@/lib/strategicEngine';
 import { NetworkBenchmarksPanel } from '@/components/NetworkBenchmarksPanel';
 import { CohortPlaybooksPanel } from '@/components/CohortPlaybooksPanel';
 import { MarketConditionsPanel } from '@/components/MarketConditionsPanel';
@@ -123,6 +126,10 @@ export default function CommandCenter() {
   const [stressReductionDismissed, setStressReductionDismissed] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [autonomyLevel] = useState(() => getAutonomyLevel());
+  const [showWeeklyPlanner, setShowWeeklyPlanner] = useState(false);
+
+  // Strategic settings
+  const { settings: strategicSettings } = useStrategicSettings(user?.id);
 
   // Panel layout
   const { panelOrder, updateOrder, applyPreset, resetToDefault } = usePanelLayout(user?.id);
@@ -328,6 +335,13 @@ export default function CommandCenter() {
   }, [overdueTasks, dueSoonTasks, untouchedHotLeads, forecast, totalMoneyAtRisk, momentum]);
 
   const stabilityResult = useMemo(() => computeStabilityScore(stabilityInputs), [stabilityInputs]);
+
+  // Strategic Overview
+  const strategicOverview = useMemo(() => {
+    return computeStrategicOverview(
+      deals, leads, strategicSettings, forecast, moneyResults, stabilityResult, totalMoneyAtRisk
+    );
+  }, [deals, leads, strategicSettings, forecast, moneyResults, stabilityResult, totalMoneyAtRisk]);
 
   // Operational load / burnout detection
   const burnoutCritical = useMemo(() => {
@@ -994,14 +1008,11 @@ export default function CommandCenter() {
         />
       </PanelErrorBoundary>
 
-      {/* Adaptive Strategy Mode */}
+      {/* Strategic Overview */}
       <PanelErrorBoundary>
-        <AdaptiveStrategyMode
-          deals={deals}
-          moneyResults={moneyResults}
-          opportunityResults={opportunityResults}
-          stabilityScore={stabilityResult.score}
-          totalMoneyAtRisk={totalMoneyAtRisk}
+        <StrategicOverviewPanel
+          overview={strategicOverview}
+          onOpenPlanner={() => setShowWeeklyPlanner(true)}
         />
       </PanelErrorBoundary>
 
@@ -1285,6 +1296,13 @@ export default function CommandCenter() {
         tasks={tasks}
         onCreateTask={handleExecutionFollowUp}
         onLogTouch={handleExecutionLogTouch}
+      />
+
+      {/* Weekly Planning Assistant */}
+      <WeeklyPlanningAssistant
+        open={showWeeklyPlanner}
+        onClose={() => setShowWeeklyPlanner(false)}
+        overview={strategicOverview}
       />
     </div>
   );

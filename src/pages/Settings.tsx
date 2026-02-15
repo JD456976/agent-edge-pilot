@@ -9,8 +9,10 @@ import { useState } from 'react';
 import { ScoringCalibrationPanel } from '@/components/ScoringCalibrationPanel';
 import { NetworkSettingsSection } from '@/components/NetworkSettingsSection';
 import { MarketSettingsSection } from '@/components/MarketSettingsSection';
+import { IncomeTargetSettings } from '@/components/IncomeTargetSettings';
 import { useMarketConditions } from '@/hooks/useMarketConditions';
 import { useSessionMode, type SessionMode } from '@/hooks/useSessionMode';
+import { useStrategicSettings } from '@/hooks/useStrategicSettings';
 import { getAutonomyLevel, setAutonomyLevel, getFeedbackStats, type AutonomyLevel } from '@/lib/preparedActions';
 import Admin from '@/pages/Admin';
 import { cn } from '@/lib/utils';
@@ -23,6 +25,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const { currentMode, autoMode, override, setModeOverride } = useSessionMode();
   const { conditions: marketConditions, updateConditions: updateMarketConditions, resetConditions: resetMarketConditions } = useMarketConditions();
+  const { settings: strategicSettings, updateSettings: updateStrategicSettings, resetSettings: resetStrategicSettings } = useStrategicSettings(user?.id);
   const [tab, setTab] = useState<typeof TABS[number]>('Preferences');
   const [autonomy, setAutonomy] = useState<AutonomyLevel>(() => getAutonomyLevel());
   const feedbackStats = getFeedbackStats();
@@ -111,6 +114,13 @@ export default function Settings() {
           <div><Label className="text-xs text-muted-foreground">Role</Label><p className="text-sm font-medium capitalize">{user?.role}</p></div>
         </div>
       </section>
+
+      {/* Strategic Targets */}
+      <IncomeTargetSettings
+        settings={strategicSettings}
+        onUpdate={updateStrategicSettings}
+        onReset={resetStrategicSettings}
+      />
 
       {/* Scoring Calibration */}
       <ScoringCalibrationPanel />
