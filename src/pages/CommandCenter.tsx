@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/EmptyState';
 import { SkeletonCard } from '@/components/SkeletonCard';
 import { ActionDetailDrawer } from '@/components/ActionDetailDrawer';
-import { AutopilotCard } from '@/components/AutopilotCard';
+import { AutopilotPanel } from '@/components/AutopilotPanel';
 import { ControlStatusBar } from '@/components/ControlStatusBar';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { QuickAddModal } from '@/components/QuickAddModal';
@@ -22,8 +22,8 @@ import { FubWatchlistPanel } from '@/components/FubWatchlistPanel';
 import { MoneyAtRiskPanel } from '@/components/MoneyAtRiskPanel';
 import { MoneyRiskDrawer } from '@/components/MoneyRiskDrawer';
 import { OpportunityHeatPanel } from '@/components/OpportunityHeatPanel';
-import { IncomeForecastPanel } from '@/components/IncomeForecastPanel';
-import { StabilityScorePanel } from '@/components/StabilityScorePanel';
+import { IncomeForecastPanelV2 } from '@/components/IncomeForecastPanelV2';
+import { StabilityScorePanelV2 } from '@/components/StabilityScorePanelV2';
 import { MorningFocusCard, MiddayStabilizationCard, EodSafetyCard } from '@/components/DailyModeCards';
 import { LogTouchModal } from '@/components/LogTouchModal';
 import { TouchPickerModal } from '@/components/TouchPickerModal';
@@ -498,8 +498,8 @@ export default function CommandCenter() {
         />
       )}
 
-      {/* Autopilot (replaces Recommended First Action) */}
-      <AutopilotCard
+      {/* Autopilot v2 */}
+      <AutopilotPanel
         panels={panels}
         onComplete={(taskId) => {
           completeTask(taskId);
@@ -517,9 +517,11 @@ export default function CommandCenter() {
         leads={leads}
         onOpportunityAction={handleOpportunityAction}
         stabilityResult={stabilityResult}
+        stabilityScore={stabilityResult.score}
         overdueTasksCount={overdueTasks.length}
         dueSoonCount={dueSoonTasks.length}
-        onStabilityAction={() => navigate('/tasks')}
+        totalMoneyAtRisk={totalMoneyAtRisk}
+        onStabilityAction={() => {}}
         onCreateTask={handleAutopilotCreateTask}
       />
 
@@ -552,15 +554,22 @@ export default function CommandCenter() {
       {/* Income Forecast + Stability Score */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <PanelErrorBoundary>
-          <IncomeForecastPanel
+          <IncomeForecastPanelV2
             deals={deals}
             participants={dealParticipants}
             userId={user?.id || ''}
+            moneyResults={moneyResults}
+            typicalDealValue={userDefaults?.typicalPriceMid ? Math.round((userDefaults.typicalPriceMid * (userDefaults.typicalCommissionRate ?? 3) / 100) * (userDefaults.typicalSplitPct ?? 100) / 100) : 8000}
             onCreateTask={handleForecastCreateTask}
+            onOpenMoneyAtRisk={() => {
+              if (topMoneyAtRisk && deals.find(d => d.id === topMoneyAtRisk.dealId)) {
+                handleMoneySelect(topMoneyAtRisk, deals.find(d => d.id === topMoneyAtRisk.dealId)!);
+              }
+            }}
           />
         </PanelErrorBoundary>
         <PanelErrorBoundary>
-          <StabilityScorePanel
+          <StabilityScorePanelV2
             inputs={stabilityInputs}
             onCreateTask={(title) => handleAutopilotCreateTask(title)}
           />
