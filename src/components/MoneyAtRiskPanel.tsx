@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
-import { DollarSign, Shield, ChevronRight, Settings, Plus } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
+import { DollarSign, Shield, ChevronRight, Settings, Plus, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CommissionDefaultsModal } from '@/components/CommissionDefaultsModal';
+import { supabase } from '@/integrations/supabase/client';
 import type { Deal, DealParticipant } from '@/types';
 import { computeMoneyModelBatch, type MoneyModelResult } from '@/lib/moneyModel';
 
@@ -39,9 +40,23 @@ function confidenceBadge(confidence: string): string {
   return 'bg-muted/30 text-muted-foreground/60';
 }
 
+type EmptyReason = 'no_deals' | 'no_defaults' | 'no_price' | 'no_participant';
+
 export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddCommissionToDeals }: Props) {
   const [showDefaultsModal, setShowDefaultsModal] = useState(false);
+  const [hasDefaults, setHasDefaults] = useState<boolean | null>(null);
   const activeDeals = useMemo(() => deals.filter(d => d.stage !== 'closed'), [deals]);
+
+  // Check if user has commission defaults
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from('commission_defaults')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle()
+      .then(({ data }) => setHasDefaults(!!data));
+  }, [userId]);
 
   const results = useMemo(() => {
     const all = computeMoneyModelBatch(activeDeals, participants, userId);
@@ -60,43 +75,98 @@ export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddC
   }, [activeDeals, participants, userId]);
 
   const totalAtRisk = useMemo(() => results.reduce((s, r) => s + r.personalCommissionAtRisk, 0), [results]);
-
   const dealMap = useMemo(() => new Map(activeDeals.map(d => [d.id, d])), [activeDeals]);
 
-  // Determine if we should show the empty intelligence state
+  // Determine empty state reason
   const allResults = useMemo(() => computeMoneyModelBatch(activeDeals, participants, userId), [activeDeals, participants, userId]);
-  const showEmptyState = activeDeals.length === 0 || allResults.every(r => r.personalCommissionTotal === 0);
+
+  const emptyReason = useMemo((): EmptyReason | null => {
+    if (activeDeals.length === 0) return 'no_deals';
+    if (hasDefaults === false && allResults.every(r => r.personalCommissionTotal === 0)) return 'no_defaults';
+    const dealsWithoutPrice = activeDeals.filter(d => !d.price || d.price <= 0);
+    if (dealsWithoutPrice.length === activeDeals.length) return 'no_price';
+    const dealsMissingParticipant = activeDeals.filter(d => !participants.some(p => p.dealId === d.id && p.userId === userId));
+    if (dealsMissingParticipant.length === activeDeals.length) return 'no_participant';
+    if (allResults.every(r => r.personalCommissionTotal === 0)) return 'no_defaults';
+    return null;
+  }, [activeDeals, participants, userId, hasDefaults, allResults]);
+
+  // Count deals missing commission setup
+  const dealsMissingSetup = useMemo(() => {
+    return activeDeals.filter(d => {
+      const hasParticipant = participants.some(p => p.dealId === d.id && p.userId === userId);
+      const hasCommission = d.commission > 0 || (d.commissionRate && d.commissionRate > 0);
+      return !hasParticipant || !hasCommission;
+    });
+  }, [activeDeals, participants, userId]);
+
+  const emptyStateContent = useMemo(() => {
+    switch (emptyReason) {
+      case 'no_deals':
+        return {
+          title: 'Income protection not active yet',
+          message: 'Add deals to your pipeline to start tracking income at risk.',
+          primaryLabel: null,
+          primaryAction: null,
+        };
+      case 'no_defaults':
+        return {
+          title: 'Income protection not active yet',
+          message: 'Set your commission defaults so Deal Pilot can calculate your income at risk automatically.',
+          primaryLabel: 'Set Commission Defaults',
+          primaryAction: () => setShowDefaultsModal(true),
+        };
+      case 'no_price':
+        return {
+          title: 'Deal prices needed',
+          message: 'Add a price to your deals so Deal Pilot can compute commission at risk.',
+          primaryLabel: 'Update Deals',
+          primaryAction: onAddCommissionToDeals || null,
+        };
+      case 'no_participant':
+        return {
+          title: 'Add yourself to deals',
+          message: 'Open each deal and tap "Add me" to track your personal commission.',
+          primaryLabel: 'Go to Pipeline',
+          primaryAction: onAddCommissionToDeals || null,
+        };
+      default:
+        return null;
+    }
+  }, [emptyReason, onAddCommissionToDeals]);
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-2 mb-1">
         <Shield className="h-4 w-4 text-urgent" />
         <h2 className="text-sm font-semibold">Money at Risk</h2>
-        {!showEmptyState && totalAtRisk > 0 && (
+        {!emptyStateContent && totalAtRisk > 0 && (
           <span className="text-xs font-medium text-urgent ml-auto">
             {formatCurrency(totalAtRisk)} at risk
           </span>
         )}
       </div>
 
-      {showEmptyState ? (
+      {emptyStateContent ? (
         <div className="flex flex-col items-center text-center py-6 px-4">
           <div className="mb-3 rounded-2xl bg-muted p-3">
             <Shield className="h-6 w-6 text-muted-foreground" />
           </div>
-          <h3 className="text-sm font-semibold mb-1">Income protection not active yet</h3>
+          <h3 className="text-sm font-semibold mb-1">{emptyStateContent.title}</h3>
           <p className="text-xs text-muted-foreground max-w-xs mb-4">
-            Add your commission details to track income at risk and protect deals that matter most.
+            {emptyStateContent.message}
           </p>
           <div className="flex gap-2">
-            <Button size="sm" onClick={() => setShowDefaultsModal(true)}>
-              <Settings className="h-3.5 w-3.5 mr-1" />
-              Set Commission Defaults
-            </Button>
-            {activeDeals.length > 0 && onAddCommissionToDeals && (
-              <Button size="sm" variant="outline" onClick={onAddCommissionToDeals}>
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                Add Commission to Deals
+            {emptyStateContent.primaryLabel && emptyStateContent.primaryAction && (
+              <Button size="sm" onClick={emptyStateContent.primaryAction}>
+                <Settings className="h-3.5 w-3.5 mr-1" />
+                {emptyStateContent.primaryLabel}
+              </Button>
+            )}
+            {emptyReason !== 'no_deals' && hasDefaults === false && (
+              <Button size="sm" variant="outline" onClick={() => setShowDefaultsModal(true)}>
+                <Settings className="h-3.5 w-3.5 mr-1" />
+                Set Defaults
               </Button>
             )}
           </div>
@@ -104,6 +174,17 @@ export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddC
       ) : (
         <>
           <p className="text-xs text-muted-foreground mb-3">Personal commission you could lose if deals stall or fail.</p>
+
+          {/* Missing setup counter */}
+          {dealsMissingSetup.length > 0 && onAddCommissionToDeals && (
+            <button
+              onClick={onAddCommissionToDeals}
+              className="flex items-center gap-1.5 text-[10px] text-warning mb-2 hover:text-foreground transition-colors"
+            >
+              <AlertTriangle className="h-3 w-3" />
+              <span>{dealsMissingSetup.length} deal{dealsMissingSetup.length !== 1 ? 's' : ''} missing commission setup</span>
+            </button>
+          )}
 
           {results.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">No commission at risk right now</p>

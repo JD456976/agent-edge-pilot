@@ -129,9 +129,15 @@ export function CommissionCapture({ price, values, onChange, showWarning }: Prop
               max="100"
               className="h-8 text-xs"
               value={values.commissionRate || ''}
-              onChange={e => onChange({ ...values, commissionRate: parseFloat(e.target.value) || 0 })}
+              onChange={e => {
+                const v = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
+                onChange({ ...values, commissionRate: v });
+              }}
               placeholder="3.0"
             />
+            {values.commissionRate > 10 && (
+              <p className="text-[10px] text-warning">Rate above 10% — verify this is correct.</p>
+            )}
           </div>
         ) : (
           <div className="space-y-1">
@@ -141,7 +147,7 @@ export function CommissionCapture({ price, values, onChange, showWarning }: Prop
               min="0"
               className="h-8 text-xs"
               value={values.flatAmount || ''}
-              onChange={e => onChange({ ...values, flatAmount: parseFloat(e.target.value) || 0 })}
+              onChange={e => onChange({ ...values, flatAmount: Math.max(0, parseFloat(e.target.value) || 0) })}
               placeholder="10000"
             />
           </div>
