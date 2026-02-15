@@ -10,6 +10,7 @@ import { Search, Plus, Pencil, UserX, ShieldCheck, Copy, Check } from 'lucide-re
 import { InviteUserModal } from './InviteUserModal';
 import { EditUserModal } from './EditUserModal';
 import { RemoveUserModal } from './RemoveUserModal';
+import { UserDetailDrawer } from './UserDetailDrawer';
 import { useToast } from '@/hooks/use-toast';
 import type { UserRole } from '@/types';
 
@@ -27,7 +28,7 @@ interface ManagedUser {
 }
 
 export function UserManagementPanel() {
-  const { user, logAdminAction } = useAuth();
+  const { user, logAdminAction, isReviewer } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +42,7 @@ export function UserManagementPanel() {
   const [removingUser, setRemovingUser] = useState<ManagedUser | null>(null);
   const [invitations, setInvitations] = useState<any[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -228,7 +230,7 @@ export function UserManagementPanel() {
                 </TableRow>
               ) : (
                 filtered.map(u => (
-                  <TableRow key={u.userId} className={u.isDeleted ? 'opacity-50' : ''}>
+                  <TableRow key={u.userId} className={`${u.isDeleted ? 'opacity-50' : ''} cursor-pointer hover:bg-accent/50`} onClick={() => setViewingUserId(u.userId)}>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
                         <span className="font-medium">{u.name || '—'}</span>
@@ -259,7 +261,7 @@ export function UserManagementPanel() {
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7"
-                            onClick={() => setEditingUser(u)}
+                            onClick={(e) => { e.stopPropagation(); setEditingUser(u); }}
                             title="Edit user"
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -269,7 +271,7 @@ export function UserManagementPanel() {
                               size="icon"
                               variant="ghost"
                               className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={() => setRemovingUser(u)}
+                              onClick={(e) => { e.stopPropagation(); setRemovingUser(u); }}
                               title="Remove user"
                             >
                               <UserX className="h-3.5 w-3.5" />
@@ -308,6 +310,15 @@ export function UserManagementPanel() {
           managedUser={removingUser}
           onClose={() => setRemovingUser(null)}
           onRemoved={() => { loadUsers(); setRemovingUser(null); }}
+        />
+      )}
+
+      {viewingUserId && (
+        <UserDetailDrawer
+          userId={viewingUserId}
+          isReviewer={isReviewer}
+          onClose={() => setViewingUserId(null)}
+          onSaved={() => { loadUsers(); setViewingUserId(null); }}
         />
       )}
     </section>
