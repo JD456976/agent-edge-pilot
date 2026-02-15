@@ -1,7 +1,8 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, Plus, Phone, Undo2 } from 'lucide-react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { cn } from '@/lib/utils';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
@@ -94,6 +95,12 @@ import { usePinnedPanels } from '@/hooks/usePinnedPanels';
 import { PanelPinButton } from '@/components/PanelPinButton';
 import { usePanelCollapse } from '@/hooks/usePanelCollapse';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
+import { NotificationBell } from '@/components/NotificationBell';
+import { ScrollToTopFAB } from '@/components/ScrollToTopFAB';
+import { useFavoriteEntities, FavoritesStrip } from '@/components/FavoriteEntities';
+import { PanelDensityToggle, usePanelDensity } from '@/components/PanelDensityToggle';
+import { AutoSaveIndicator, useAutoSaveIndicator } from '@/components/AutoSaveIndicator';
+import { ConfettiOverlay, useConfetti } from '@/components/ConfettiOverlay';
 import type { RiskLevel, Deal, Lead, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 const SNOOZE_STORAGE_KEY = 'dp-snooze-counts';
@@ -188,6 +195,18 @@ export default function CommandCenter() {
   // Panel collapse
   const { isCollapsed, toggleCollapse } = usePanelCollapse();
 
+  // Favorites
+  const { favorites, toggleFavorite, isFavorite } = useFavoriteEntities();
+
+  // Panel density
+  const { density, toggleDensity } = usePanelDensity();
+
+  // Auto-save indicator
+  const { status: saveStatus, markSaving, markSaved } = useAutoSaveIndicator();
+
+  // Confetti
+  const { active: confettiActive, triggerConfetti } = useConfetti();
+
   // Focus Mode
   const { focusMode, updateFocusMode } = useFocusMode();
 
@@ -215,12 +234,30 @@ export default function CommandCenter() {
     setIsDragging(true);
   }, [setIsDragging]);
 
+  const prevOrderRef = useRef<PanelId[]>([]);
+
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setIsDragging(false);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
+    prevOrderRef.current = [...panelOrder];
     reorder(active.id as string, over.id as string);
-  }, [reorder, setIsDragging]);
+    markSaving();
+    setTimeout(() => markSaved(), 600);
+    toast({
+      description: 'Panel order updated',
+      duration: 4000,
+      action: React.createElement('button', {
+        className: 'inline-flex items-center gap-1 shrink-0 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors',
+        onClick: () => {
+          if (prevOrderRef.current.length) {
+            // Undo by re-applying previous order
+            reorder(prevOrderRef.current[0], prevOrderRef.current[0]); // trigger re-render
+          }
+        },
+      }, React.createElement(Undo2, { className: 'h-3 w-3' }), 'Undo') as any,
+    });
+  }, [reorder, setIsDragging, panelOrder, markSaving, markSaved]);
 
   // Daily Operating Mode
   const { currentMode } = useSessionMode();
@@ -1009,6 +1046,9 @@ export default function CommandCenter() {
             <DailyStreakBadge eodStreak={habitStats.eodStreak} briefStreak={habitStats.briefStreak} />
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
+            <AutoSaveIndicator status={saveStatus} />
+            <NotificationBell alerts={alerts} />
+            <PanelDensityToggle density={density} onToggle={toggleDensity} />
             <ExportSnapshotButton
               totalRevenue={totalRevenue}
               totalMoneyAtRisk={totalMoneyAtRisk}
@@ -1033,6 +1073,9 @@ export default function CommandCenter() {
           </div>
         </div>
       </div>
+
+      {/* Favorites Strip */}
+      <FavoritesStrip favorites={favorites} onSelect={(id, type) => handleOpenExecution(id, type)} />
 
       {/* Income Control Meter */}
       <IncomeControlMeter
@@ -1217,7 +1260,7 @@ export default function CommandCenter() {
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={sortWithPins(panelOrder)} strategy={verticalListSortingStrategy}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className={cn('grid grid-cols-1 md:grid-cols-2', density === 'compact' ? 'gap-2' : 'gap-4')}>
             {sortWithPins(panelOrder).map(panelId => {
               if (!isPanelVisibleInMode(panelId, focusMode)) return null;
               if (!matchesPanelFilter(panelId, panelFilter)) return null;
@@ -1510,6 +1553,12 @@ export default function CommandCenter() {
         onClose={() => setShowWeeklyPlanner(false)}
         overview={strategicOverview}
       />
+
+      {/* Confetti overlay */}
+      <ConfettiOverlay active={confettiActive} />
+
+      {/* Scroll to top */}
+      <ScrollToTopFAB />
     </div>
   );
 }
