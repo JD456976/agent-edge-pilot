@@ -1,13 +1,17 @@
 import { useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Clock, Check, TrendingUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Clock, Check, TrendingUp, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { CommandCenterPanels, CommandCenterAction, CommandCenterOpportunity } from '@/types';
+import type { CommandCenterPanels, CommandCenterAction, CommandCenterOpportunity, Deal } from '@/types';
+import type { MoneyModelResult } from '@/lib/moneyModel';
 
 interface Props {
   panels: CommandCenterPanels;
   onComplete: (taskId: string) => void;
   snoozedIds: Set<string>;
   onSnooze: (id: string) => void;
+  topMoneyAtRisk?: MoneyModelResult | null;
+  deals?: Deal[];
+  onMoneyAction?: (result: MoneyModelResult, deal: Deal) => void;
 }
 
 function formatCurrency(n: number) {
@@ -20,9 +24,17 @@ const SNOOZE_OPTIONS = [
   { label: 'Tomorrow', ms: 86400000 },
 ] as const;
 
-export function RecommendedFirstAction({ panels, onComplete, snoozedIds, onSnooze }: Props) {
+export function RecommendedFirstAction({ panels, onComplete, snoozedIds, onSnooze, topMoneyAtRisk, deals, onMoneyAction }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [showSnooze, setShowSnooze] = useState(false);
+
+  // Check if money-at-risk should override
+  const moneyDeal = useMemo(() => {
+    if (!topMoneyAtRisk || !deals) return null;
+    return deals.find(d => d.id === topMoneyAtRisk.dealId) || null;
+  }, [topMoneyAtRisk, deals]);
+
+  const isMoneyOverride = !!(topMoneyAtRisk && topMoneyAtRisk.personalCommissionAtRisk > 0 && moneyDeal);
 
   // Find the top action that isn't snoozed
   const topAction = useMemo(() => {
@@ -40,13 +52,48 @@ export function RecommendedFirstAction({ panels, onComplete, snoozedIds, onSnooz
   const displayOpportunity = isFallback ? fallbackOpportunity : null;
 
   // No items at all
-  if (!displayAction && !displayOpportunity) {
+  if (!displayAction && !displayOpportunity && !isMoneyOverride) {
     return (
       <div className="rounded-lg border border-border bg-card p-4">
         <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Recommended First Action</p>
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">Nothing urgent detected. Focus on opportunities.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Money-at-risk override
+  if (isMoneyOverride && moneyDeal && topMoneyAtRisk) {
+    return (
+      <div className="rounded-lg border border-urgent/20 bg-card p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Recommended First Action</p>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-urgent/10 text-urgent border border-urgent/20">Protect Income</span>
+          </div>
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-urgent shrink-0" />
+            <p className="text-sm font-semibold leading-snug">Protect this income first</p>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {moneyDeal.title} — <span className="text-urgent font-medium">{formatCurrency(topMoneyAtRisk.personalCommissionAtRisk)} at risk</span>
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">{topMoneyAtRisk.reasonPrimary}</p>
+        </div>
+        <div className="flex items-center gap-2 pt-1">
+          <Button
+            size="sm"
+            variant="default"
+            className="text-xs"
+            onClick={() => onMoneyAction?.(topMoneyAtRisk, moneyDeal)}
+          >
+            <Shield className="h-3.5 w-3.5 mr-1" />
+            View Risk Details
+          </Button>
         </div>
       </div>
     );
