@@ -42,6 +42,8 @@ import { OpportunityRadarPanel } from '@/components/OpportunityRadarPanel';
 import { IncomeProtectionShield } from '@/components/IncomeProtectionShield';
 import { AdaptiveStrategyMode } from '@/components/AdaptiveStrategyMode';
 import { WeeklyCommandReview } from '@/components/WeeklyCommandReview';
+import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
+import { ExecutionQueuePanel } from '@/components/ExecutionQueuePanel';
 import { computeOpportunityBatch, type OpportunityHeatResult, type UserCommissionDefaults } from '@/lib/leadMoneyModel';
 import { computeForecastBatch } from '@/lib/forecastModel';
 import { computeStabilityScore, type StabilityInputs } from '@/lib/stabilityModel';
@@ -83,6 +85,7 @@ export default function CommandCenter() {
   const [showTouchPicker, setShowTouchPicker] = useState(false);
   const [touchTarget, setTouchTarget] = useState<{ entityType: 'lead' | 'deal'; entityId: string; entityTitle: string } | null>(null);
   const [showEodReview, setShowEodReview] = useState(false);
+  const [executionEntity, setExecutionEntity] = useState<{ entity: Deal | Lead; entityType: 'deal' | 'lead'; moneyResult?: MoneyModelResult | null; oppResult?: OpportunityHeatResult | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<DetailItem | null>(null);
   const [snoozedIds, setSnoozedIds] = useState<Set<string>>(new Set());
@@ -322,7 +325,51 @@ export default function CommandCenter() {
     toast({ description: `Task created: ${title}`, duration: 3000 });
   }, [addTask, user?.id]);
 
-  // Forecast task creation
+  // Execution layer handler
+  const handleOpenExecution = useCallback((entityId: string, entityType: 'deal' | 'lead') => {
+    if (entityType === 'deal') {
+      const deal = deals.find(d => d.id === entityId);
+      if (!deal) return;
+      const mr = moneyResults.find(r => r.dealId === entityId) || null;
+      setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: mr });
+    } else {
+      const lead = leads.find(l => l.id === entityId);
+      if (!lead) return;
+      const or = opportunityResults.find(r => r.leadId === entityId) || null;
+      setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: or });
+    }
+  }, [deals, leads, moneyResults, opportunityResults]);
+
+  const handleExecutionFollowUp = useCallback(async (title: string, dueAt: string, entityId: string, entityType: 'deal' | 'lead') => {
+    await addTask({
+      title,
+      type: 'follow_up',
+      dueAt,
+      relatedDealId: entityType === 'deal' ? entityId : undefined,
+      relatedLeadId: entityType === 'lead' ? entityId : undefined,
+      assignedToUserId: user?.id || '',
+    });
+    toast({ description: `Follow-up created: ${title}`, duration: 3000 });
+  }, [addTask, user?.id]);
+
+      {/* Action Composer / Execution Drawer */}
+      <ActionComposerDrawer
+        open={!!executionEntity}
+        onClose={() => setExecutionEntity(null)}
+        entity={executionEntity?.entity || null}
+        entityType={executionEntity?.entityType || 'deal'}
+        moneyResult={executionEntity?.moneyResult}
+        oppResult={executionEntity?.oppResult}
+        tasks={tasks}
+        onCreateFollowUp={handleExecutionFollowUp}
+        onLogTouch={(entityType, entityId, entityTitle) => {
+          setExecutionEntity(null);
+          setTouchTarget({ entityType, entityId, entityTitle });
+          setShowLogTouch(true);
+        }}
+      />
+
+
   const handleForecastCreateTask = useCallback(async (title: string, dealId: string) => {
     await addTask({
       title,
@@ -564,6 +611,7 @@ export default function CommandCenter() {
               showPostActionToast('complete');
             }
           }}
+          onOpenExecution={handleOpenExecution}
         />
       </PanelErrorBoundary>
 
@@ -605,7 +653,20 @@ export default function CommandCenter() {
         onCreateTask={handleAutopilotCreateTask}
         burnoutCritical={burnoutCritical}
         predictiveSignals={predictiveSignals}
+        onOpenExecution={handleOpenExecution}
       />
+
+      {/* Execution Queue */}
+      <PanelErrorBoundary>
+        <ExecutionQueuePanel
+          deals={deals}
+          leads={leads}
+          tasks={tasks}
+          moneyResults={moneyResults}
+          opportunityResults={opportunityResults}
+          onStartAction={handleOpenExecution}
+        />
+      </PanelErrorBoundary>
 
       {/* Money At Risk + Opportunities */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

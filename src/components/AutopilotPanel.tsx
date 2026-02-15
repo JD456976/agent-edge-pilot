@@ -50,6 +50,7 @@ interface Props {
   onCreateTask?: (title: string, dealId?: string, leadId?: string) => void;
   burnoutCritical?: boolean;
   predictiveSignals?: PredictiveSignal[];
+  onOpenExecution?: (entityId: string, entityType: 'deal' | 'lead') => void;
 }
 
 function formatCurrency(n: number) {
@@ -160,6 +161,7 @@ export function AutopilotPanel({
   onStabilityAction, onCreateTask,
   burnoutCritical = false,
   predictiveSignals = [],
+  onOpenExecution,
 }: Props) {
   const [showSnooze, setShowSnooze] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -286,6 +288,8 @@ export function AutopilotPanel({
   const modeConfig = MODE_CONFIG[operatingMode];
   const timeConfig = TIME_GUIDANCE[timeOfDay];
 
+  const hasExecutionTarget = nextAction && (nextAction.dealId || nextAction.leadId);
+
   // Empty state
   if (!nextAction && stabilityScore >= 80) {
     return (
@@ -312,6 +316,7 @@ export function AutopilotPanel({
       <div className="flex items-center justify-between">
         <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Autopilot</p>
         <div className="flex items-center gap-1.5">
+          {hasExecutionTarget && <span className="text-[10px] px-2 py-0.5 rounded-full border border-primary/20 text-primary bg-primary/5">Execution Ready</span>}
           {isPredictive && <span className="text-[10px] px-2 py-0.5 rounded-full border border-primary/20 text-primary bg-primary/5">Predictive</span>}
           <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', modeConfig.className)}>{modeConfig.label}</span>
         </div>
@@ -345,6 +350,20 @@ export function AutopilotPanel({
               <Check className="h-3.5 w-3.5 mr-1" />
               Start Action
             </Button>
+            {hasExecutionTarget && onOpenExecution && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs"
+                onClick={() => {
+                  const eid = nextAction.dealId || nextAction.leadId;
+                  const etype = nextAction.dealId ? 'deal' : 'lead';
+                  if (eid) onOpenExecution(eid, etype as 'deal' | 'lead');
+                }}
+              >
+                Briefing
+              </Button>
+            )}
             <div className="relative">
               <Button size="sm" variant="outline" className="text-xs" onClick={() => setShowSnooze(!showSnooze)}>
                 <Clock className="h-3.5 w-3.5 mr-1" />
