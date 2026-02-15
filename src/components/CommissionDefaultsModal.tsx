@@ -17,6 +17,7 @@ export function CommissionDefaultsModal({ open, onClose }: Props) {
   const [rate, setRate] = useState(3);
   const [split, setSplit] = useState(100);
   const [referral, setReferral] = useState(0);
+  const [typicalPrice, setTypicalPrice] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export function CommissionDefaultsModal({ open, onClose }: Props) {
         setRate(Number(data.default_commission_rate) || 3);
         setSplit(Number(data.default_split) || 100);
         setReferral(Number(data.default_referral_fee) || 0);
+        setTypicalPrice((data as any).typical_price_mid ? Number((data as any).typical_price_mid) : null);
       }
     })();
   }, [open, user?.id]);
@@ -45,6 +47,7 @@ export function CommissionDefaultsModal({ open, onClose }: Props) {
         default_commission_rate: rate,
         default_split: split,
         default_referral_fee: referral,
+        typical_price_mid: typicalPrice,
       } as any, { onConflict: 'user_id' });
     setSaving(false);
     toast({ description: 'Commission defaults saved. New deals will use these values.' });
@@ -94,6 +97,21 @@ export function CommissionDefaultsModal({ open, onClose }: Props) {
               value={referral}
               onChange={e => setReferral(parseFloat(e.target.value) || 0)}
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Typical Deal Price ($)</Label>
+            <Input
+              type="number"
+              min="0"
+              className="h-9"
+              placeholder="e.g. 350000"
+              value={typicalPrice ?? ''}
+              onChange={e => {
+                const v = e.target.value;
+                setTypicalPrice(v === '' ? null : parseFloat(v) || 0);
+              }}
+            />
+            <p className="text-[10px] text-muted-foreground">Used to estimate lead commission potential.</p>
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
