@@ -9,17 +9,26 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import type { Task, Lead } from '@/types';
 
+function formatFreshness(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 30) return 'Updated just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 1) return `Updated ${seconds}s ago`;
+  return `Updated ${minutes}m ago`;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
   overdueTasks: Task[];
   untouchedHotLeads: Lead[];
+  computedAt: Date;
   onLogTouch: (entityType: 'lead' | 'deal', entityId: string, entityTitle: string) => void;
   onCreateTask: (prefillTitle?: string, relatedLeadId?: string, relatedDealId?: string) => void;
   onNavigateToTasks: () => void;
 }
 
-export function EndOfDayReviewDrawer({ open, onClose, overdueTasks, untouchedHotLeads, onLogTouch, onCreateTask, onNavigateToTasks }: Props) {
+export function EndOfDayReviewDrawer({ open, onClose, overdueTasks, untouchedHotLeads, computedAt, onLogTouch, onCreateTask, onNavigateToTasks }: Props) {
   const { completeTask, addTask } = useData();
   const { user } = useAuth();
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
@@ -87,7 +96,10 @@ export function EndOfDayReviewDrawer({ open, onClose, overdueTasks, untouchedHot
         <PanelErrorBoundary>
           <SheetHeader className="pb-4">
             <SheetTitle className="text-base">End-of-Day Review</SheetTitle>
-            <SheetDescription className="text-xs">Items to consider before logging off.</SheetDescription>
+            <SheetDescription className="text-xs">
+              Items to consider before logging off.
+              <span className="ml-2 text-muted-foreground/70">· {formatFreshness(computedAt)}</span>
+            </SheetDescription>
           </SheetHeader>
 
           <div className="space-y-6">

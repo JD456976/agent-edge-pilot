@@ -7,6 +7,7 @@ import { getDailyBriefing, getMissedYesterdayCount, getMomentum, getPipelineWatc
 import { useSessionMemory } from '@/hooks/useSessionMemory';
 import { useImportHighlight } from '@/hooks/useImportHighlight';
 import { useSessionMode, useSessionStartRisk } from '@/hooks/useSessionMode';
+import { useEndOfDaySummary } from '@/hooks/useEndOfDaySummary';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/EmptyState';
@@ -194,8 +195,7 @@ export default function CommandCenter() {
   }, [deals, dealParticipants, user?.id]);
 
   // ── Stability Score ────────────────────────────────────────────────
-  const now = useMemo(() => new Date(), []);
-  const overdueTasks = useMemo(() => tasks.filter(t => !t.completedAt && new Date(t.dueAt) < now), [tasks, now]);
+   const now = useMemo(() => new Date(), []);
   const dueSoonTasks = useMemo(() => {
     const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
     return tasks.filter(t => !t.completedAt && new Date(t.dueAt) >= now && new Date(t.dueAt) <= in48h);
@@ -205,9 +205,9 @@ export default function CommandCenter() {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d;
   }, []);
 
-  const untouchedHotLeads = useMemo(() => {
-    return leads.filter(l => (l.leadTemperature === 'hot' || l.engagementScore >= 80) && (!l.lastTouchedAt || new Date(l.lastTouchedAt) < todayStart));
-  }, [leads, todayStart]);
+  // Single source of truth for EOD data
+  const eodSummary = useEndOfDaySummary(tasks, leads);
+  const { overdueTasks, untouchedHotLeads } = eodSummary;
 
   const totalMoneyAtRisk = useMemo(() => moneyResults.reduce((s, r) => s + r.personalCommissionAtRisk, 0), [moneyResults]);
 
@@ -784,8 +784,9 @@ export default function CommandCenter() {
       <EndOfDayReviewDrawer
         open={showEodReview}
         onClose={() => setShowEodReview(false)}
-        overdueTasks={overdueTasks}
-        untouchedHotLeads={untouchedHotLeads}
+        overdueTasks={eodSummary.overdueTasks}
+        untouchedHotLeads={eodSummary.untouchedHotLeads}
+        computedAt={eodSummary.computedAt}
         onLogTouch={(entityType, entityId, entityTitle) => {
           setTouchTarget({ entityType, entityId, entityTitle });
           setShowLogTouch(true);
