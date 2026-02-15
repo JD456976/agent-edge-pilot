@@ -1119,15 +1119,14 @@ export default function CommandCenter() {
           {/* Mobile: minimal controls */}
           <div className="flex md:hidden items-center gap-1.5 shrink-0">
             <DailyStreakBadge eodStreak={habitStats.eodStreak} briefStreak={habitStats.briefStreak} />
-            <NotificationBell alerts={alerts} />
-            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setShowQuickAdd(true)}>
+            <Button size="sm" variant="outline" className="h-9 text-xs" onClick={() => setShowQuickAdd(true)}>
               <Plus className="h-3.5 w-3.5 mr-1" /> Add
             </Button>
           </div>
         </div>
 
         {/* Mobile: secondary row with key actions */}
-        <div className="flex md:hidden items-center gap-1.5 mt-2 overflow-x-auto pb-1 -mb-1">
+        <div className="flex md:hidden items-center gap-2 mt-2 overflow-x-auto pb-1 -mb-1">
           <div data-tour="focus-mode">
             <FocusModeSelector mode={focusMode} onModeChange={updateFocusMode} />
           </div>
@@ -1137,8 +1136,8 @@ export default function CommandCenter() {
             onApplyPreset={applyPreset}
             onReset={resetToDefault}
           />
-          <Button size="sm" variant="ghost" className="h-7 text-xs shrink-0" onClick={() => setShowCSVImport(true)}>
-            <Upload className="h-3 w-3 mr-1" /> Import
+          <Button size="sm" variant="ghost" className="h-9 min-w-[44px] text-xs shrink-0" onClick={() => setShowCSVImport(true)}>
+            <Upload className="h-3.5 w-3.5 mr-1" /> Import
           </Button>
         </div>
       </div>
