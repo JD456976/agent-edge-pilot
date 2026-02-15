@@ -293,25 +293,31 @@ export type Database = {
         Row: {
           entity_type: string
           expires_at: string
+          field_rule: Json | null
           fub_id: string
           id: string
           ignored_at: string
+          scope: string
           user_id: string
         }
         Insert: {
           entity_type: string
           expires_at?: string
+          field_rule?: Json | null
           fub_id: string
           id?: string
           ignored_at?: string
+          scope?: string
           user_id: string
         }
         Update: {
           entity_type?: string
           expires_at?: string
+          field_rule?: Json | null
           fub_id?: string
           id?: string
           ignored_at?: string
+          scope?: string
           user_id?: string
         }
         Relationships: []
@@ -513,34 +519,40 @@ export type Database = {
       }
       fub_sync_state: {
         Row: {
+          drift_reason: string | null
           last_commit_at: string | null
           last_delta_check_at: string | null
           last_delta_summary: Json | null
           last_preview_at: string | null
           last_seen_fub_updated_at: string | null
           last_stage_at: string | null
+          last_successful_check_at: string | null
           last_validated_at: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          drift_reason?: string | null
           last_commit_at?: string | null
           last_delta_check_at?: string | null
           last_delta_summary?: Json | null
           last_preview_at?: string | null
           last_seen_fub_updated_at?: string | null
           last_stage_at?: string | null
+          last_successful_check_at?: string | null
           last_validated_at?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          drift_reason?: string | null
           last_commit_at?: string | null
           last_delta_check_at?: string | null
           last_delta_summary?: Json | null
           last_preview_at?: string | null
           last_seen_fub_updated_at?: string | null
           last_stage_at?: string | null
+          last_successful_check_at?: string | null
           last_validated_at?: string | null
           updated_at?: string
           user_id?: string

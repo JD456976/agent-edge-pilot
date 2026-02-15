@@ -3,9 +3,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, ArrowRight, Eye, X, Loader2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertTriangle, ArrowRight, Eye, ChevronDown, Shield, ShieldCheck, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+
+interface DeltaChange {
+  field: string;
+  fub_value: string;
+  local_value?: string;
+  safe: boolean;
+}
 
 interface DeltaItem {
   entity_type: string;
@@ -13,13 +22,25 @@ interface DeltaItem {
   label: string;
   status: 'new' | 'updated' | 'conflict';
   changes: string[];
+  field_diffs?: DeltaChange[];
   fub_updated: string;
   local_modified?: string;
   urgency: number;
 }
 
+interface DeltaSummary {
+  counts: { new: number; updated: number; conflict: number; total: number };
+  severity: 'quiet' | 'moderate' | 'attention_needed';
+  drift_reason?: string;
+  top_items: any[];
+  checked_at: string;
+}
+
 interface Props {
   items: DeltaItem[];
+  summary: DeltaSummary | null;
+  lastCheck: string | null;
+  lastSuccessfulCheck: string | null;
   onClose: () => void;
   onRefresh: () => void;
 }
@@ -30,32 +51,72 @@ const STATUS_CONFIG = {
   conflict: { label: 'Potential Conflict', variant: 'urgent' as const },
 };
 
-export function FubDriftReviewModal({ items, onClose, onRefresh }: Props) {
+export function FubDriftReviewModal({ items, summary, lastCheck, lastSuccessfulCheck, onClose, onRefresh }: Props) {
   const [ignoringIds, setIgnoringIds] = useState<Set<string>>(new Set());
   const [watchingIds, setWatchingIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [staging, setStaging] = useState(false);
+  const [expandedDiffs, setExpandedDiffs] = useState<Set<string>>(new Set());
 
   const leads = items.filter(i => i.entity_type === 'lead');
   const deals = items.filter(i => i.entity_type === 'deal');
   const tasks = items.filter(i => i.entity_type === 'task');
 
-  const handleIgnore = useCallback(async (item: DeltaItem) => {
-    setIgnoringIds(prev => new Set(prev).add(item.fub_id));
+  const itemKey = (item: DeltaItem) => `${item.entity_type}:${item.fub_id}`;
+
+  const toggleSelect = (item: DeltaItem) => {
+    const key = itemKey(item);
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (list: DeltaItem[]) => {
+    const keys = list.map(itemKey);
+    const allSelected = keys.every(k => selectedIds.has(k));
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      keys.forEach(k => allSelected ? next.delete(k) : next.add(k));
+      return next;
+    });
+  };
+
+  const handleIgnore = useCallback(async (item: DeltaItem, scope: 'item' | 'type' | 'field_rule') => {
+    const key = itemKey(item);
+    setIgnoringIds(prev => new Set(prev).add(key));
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      const expiresAt = scope === 'type'
+        ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
       await supabase.from('fub_ignored_changes' as any).insert({
         user_id: user.id,
         entity_type: item.entity_type,
-        fub_id: item.fub_id,
+        fub_id: scope === 'type' ? '*' : item.fub_id,
+        scope,
+        expires_at: expiresAt,
+        field_rule: scope === 'field_rule' ? { ignore_formatting: true } : null,
       });
-      toast({ description: `Ignored "${item.label}" for 7 days.`, duration: 2000 });
+
+      const messages: Record<string, string> = {
+        item: `Ignored "${item.label}" for 7 days.`,
+        type: `Ignoring all ${item.entity_type} changes for 24 hours.`,
+        field_rule: `Ignoring low-signal ${item.entity_type} changes for 7 days.`,
+      };
+      toast({ description: messages[scope], duration: 2500 });
     } catch {
-      toast({ description: 'Failed to ignore item.', duration: 2000 });
+      toast({ description: 'Failed to ignore.', duration: 2000 });
     }
   }, []);
 
   const handleWatch = useCallback(async (item: DeltaItem) => {
-    setWatchingIds(prev => new Set(prev).add(item.fub_id));
+    const key = itemKey(item);
+    setWatchingIds(prev => new Set(prev).add(key));
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -71,27 +132,128 @@ export function FubDriftReviewModal({ items, onClose, onRefresh }: Props) {
     }
   }, []);
 
+  const handleStageSelected = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    setStaging(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      // Stage full dataset — scoped staging not yet supported
+      const res = await supabase.functions.invoke('fub-stage', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { limit: 50 },
+      });
+
+      if (res.error) throw new Error(res.error.message);
+      toast({ description: `Staging initiated. ${selectedIds.size} items flagged for review.`, duration: 3000 });
+      onClose();
+    } catch (e: any) {
+      toast({ description: e.message || 'Staging failed.', duration: 3000 });
+    } finally {
+      setStaging(false);
+    }
+  }, [selectedIds, onClose]);
+
   const formatDate = (iso: string) => {
     if (!iso) return '—';
     return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   };
 
-  const renderItems = (list: DeltaItem[]) => {
+  const toggleDiffExpanded = (key: string) => {
+    setExpandedDiffs(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const renderFieldDiffs = (item: DeltaItem) => {
+    const diffs = item.field_diffs || [];
+    if (diffs.length === 0) return null;
+    const key = itemKey(item);
+    const expanded = expandedDiffs.has(key);
+
+    return (
+      <div className="space-y-1">
+        <button
+          onClick={() => toggleDiffExpanded(key)}
+          className="text-[10px] text-primary hover:text-primary/80 underline"
+        >
+          {expanded ? 'Hide' : 'Show'} field details ({diffs.length})
+        </button>
+        {expanded && (
+          <div className="space-y-1 mt-1">
+            {diffs.map((d, i) => (
+              <div key={i} className="flex items-start gap-2 text-[11px] p-1.5 rounded bg-muted/30">
+                <div className="flex items-center gap-1 shrink-0">
+                  {d.safe ? (
+                    <ShieldCheck className="h-3 w-3 text-opportunity" />
+                  ) : (
+                    <Shield className="h-3 w-3 text-warning" />
+                  )}
+                  <span className={`font-medium ${d.safe ? 'text-foreground' : 'text-warning'}`}>
+                    {d.field}
+                  </span>
+                  <span className={`text-[9px] px-1 py-0 rounded ${d.safe ? 'bg-opportunity/10 text-opportunity' : 'bg-warning/10 text-warning'}`}>
+                    {d.safe ? 'Safe' : 'Protected'}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground">FUB:</span>
+                    <span className="truncate">{d.fub_value || '—'}</span>
+                  </div>
+                  {d.local_value && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-muted-foreground">Local:</span>
+                      <span className="truncate">{d.local_value}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderItems = (list: DeltaItem[], showSelectAll = false) => {
     if (list.length === 0) {
       return <p className="text-sm text-muted-foreground text-center py-6">No changes detected</p>;
     }
     return (
       <div className="space-y-2">
+        {showSelectAll && list.length > 1 && (
+          <div className="flex items-center gap-2 pb-1 border-b border-border">
+            <Checkbox
+              checked={list.every(i => selectedIds.has(itemKey(i)))}
+              onCheckedChange={() => toggleSelectAll(list)}
+              className="h-3.5 w-3.5"
+            />
+            <span className="text-[11px] text-muted-foreground">Select all ({list.length})</span>
+          </div>
+        )}
         {list.map((item) => {
           const cfg = STATUS_CONFIG[item.status];
-          const isIgnored = ignoringIds.has(item.fub_id);
-          const isWatched = watchingIds.has(item.fub_id);
+          const key = itemKey(item);
+          const isIgnored = ignoringIds.has(key);
+          const isWatched = watchingIds.has(key);
+          const isSelected = selectedIds.has(key);
           return (
             <div
-              key={`${item.entity_type}-${item.fub_id}`}
-              className={`p-3 rounded-md border border-border bg-card/50 space-y-2 ${isIgnored ? 'opacity-40' : ''}`}
+              key={key}
+              className={`p-3 rounded-md border border-border bg-card/50 space-y-2 transition-opacity ${isIgnored ? 'opacity-40' : ''}`}
             >
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-2">
+                {!isIgnored && (
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => toggleSelect(item)}
+                    className="h-3.5 w-3.5 mt-0.5 shrink-0"
+                  />
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <Badge variant={cfg.variant} className="text-[10px] px-1.5 py-0 shrink-0">{cfg.label}</Badge>
@@ -104,7 +266,11 @@ export function FubDriftReviewModal({ items, onClose, onRefresh }: Props) {
                 </div>
               </div>
 
-              {item.changes.length > 0 && (
+              {/* Field diffs viewer */}
+              {renderFieldDiffs(item)}
+
+              {/* Fallback to simple change tags if no field_diffs */}
+              {(!item.field_diffs || item.field_diffs.length === 0) && item.changes.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {item.changes.map((c, i) => (
                     <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{c}</span>
@@ -113,24 +279,40 @@ export function FubDriftReviewModal({ items, onClose, onRefresh }: Props) {
               )}
 
               {item.status === 'conflict' && (
-                <p className="text-[11px] text-warning italic">
-                  This record was edited locally after import and also changed in FUB.
-                </p>
+                <div className="text-[11px] text-warning italic border-l-2 border-warning/30 pl-2 space-y-0.5">
+                  <p>This record was edited locally after import and also changed in FUB.</p>
+                  <p className="text-muted-foreground">Default: Keep Deal Pilot version. Use field details to selectively accept safe fields.</p>
+                </div>
               )}
 
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5 flex-wrap">
                 {!isIgnored && (
-                  <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={() => handleIgnore(item)}>
-                    <X className="h-3 w-3 mr-0.5" /> Ignore
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]">
+                        Ignore <ChevronDown className="h-2.5 w-2.5 ml-0.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="text-xs">
+                      <DropdownMenuItem onClick={() => handleIgnore(item, 'item')}>
+                        Ignore this item (7 days)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleIgnore(item, 'type')}>
+                        Ignore all {item.entity_type}s (24h)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleIgnore(item, 'field_rule')}>
+                        Ignore low-signal changes (7 days)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
-                {!isWatched && (
+                {!isWatched && !isIgnored && (
                   <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={() => handleWatch(item)}>
                     <Eye className="h-3 w-3 mr-0.5" /> Watch
                   </Button>
                 )}
-                {isIgnored && <span className="text-[10px] text-muted-foreground italic">Ignored for 7 days</span>}
-                {isWatched && <span className="text-[10px] text-muted-foreground italic">Added to watchlist</span>}
+                {isIgnored && <span className="text-[10px] text-muted-foreground italic">Ignored</span>}
+                {isWatched && <span className="text-[10px] text-muted-foreground italic">Watching</span>}
               </div>
             </div>
           );
@@ -144,8 +326,13 @@ export function FubDriftReviewModal({ items, onClose, onRefresh }: Props) {
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Review FUB Changes</DialogTitle>
-          <DialogDescription>
-            Changes detected in Follow Up Boss since your last sync. Review and decide how to proceed.
+          <DialogDescription className="space-y-1">
+            <span>Changes detected in Follow Up Boss since your last sync. Review and decide how to proceed.</span>
+            <span className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-muted-foreground mt-1">
+              {lastCheck && <span>Last checked: {formatDate(lastCheck)}</span>}
+              {lastSuccessfulCheck && <span>Last successful: {formatDate(lastSuccessfulCheck)}</span>}
+              {summary?.drift_reason && <span className="italic">{summary.drift_reason}</span>}
+            </span>
           </DialogDescription>
         </DialogHeader>
 
@@ -153,13 +340,27 @@ export function FubDriftReviewModal({ items, onClose, onRefresh }: Props) {
           <p className="text-sm text-muted-foreground text-center py-8">No changes to review.</p>
         ) : (
           <>
-            <div className="flex gap-2 mb-2 text-xs">
-              <span className="text-muted-foreground">{items.length} total change{items.length !== 1 ? 's' : ''}</span>
-              {items.filter(i => i.status === 'conflict').length > 0 && (
-                <span className="text-urgent flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" />
-                  {items.filter(i => i.status === 'conflict').length} potential conflict{items.filter(i => i.status === 'conflict').length !== 1 ? 's' : ''}
-                </span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex gap-2 text-xs">
+                <span className="text-muted-foreground">{items.length} total change{items.length !== 1 ? 's' : ''}</span>
+                {items.filter(i => i.status === 'conflict').length > 0 && (
+                  <span className="text-urgent flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    {items.filter(i => i.status === 'conflict').length} conflict{items.filter(i => i.status === 'conflict').length !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+              {selectedIds.size > 0 && (
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-7 text-xs"
+                  onClick={handleStageSelected}
+                  disabled={staging}
+                >
+                  {staging ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                  Stage {selectedIds.size} selected
+                </Button>
               )}
             </div>
 
@@ -171,10 +372,10 @@ export function FubDriftReviewModal({ items, onClose, onRefresh }: Props) {
                 <TabsTrigger value="tasks" className="flex-1">Tasks ({tasks.length})</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="all">{renderItems(items)}</TabsContent>
-              <TabsContent value="leads">{renderItems(leads)}</TabsContent>
-              <TabsContent value="deals">{renderItems(deals)}</TabsContent>
-              <TabsContent value="tasks">{renderItems(tasks)}</TabsContent>
+              <TabsContent value="all">{renderItems(items, true)}</TabsContent>
+              <TabsContent value="leads">{renderItems(leads, true)}</TabsContent>
+              <TabsContent value="deals">{renderItems(deals, true)}</TabsContent>
+              <TabsContent value="tasks">{renderItems(tasks, true)}</TabsContent>
             </Tabs>
           </>
         )}
