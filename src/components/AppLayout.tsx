@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect, useRef, useMemo } from 'react';
+import { ReactNode, useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush, Bell } from 'lucide-react';
@@ -24,6 +24,10 @@ import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { usePushNotifications, checkOverdueTasks } from '@/hooks/usePushNotifications';
 import { KeyboardShortcutHint } from '@/components/KeyboardShortcutHint';
+import { TrialBanner, RestrictedModeBanner } from '@/components/TrialBanner';
+import { useEntitlement } from '@/contexts/EntitlementContext';
+
+const PaywallLazy = lazy(() => import('@/pages/Paywall'));
 
 type NavItem = { label: string; icon: React.ElementType } & (
   | { path: string; workspace?: undefined }
@@ -84,6 +88,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { activeWorkspace, openWorkspace, closeWorkspace } = useWorkspace();
   const { requestOpenEntity } = useEntityNavigation();
   const { tasks, deals, alerts } = useData();
+  const { canWrite, entitlementState } = useEntitlement();
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // Compute urgency dots for sidebar
   const urgentCounts = useMemo(() => {
@@ -237,6 +243,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
+        {/* Trial / Restricted banners */}
+        {entitlementState.isTrial && <TrialBanner />}
+        {!canWrite && !entitlementState.isTrial && (
+          <RestrictedModeBanner onUpgrade={() => setShowPaywall(true)} />
+        )}
+
         {/* Page content */}
         <main className="flex-1 p-4 pb-24 md:pb-6">
           {children}
@@ -293,6 +305,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
       {/* Keyboard shortcut hint for new users */}
       <KeyboardShortcutHint />
+
+      {/* Paywall modal triggered by restricted mode */}
+      {showPaywall && (
+        <div className="fixed inset-0 z-50 bg-background">
+          <PaywallLazy onDismiss={() => setShowPaywall(false)} showDismiss />
+        </div>
+      )}
     </div>
   );
 }

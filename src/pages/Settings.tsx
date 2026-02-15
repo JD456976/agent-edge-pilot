@@ -9,6 +9,7 @@ import { getNoisePrefs, setNoisePrefs, type DriftFrequency, type WeeklyReviewDef
 import { useNavigate } from 'react-router-dom';
 import { useState, useRef, useCallback } from 'react';
 import { DataExportSection } from '@/components/DataExportSection';
+import { SubscriptionStatusSection } from '@/components/SubscriptionStatusSection';
 import { ScoringCalibrationPanel } from '@/components/ScoringCalibrationPanel';
 import { NetworkSettingsSection } from '@/components/NetworkSettingsSection';
 import { MarketSettingsSection } from '@/components/MarketSettingsSection';
@@ -528,6 +529,12 @@ export default function Settings() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+      </section>
+
+      {/* Subscription Status */}
+      <section className="rounded-lg border border-border bg-card p-4 mb-4">
+        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Shield className="h-4 w-4" /> Subscription</h2>
+        <SubscriptionStatusSection />
       </section>
 
       {/* Legal & Support Links */}
