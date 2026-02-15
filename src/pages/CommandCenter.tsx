@@ -52,11 +52,13 @@ import { LearningTransparencyPanel } from '@/components/LearningTransparencyPane
 import { StrategicOverviewPanel } from '@/components/StrategicOverviewPanel';
 import { WeeklyPlanningAssistant } from '@/components/WeeklyPlanningAssistant';
 import { useStrategicSettings } from '@/hooks/useStrategicSettings';
+import { useSelfOptimizing } from '@/hooks/useSelfOptimizing';
 import { computeStrategicOverview } from '@/lib/strategicEngine';
 import { NetworkBenchmarksPanel } from '@/components/NetworkBenchmarksPanel';
 import { CohortPlaybooksPanel } from '@/components/CohortPlaybooksPanel';
 import { MarketConditionsPanel } from '@/components/MarketConditionsPanel';
 import { SortablePanel } from '@/components/SortablePanel';
+import { SelfOptNudges } from '@/components/SelfOptNudges';
 import { PanelLayoutControls } from '@/components/PanelLayoutControls';
 import { useAgentLearning } from '@/hooks/useAgentLearning';
 import { useNetworkTelemetry } from '@/hooks/useNetworkTelemetry';
@@ -130,6 +132,9 @@ export default function CommandCenter() {
 
   // Strategic settings
   const { settings: strategicSettings } = useStrategicSettings(user?.id);
+
+  // Self-Optimizing Mode
+  const { analysis: selfOptAnalysis, recordOutcome: recordSelfOptOutcome, getOptimizedDefaults } = useSelfOptimizing(user?.id);
 
   // Panel layout
   const { panelOrder, updateOrder, applyPreset, resetToDefault } = usePanelLayout(user?.id);
@@ -941,6 +946,11 @@ export default function CommandCenter() {
         stressReductionDismissed={stressReductionDismissed}
         onDismissStressReduction={() => setStressReductionDismissed(true)}
       />
+
+      {/* Self-Optimizing Nudges */}
+      {selfOptAnalysis.nudges.length > 0 && (
+        <SelfOptNudges nudges={selfOptAnalysis.nudges} />
+      )}
 
       {/* Daily Mode Cards */}
       {currentMode === 'morning' && (

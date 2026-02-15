@@ -10,9 +10,11 @@ import { ScoringCalibrationPanel } from '@/components/ScoringCalibrationPanel';
 import { NetworkSettingsSection } from '@/components/NetworkSettingsSection';
 import { MarketSettingsSection } from '@/components/MarketSettingsSection';
 import { IncomeTargetSettings } from '@/components/IncomeTargetSettings';
+import { SelfOptimizingSettingsPanel } from '@/components/SelfOptimizingSettingsPanel';
 import { useMarketConditions } from '@/hooks/useMarketConditions';
 import { useSessionMode, type SessionMode } from '@/hooks/useSessionMode';
 import { useStrategicSettings } from '@/hooks/useStrategicSettings';
+import { useSelfOptimizing } from '@/hooks/useSelfOptimizing';
 import { getAutonomyLevel, setAutonomyLevel, getFeedbackStats, type AutonomyLevel } from '@/lib/preparedActions';
 import Admin from '@/pages/Admin';
 import { cn } from '@/lib/utils';
@@ -29,6 +31,7 @@ export default function Settings() {
   const [tab, setTab] = useState<typeof TABS[number]>('Preferences');
   const [autonomy, setAutonomy] = useState<AutonomyLevel>(() => getAutonomyLevel());
   const feedbackStats = getFeedbackStats();
+  const { prefs: selfOptPrefs, analysis: selfOptAnalysis, updatePrefs: updateSelfOptPrefs, resetLearning: resetSelfOptLearning, exportSummary: exportSelfOptSummary } = useSelfOptimizing(user?.id);
 
   const isAdmin = user?.role === 'admin';
 
@@ -120,6 +123,15 @@ export default function Settings() {
         settings={strategicSettings}
         onUpdate={updateStrategicSettings}
         onReset={resetStrategicSettings}
+      />
+
+      {/* Self-Optimizing Mode */}
+      <SelfOptimizingSettingsPanel
+        prefs={selfOptPrefs}
+        analysis={selfOptAnalysis}
+        onUpdatePrefs={updateSelfOptPrefs}
+        onReset={resetSelfOptLearning}
+        onExport={exportSelfOptSummary}
       />
 
       {/* Scoring Calibration */}
