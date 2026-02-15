@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, Shield, Zap, Bell, Download, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
 const CHANGELOG_VERSION = '1.1.0';
 const CHANGELOG_KEY = 'dp-changelog-seen';
@@ -54,15 +55,16 @@ const CHANGELOG: ChangelogEntry[] = [
 
 export function WhatsNewModal() {
   const [open, setOpen] = useState(false);
+  const { onboardingCompleted } = useAuth();
 
   useEffect(() => {
     const seen = localStorage.getItem(CHANGELOG_KEY);
-    if (seen !== CHANGELOG_VERSION) {
-      // Delay so it doesn't overlap with other first-load modals
+    // Only show to returning users who already completed onboarding
+    if (seen !== CHANGELOG_VERSION && onboardingCompleted) {
       const timer = setTimeout(() => setOpen(true), 3000);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [onboardingCompleted]);
 
   const dismiss = () => {
     setOpen(false);
