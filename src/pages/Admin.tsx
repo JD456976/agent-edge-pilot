@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ShieldCheck, Users, Target, ListChecks, Database, Plus, Trash2, AlertTriangle, Building2, UsersRound, ScrollText, ChevronRight, Crown } from 'lucide-react';
+import { BrokerageDashboard } from '@/components/BrokerageDashboard';
 import { ImportHealthPanel } from '@/components/ImportHealthPanel';
 import { SeedPacksModal } from '@/components/SeedPacksModal';
 import { UserManagementPanel } from '@/components/admin/UserManagementPanel';
@@ -321,6 +322,11 @@ export default function Admin() {
             })}
           </div>
         )}
+      </section>
+
+      {/* Brokerage Intelligence Dashboard */}
+      <section className="rounded-lg border border-border bg-card p-4 mb-6">
+        <BrokerageDashboard />
       </section>
 
       {/* Import Health */}
