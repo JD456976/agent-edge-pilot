@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar, Volume2 } from 'lucide-react';
+import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar, Volume2, Trash2, AlertTriangle, Shield, FileText, HelpCircle, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,6 +20,10 @@ import { getAutonomyLevel, setAutonomyLevel, getFeedbackStats, type AutonomyLeve
 import { useHabitTracking } from '@/hooks/useHabitTracking';
 import Admin from '@/pages/Admin';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { toast } from '@/hooks/use-toast';
+
 
 const TABS = ['Preferences', 'Admin'] as const;
 
@@ -288,10 +292,115 @@ export default function Settings() {
         </p>
       </section>
 
-      {/* Sign out */}
-      <Button variant="outline" className="w-full" onClick={handleLogout}>
-        <LogOut className="h-4 w-4 mr-2" /> Sign Out
-      </Button>
+      {/* Account Actions */}
+      <section className="rounded-lg border border-border bg-card p-4 mb-4">
+        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Shield className="h-4 w-4" /> Account</h2>
+        
+        {/* Sign Out */}
+        <Button variant="outline" className="w-full mb-3" onClick={handleLogout}>
+          <LogOut className="h-4 w-4 mr-2" /> Sign Out
+        </Button>
+
+        {/* Delete Account */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" className="w-full">
+              <Trash2 className="h-4 w-4 mr-2" /> Delete Account & Data
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Delete Account Permanently?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <p>This action <strong>cannot be undone</strong>. This will permanently:</p>
+                <ul className="list-disc pl-5 space-y-1 text-sm">
+                  <li>Delete your account and login credentials</li>
+                  <li>Delete all your leads, deals, and tasks</li>
+                  <li>Delete all activity history and touch logs</li>
+                  <li>Delete your CRM integration keys</li>
+                  <li>Delete all scoring preferences and settings</li>
+                  <li>Remove you from all teams and organizations</li>
+                </ul>
+                <p className="text-sm pt-2">If you just want to take a break, consider signing out instead.</p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={async () => {
+                  try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session) {
+                      toast({ title: 'Error', description: 'You must be signed in to delete your account.', variant: 'destructive' });
+                      return;
+                    }
+                    const res = await supabase.functions.invoke('delete-account', {
+                      headers: { Authorization: `Bearer ${session.access_token}` },
+                    });
+                    if (res.error || res.data?.error) {
+                      throw new Error(res.data?.error || 'Deletion failed');
+                    }
+                    await supabase.auth.signOut();
+                    navigate('/login');
+                    toast({ title: 'Account Deleted', description: 'Your account and all data have been permanently deleted.' });
+                  } catch (err: any) {
+                    toast({ title: 'Error', description: err.message || 'Failed to delete account. Please try again.', variant: 'destructive' });
+                  }
+                }}
+              >
+                Yes, Delete Everything
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </section>
+
+      {/* Legal & Support Links */}
+      <section className="rounded-lg border border-border bg-card p-4 mb-4">
+        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><FileText className="h-4 w-4" /> Legal & Support</h2>
+        <div className="space-y-2">
+          <a
+            href="https://dealpilotapp.com/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-accent transition-colors text-sm"
+          >
+            <span className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              Privacy Policy
+            </span>
+            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+          </a>
+          <a
+            href="https://dealpilotapp.com/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-accent transition-colors text-sm"
+          >
+            <span className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              Terms of Service
+            </span>
+            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+          </a>
+          <a
+            href="mailto:support@dealpilotapp.com"
+            className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-accent transition-colors text-sm"
+          >
+            <span className="flex items-center gap-2">
+              <HelpCircle className="h-4 w-4 text-muted-foreground" />
+              Contact Support
+            </span>
+            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+          </a>
+        </div>
+      </section>
+
+      <p className="text-center text-[10px] text-muted-foreground mb-8">Deal Pilot v1.0 · © {new Date().getFullYear()}</p>
     </div>
   );
 }

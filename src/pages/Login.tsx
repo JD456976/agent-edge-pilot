@@ -116,6 +116,22 @@ export default function Login() {
             </Button>
           </form>
         )}
+
+        {/* Legal links for Apple compliance */}
+        <div className="mt-8 flex flex-col items-center gap-2 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-3">
+            <a href="https://dealpilotapp.com/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors underline">
+              Privacy Policy
+            </a>
+            <span>·</span>
+            <a href="https://dealpilotapp.com/terms" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors underline">
+              Terms of Service
+            </a>
+          </div>
+          <a href="mailto:support@dealpilotapp.com" className="hover:text-foreground transition-colors underline">
+            Contact Support
+          </a>
+        </div>
       </div>
     </div>
   );
