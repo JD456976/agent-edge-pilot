@@ -15,9 +15,12 @@ type QuickAddType = 'lead' | 'deal' | 'task';
 interface QuickAddModalProps {
   defaultType?: QuickAddType;
   onClose: () => void;
+  prefillTaskTitle?: string;
+  prefillRelatedLeadId?: string;
+  prefillRelatedDealId?: string;
 }
 
-export function QuickAddModal({ defaultType = 'lead', onClose }: QuickAddModalProps) {
+export function QuickAddModal({ defaultType = 'lead', onClose, prefillTaskTitle, prefillRelatedLeadId, prefillRelatedDealId }: QuickAddModalProps) {
   const { user } = useAuth();
   const { addTask, refreshData } = useData();
   const [type, setType] = useState<QuickAddType>(defaultType);
@@ -34,11 +37,19 @@ export function QuickAddModal({ defaultType = 'lead', onClose }: QuickAddModalPr
   const [commissionValues, setCommissionValues] = useState<CommissionValues>(getDefaultCommissionValues());
 
   // Task fields
-  const [taskTitle, setTaskTitle] = useState('');
+  const [taskTitle, setTaskTitle] = useState(prefillTaskTitle || '');
   const [taskType, setTaskType] = useState<TaskType>('follow_up');
-  const [taskDueDate, setTaskDueDate] = useState(
-    new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  );
+  const [taskDueDate, setTaskDueDate] = useState(() => {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    // If after 8 PM, push to next morning
+    if (now.getHours() >= 20) {
+      tomorrow.setDate(tomorrow.getDate() + 1);
+    }
+    tomorrow.setHours(9, 0, 0, 0);
+    return tomorrow.toISOString().split('T')[0];
+  });
 
   // Load user defaults
   useEffect(() => {
@@ -96,6 +107,8 @@ export function QuickAddModal({ defaultType = 'lead', onClose }: QuickAddModalPr
           title: taskTitle.trim(),
           type: taskType,
           dueAt: new Date(taskDueDate + 'T12:00:00').toISOString(),
+          relatedLeadId: prefillRelatedLeadId,
+          relatedDealId: prefillRelatedDealId,
           assignedToUserId: user.id,
         });
       }
