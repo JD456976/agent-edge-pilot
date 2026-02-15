@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_events: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          note: string | null
+          organization_id: string
+          touch_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          note?: string | null
+          organization_id: string
+          touch_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          note?: string | null
+          organization_id?: string
+          touch_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       admin_audit_events: {
         Row: {
           action: string
@@ -687,6 +720,7 @@ export type Database = {
           last_contact_at: string
           last_modified_at: string | null
           last_modified_by: string | null
+          last_touched_at: string | null
           lead_temperature:
             | Database["public"]["Enums"]["lead_temperature"]
             | null
@@ -711,6 +745,7 @@ export type Database = {
           last_contact_at?: string
           last_modified_at?: string | null
           last_modified_by?: string | null
+          last_touched_at?: string | null
           lead_temperature?:
             | Database["public"]["Enums"]["lead_temperature"]
             | null
@@ -735,6 +770,7 @@ export type Database = {
           last_contact_at?: string
           last_modified_at?: string | null
           last_modified_by?: string | null
+          last_touched_at?: string | null
           lead_temperature?:
             | Database["public"]["Enums"]["lead_temperature"]
             | null

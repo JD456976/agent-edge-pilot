@@ -185,6 +185,16 @@ export function computeRiskScore(
     explanations.push(`Drift conflict detected (+${w.drift_conflict})`);
   }
 
+  // Recent touch reduction (within 24h reduces risk by 15)
+  const touchDate2 = deal.lastTouchedAt;
+  if (touchDate2) {
+    const hoursSinceTouch = (now.getTime() - new Date(touchDate2).getTime()) / (1000 * 60 * 60);
+    if (hoursSinceTouch <= 24) {
+      score -= 15;
+      explanations.push('Recent touch within 24h (-15)');
+    }
+  }
+
   const clamped = clampScore(score);
   return {
     score: clamped,

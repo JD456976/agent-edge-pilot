@@ -1,6 +1,9 @@
-import { X, Zap, DollarSign, AlertTriangle, TrendingUp, Eye, Check } from 'lucide-react';
+import { useState } from 'react';
+import { X, Zap, DollarSign, AlertTriangle, TrendingUp, Eye, Check, Phone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { LogTouchModal } from '@/components/LogTouchModal';
+import { ActivityTrail } from '@/components/ActivityTrail';
 import type { ScoredEntity, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 type DetailItem =
@@ -79,6 +82,8 @@ function ExplanationList({ explanation }: { explanation: string[] }) {
 }
 
 export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 }: Props) {
+  const [showTouch, setShowTouch] = useState(false);
+
   if (!item) return null;
 
   const isOpportunity = item.kind === 'opportunity';
@@ -112,6 +117,18 @@ export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 
   }
 
   const confidence = getConfidence(scores!);
+
+  // Determine entity for touch logging
+  const touchEntityType: 'lead' | 'deal' | null =
+    item.kind === 'deal' ? 'deal' :
+    item.kind === 'opportunity' ? 'lead' :
+    item.kind === 'action' ? (item.data.relatedDealId ? 'deal' : item.data.relatedLeadId ? 'lead' : null) :
+    item.kind === 'speedAlert' ? (item.data.relatedDealId ? 'deal' : item.data.relatedLeadId ? 'lead' : null) : null;
+  const touchEntityId =
+    item.kind === 'deal' ? item.data.deal.id :
+    item.kind === 'opportunity' ? item.data.lead.id :
+    item.kind === 'action' ? (item.data.relatedDealId || item.data.relatedLeadId || null) :
+    item.kind === 'speedAlert' ? (item.data.relatedDealId || item.data.relatedLeadId || null) : null;
 
   return (
     <>
@@ -161,6 +178,11 @@ export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 
               Action repeatedly deferred.
             </p>
           )}
+
+          {/* Activity Trail */}
+          {touchEntityType && touchEntityId && (
+            <ActivityTrail entityType={touchEntityType} entityId={touchEntityId} />
+          )}
         </div>
 
         {/* Actions */}
@@ -171,11 +193,27 @@ export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 
               Mark Done
             </Button>
           )}
+          {touchEntityType && touchEntityId && (
+            <Button size="sm" variant="outline" onClick={() => setShowTouch(true)}>
+              <Phone className="h-3.5 w-3.5 mr-1" />
+              Log Touch
+            </Button>
+          )}
           <Button size="sm" variant="outline" className="flex-1" onClick={onClose}>
             Close
           </Button>
         </div>
       </div>
+
+      {touchEntityType && touchEntityId && (
+        <LogTouchModal
+          open={showTouch}
+          onClose={() => setShowTouch(false)}
+          entityType={touchEntityType}
+          entityId={touchEntityId}
+          entityTitle={title}
+        />
+      )}
     </>
   );
 }

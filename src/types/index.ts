@@ -39,6 +39,7 @@ export interface Lead {
   importedFrom?: string | null;
   importRunId?: string | null;
   importedAt?: string | null;
+  lastTouchedAt?: string;
 }
 
 export interface Deal {
