@@ -3,28 +3,41 @@ import type { Task, Lead, Deal, PriorityAction } from '@/types';
 export function calculatePriorityScore(task: Task, lead?: Lead, deal?: Deal): number {
   let score = 0;
   const now = new Date();
-  const dueAt = new Date(task.dueAt);
-  const hoursUntilDue = (dueAt.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-  // Urgency
-  if (hoursUntilDue < 0) score += 40;
-  else if (hoursUntilDue < 4) score += 30;
-  else if (hoursUntilDue < 24) score += 20;
-  else if (hoursUntilDue < 48) score += 10;
+  // Guard: missing or invalid dueAt
+  const dueAt = task.dueAt ? new Date(task.dueAt) : null;
+  if (!dueAt || isNaN(dueAt.getTime())) {
+    // No due date — treat as moderate priority
+    score += 10;
+  } else {
+    const hoursUntilDue = (dueAt.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-  // Revenue impact
-  if (deal) {
-    score += Math.min((deal.userCommission ?? deal.commission) / 1000, 25);
+    // Urgency
+    if (hoursUntilDue < 0) score += 40;
+    else if (hoursUntilDue < 4) score += 30;
+    else if (hoursUntilDue < 24) score += 20;
+    else if (hoursUntilDue < 48) score += 10;
   }
 
-  // Decay risk
-  if (lead) {
-    const daysSinceContact = (now.getTime() - new Date(lead.lastContactAt).getTime()) / (1000 * 60 * 60 * 24);
-    if (daysSinceContact > 7) score += 15;
-    else if (daysSinceContact > 3) score += 10;
-    else if (daysSinceContact > 1) score += 5;
+  // Revenue impact (guard: missing price/commission)
+  if (deal) {
+    const commission = deal.userCommission ?? deal.commission ?? 0;
+    score += Math.min(Number.isFinite(commission) ? commission / 1000 : 0, 25);
+  }
 
-    score += lead.engagementScore / 10;
+  // Decay risk (guard: missing lastContactAt)
+  if (lead) {
+    if (lead.lastContactAt) {
+      const contactDate = new Date(lead.lastContactAt);
+      if (!isNaN(contactDate.getTime())) {
+        const daysSinceContact = (now.getTime() - contactDate.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSinceContact > 7) score += 15;
+        else if (daysSinceContact > 3) score += 10;
+        else if (daysSinceContact > 1) score += 5;
+      }
+    }
+
+    score += (lead.engagementScore ?? 0) / 10;
   }
 
   return Math.round(score);
@@ -46,11 +59,14 @@ export function generatePriorityActions(
     const score = calculatePriorityScore(task, lead, deal);
 
     const now = new Date();
-    const dueAt = new Date(task.dueAt);
-    const hoursUntilDue = (dueAt.getTime() - now.getTime()) / (1000 * 60 * 60);
+    const dueAt = task.dueAt ? new Date(task.dueAt) : null;
+    const hoursUntilDue = dueAt && !isNaN(dueAt.getTime())
+      ? (dueAt.getTime() - now.getTime()) / (1000 * 60 * 60)
+      : null;
 
     let timeWindow = '';
-    if (hoursUntilDue < 0) timeWindow = 'Overdue';
+    if (hoursUntilDue === null) timeWindow = 'No due date';
+    else if (hoursUntilDue < 0) timeWindow = 'Overdue';
     else if (hoursUntilDue < 1) timeWindow = 'Due now';
     else if (hoursUntilDue < 4) timeWindow = `Due in ${Math.round(hoursUntilDue)}h`;
     else if (hoursUntilDue < 24) timeWindow = 'Due today';
@@ -58,11 +74,11 @@ export function generatePriorityActions(
     else timeWindow = `Due in ${Math.round(hoursUntilDue / 24)}d`;
 
     let reason = '';
-    if (hoursUntilDue < 0) reason = 'Overdue — act now';
+    if (hoursUntilDue !== null && hoursUntilDue < 0) reason = 'Overdue — act now';
     else if (deal && deal.riskLevel === 'red') reason = 'Deal at risk';
-    else if (lead && lead.engagementScore > 75) reason = 'High engagement lead';
-    else if (deal) reason = `$${(deal.commission / 1000).toFixed(0)}K commission`;
-    else if (lead) reason = `${lead.source} lead`;
+    else if (lead && (lead.engagementScore ?? 0) > 75) reason = 'High engagement lead';
+    else if (deal) reason = `$${((deal.commission ?? 0) / 1000).toFixed(0)}K commission`;
+    else if (lead) reason = `${lead.source || 'Unknown'} lead`;
     else reason = 'Scheduled task';
 
     return {
@@ -70,7 +86,7 @@ export function generatePriorityActions(
       title: task.title,
       reason,
       timeWindow,
-      potentialValue: deal ? (deal.userCommission ?? deal.commission) : undefined,
+      potentialValue: deal ? (deal.userCommission ?? deal.commission ?? 0) : undefined,
       score,
       relatedTaskId: task.id,
       relatedLeadId: task.relatedLeadId,

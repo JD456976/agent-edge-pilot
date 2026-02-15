@@ -12,9 +12,29 @@ export interface SessionSnapshot {
   dealIds: string[];
 }
 
+const MAX_SNAPSHOT_AGE_DAYS = 7;
+
 function loadSnapshot(): SessionSnapshot | null {
-  const raw = localStorage.getItem(SESSION_KEY);
-  return raw ? JSON.parse(raw) : null;
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const snapshot: SessionSnapshot = JSON.parse(raw);
+
+    // Expire stale snapshots: if last session was >7 days ago, discard it
+    // This ensures returning users after long idle periods get fresh insights
+    if (snapshot.lastOpenedAt) {
+      const ageMs = Date.now() - new Date(snapshot.lastOpenedAt).getTime();
+      const ageDays = ageMs / (1000 * 60 * 60 * 24);
+      if (ageDays > MAX_SNAPSHOT_AGE_DAYS) {
+        localStorage.removeItem(SESSION_KEY);
+        return null;
+      }
+    }
+
+    return snapshot;
+  } catch {
+    return null;
+  }
 }
 
 function saveSnapshot(snapshot: SessionSnapshot) {
