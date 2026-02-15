@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Shield } from 'lucide-react';
+import { PanelHelpTooltip } from '@/components/PanelHelpTooltip';
 import { cn } from '@/lib/utils';
 import type { StabilityResult } from '@/lib/stabilityModel';
 
@@ -73,6 +74,7 @@ export function IncomeControlMeter({ stabilityResult, totalMoneyAtRisk, totalRev
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-primary" />
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Income Control</p>
+          <PanelHelpTooltip text="Shows how well you're managing your pipeline. Based on deal risk, overdue tasks, and overall stability." />
         </div>
         <span className={cn('text-xs font-semibold', state.textClass)}>{state.label}</span>
       </div>

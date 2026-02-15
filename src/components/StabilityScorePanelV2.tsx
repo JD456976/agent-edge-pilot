@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Activity, ChevronRight, X, Plus, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
+import { PanelHelpTooltip } from '@/components/PanelHelpTooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -260,6 +261,7 @@ export function StabilityScorePanelV2({ inputs, previousScore, weekAvgScore, onC
       <div className="flex items-center gap-2 mb-1">
         <Activity className="h-4 w-4 text-muted-foreground" />
         <h2 className="text-sm font-semibold">Stability Score</h2>
+        <PanelHelpTooltip text="How balanced your workload is. Factors in overdue tasks, hot leads not contacted, upcoming deadlines, and income concentration." />
       </div>
 
       {!hasData ? (
