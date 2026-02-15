@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.network-aggregate]
 verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = false
