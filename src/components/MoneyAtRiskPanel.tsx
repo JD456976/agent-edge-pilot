@@ -1,15 +1,19 @@
 import { useMemo, useState, useEffect } from 'react';
-import { DollarSign, Shield, ChevronRight, Settings, Plus, AlertTriangle } from 'lucide-react';
+import { DollarSign, Shield, ChevronRight, Settings, Plus, AlertTriangle, Bug, Wrench } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CommissionDefaultsModal } from '@/components/CommissionDefaultsModal';
+import { MoneyModelDebugDrawer } from '@/components/MoneyModelDebugDrawer';
+import { BulkBackfillModal } from '@/components/BulkBackfillModal';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Deal, DealParticipant } from '@/types';
 import { computeMoneyModelBatch, type MoneyModelResult } from '@/lib/moneyModel';
 
 interface Props {
   deals: Deal[];
   participants: DealParticipant[];
+  refreshData?: () => Promise<void>;
   userId: string;
   onSelect: (result: MoneyModelResult, deal: Deal) => void;
   onAddCommissionToDeals?: () => void;
@@ -42,9 +46,15 @@ function confidenceBadge(confidence: string): string {
 
 type EmptyReason = 'no_deals' | 'no_defaults' | 'no_price' | 'no_participant';
 
-export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddCommissionToDeals }: Props) {
+export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddCommissionToDeals, refreshData }: Props) {
   const [showDefaultsModal, setShowDefaultsModal] = useState(false);
+  const [showDebugDrawer, setShowDebugDrawer] = useState(false);
+  const [showBackfillModal, setShowBackfillModal] = useState(false);
   const [hasDefaults, setHasDefaults] = useState<boolean | null>(null);
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const showDevTools = import.meta.env.DEV || isAdmin;
+
   const activeDeals = useMemo(() => deals.filter(d => d.stage !== 'closed'), [deals]);
 
   // Check if user has commission defaults
@@ -140,6 +150,15 @@ export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddC
       <div className="flex items-center gap-2 mb-1">
         <Shield className="h-4 w-4 text-urgent" />
         <h2 className="text-sm font-semibold">Money at Risk</h2>
+        {showDevTools && (
+          <button
+            onClick={() => setShowDebugDrawer(true)}
+            className="p-1 rounded hover:bg-accent transition-colors ml-1"
+            title="Money Model Diagnostics"
+          >
+            <Bug className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        )}
         {!emptyStateContent && totalAtRisk > 0 && (
           <span className="text-xs font-medium text-urgent ml-auto">
             {formatCurrency(totalAtRisk)} at risk
@@ -156,7 +175,7 @@ export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddC
           <p className="text-xs text-muted-foreground max-w-xs mb-4">
             {emptyStateContent.message}
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 justify-center">
             {emptyStateContent.primaryLabel && emptyStateContent.primaryAction && (
               <Button size="sm" onClick={emptyStateContent.primaryAction}>
                 <Settings className="h-3.5 w-3.5 mr-1" />
@@ -169,21 +188,40 @@ export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddC
                 Set Defaults
               </Button>
             )}
+            {dealsMissingSetup.length > 0 && hasDefaults && (
+              <Button size="sm" variant="outline" onClick={() => setShowBackfillModal(true)}>
+                <Wrench className="h-3.5 w-3.5 mr-1" />
+                Apply defaults to {dealsMissingSetup.length} deals
+              </Button>
+            )}
           </div>
         </div>
       ) : (
         <>
           <p className="text-xs text-muted-foreground mb-3">Personal commission you could lose if deals stall or fail.</p>
 
-          {/* Missing setup counter */}
-          {dealsMissingSetup.length > 0 && onAddCommissionToDeals && (
-            <button
-              onClick={onAddCommissionToDeals}
-              className="flex items-center gap-1.5 text-[10px] text-warning mb-2 hover:text-foreground transition-colors"
-            >
-              <AlertTriangle className="h-3 w-3" />
-              <span>{dealsMissingSetup.length} deal{dealsMissingSetup.length !== 1 ? 's' : ''} missing commission setup</span>
-            </button>
+          {/* Missing setup counter + backfill button */}
+          {dealsMissingSetup.length > 0 && (
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              {onAddCommissionToDeals && (
+                <button
+                  onClick={onAddCommissionToDeals}
+                  className="flex items-center gap-1.5 text-[10px] text-warning hover:text-foreground transition-colors"
+                >
+                  <AlertTriangle className="h-3 w-3" />
+                  <span>{dealsMissingSetup.length} deal{dealsMissingSetup.length !== 1 ? 's' : ''} missing commission setup</span>
+                </button>
+              )}
+              {hasDefaults && (
+                <button
+                  onClick={() => setShowBackfillModal(true)}
+                  className="flex items-center gap-1.5 text-[10px] text-primary hover:text-primary/80 transition-colors"
+                >
+                  <Wrench className="h-3 w-3" />
+                  <span>Apply defaults</span>
+                </button>
+              )}
+            </div>
           )}
 
           {results.length === 0 ? (
@@ -232,6 +270,21 @@ export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddC
       )}
 
       <CommissionDefaultsModal open={showDefaultsModal} onClose={() => setShowDefaultsModal(false)} />
+
+      <MoneyModelDebugDrawer
+        open={showDebugDrawer}
+        onClose={() => setShowDebugDrawer(false)}
+        deals={deals}
+        participants={participants}
+        userId={userId}
+      />
+
+      <BulkBackfillModal
+        open={showBackfillModal}
+        onClose={() => setShowBackfillModal(false)}
+        eligibleCount={dealsMissingSetup.length}
+        onSuccess={() => { refreshData?.(); }}
+      />
     </div>
   );
 }
