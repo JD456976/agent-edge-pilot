@@ -128,7 +128,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <SkinSelector />
           <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={toggleTheme} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors">
+              <button onClick={toggleTheme} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors" aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
                 {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
               </button>
@@ -137,7 +137,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors">
+              <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors" aria-label="Sign out of your account">
                 <LogOut className="h-4 w-4" />
                 Sign Out
               </button>
@@ -159,7 +159,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </div>
           <div className="flex items-center gap-1">
             <SkinSelector />
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
             <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center">
@@ -183,6 +183,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <button
                 key={key}
                 onClick={() => handleNavClick(item)}
+                aria-label={item.label}
                 className={cn(
                   'flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-colors min-w-0',
                   isActive(item) ? 'text-primary' : 'text-muted-foreground'

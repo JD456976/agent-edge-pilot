@@ -12,6 +12,7 @@ import { ListChecks, Check, Plus, X, ChevronDown, CheckCheck } from 'lucide-reac
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { relativeTime } from '@/lib/relativeTime';
 import type { Task, TaskType } from '@/types';
 
 const TABS = ['Today', 'Overdue', 'Future'] as const;
@@ -206,7 +207,7 @@ export default function Tasks() {
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{typeLabel[task.type]}</Badge>
                       {task.importedFrom && <ImportSourceBadge importedFrom={task.importedFrom} compact />}
                       <span className={cn('text-xs', overdue ? 'text-destructive font-medium' : 'text-muted-foreground')}>
-                        {overdue ? 'Overdue' : new Date(task.dueAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                        {overdue ? relativeTime(task.dueAt) : new Date(task.dueAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                       </span>
                     </div>
                   </div>

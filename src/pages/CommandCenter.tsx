@@ -1,5 +1,5 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
-import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, Plus, Phone } from 'lucide-react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, Plus, Phone, Undo2 } from 'lucide-react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
@@ -69,6 +69,7 @@ import { MorningBriefCard } from '@/components/MorningBriefCard';
 import { WhatThisMeansPanel } from '@/components/WhatThisMeansPanel';
 import { IncomeControlMeter } from '@/components/IncomeControlMeter';
 import { FocusModeSelector, isPanelVisibleInMode } from '@/components/FocusModeSelector';
+import { PanelSearchFilter, matchesPanelFilter } from '@/components/PanelSearchFilter';
 import { useFocusMode } from '@/hooks/useFocusMode';
 import { useHabitTracking } from '@/hooks/useHabitTracking';
 import { useAgentLearning } from '@/hooks/useAgentLearning';
@@ -121,7 +122,7 @@ const PAIRED_PANELS: Set<PanelId> = new Set([
 
 export default function CommandCenter() {
   const { user } = useAuth();
-  const { leads, deals, tasks, alerts, dealParticipants, hasData, seedDemoData, completeTask, addTask, refreshData } = useData();
+  const { leads, deals, tasks, alerts, dealParticipants, hasData, seedDemoData, completeTask, uncompleteTask, addTask, refreshData } = useData();
   const [moneyDrawerResult, setMoneyDrawerResult] = useState<MoneyModelResult | null>(null);
   const [moneyDrawerDeal, setMoneyDrawerDeal] = useState<Deal | null>(null);
   const navigate = useNavigate();
@@ -144,6 +145,7 @@ export default function CommandCenter() {
   const [editMode_unused, setEditMode_unused] = useState(false); // kept for compat but unused
   const [autonomyLevel] = useState(() => getAutonomyLevel());
   const [showWeeklyPlanner, setShowWeeklyPlanner] = useState(false);
+  const [panelFilter, setPanelFilter] = useState('');
 
   // Focus Mode
   const { focusMode, updateFocusMode } = useFocusMode();
@@ -182,10 +184,22 @@ export default function CommandCenter() {
   // Daily Operating Mode
   const { currentMode } = useSessionMode();
 
-  const showPostActionToast = useCallback((kind: 'complete' | 'snooze' | 'handled', context?: { isRiskDeal?: boolean; isOverdue?: boolean; isOpportunity?: boolean }) => {
+  const showPostActionToast = useCallback((kind: 'complete' | 'snooze' | 'handled', context?: { isRiskDeal?: boolean; isOverdue?: boolean; isOpportunity?: boolean; taskId?: string }) => {
     const feedback = getPostActionFeedback(kind, context);
-    toast({ description: feedback.message, duration: 3000 });
-  }, []);
+    if (kind === 'complete' && context?.taskId) {
+      const taskId = context.taskId;
+      toast({
+        description: feedback.message,
+        duration: 5000,
+        action: React.createElement('button', {
+          className: 'inline-flex items-center gap-1 shrink-0 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors',
+          onClick: () => uncompleteTask(taskId),
+        }, React.createElement(Undo2, { className: 'h-3 w-3' }), 'Undo') as any,
+      });
+    } else {
+      toast({ description: feedback.message, duration: 3000 });
+    }
+  }, [uncompleteTask]);
 
   const handleSnooze = useCallback((id: string) => {
     setSnoozedIds(prev => new Set(prev).add(id));
@@ -579,6 +593,7 @@ export default function CommandCenter() {
             onComplete={(taskId) => {
               completeTask(taskId);
               showPostActionToast('complete', {
+                taskId,
                 isOverdue: tasks.find(t => t.id === taskId && !t.completedAt && new Date(t.dueAt) < new Date()) !== undefined,
                 isRiskDeal: deals.some(d => d.stage !== 'closed' && (d.riskLevel === 'red' || d.riskLevel === 'yellow') && tasks.find(t => t.id === taskId)?.relatedDealId === d.id),
               });
@@ -942,25 +957,28 @@ export default function CommandCenter() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-4 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Command Center</h1>
-          <p className="text-sm text-muted-foreground">Today's Briefing · {today}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <PanelLayoutControls
-            editMode={editMode}
-            onToggleEdit={toggleEditMode}
-            onApplyPreset={applyPreset}
-            onReset={resetToDefault}
-          />
-          <div data-tour="focus-mode">
-            <FocusModeSelector mode={focusMode} onModeChange={updateFocusMode} />
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm -mx-4 px-4 py-3 border-b border-transparent [&:not(:first-child)]:border-border">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-xl font-bold">Command Center</h1>
+            <p className="text-sm text-muted-foreground">Today's Briefing · {today}</p>
           </div>
-          <Button size="sm" variant="outline" onClick={() => setShowQuickAdd(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> Quick Add
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <PanelSearchFilter onFilterChange={setPanelFilter} />
+            <PanelLayoutControls
+              editMode={editMode}
+              onToggleEdit={toggleEditMode}
+              onApplyPreset={applyPreset}
+              onReset={resetToDefault}
+            />
+            <div data-tour="focus-mode">
+              <FocusModeSelector mode={focusMode} onModeChange={updateFocusMode} />
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setShowQuickAdd(true)} aria-label="Quick add deal or task">
+              <Plus className="h-3.5 w-3.5 mr-1" /> Quick Add
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1123,7 +1141,7 @@ export default function CommandCenter() {
               if (lead && opp) handleOpportunityAction(lead, opp);
             } else if (step.entityType === 'task' && step.entityId) {
               completeTask(step.entityId);
-              showPostActionToast('complete');
+              showPostActionToast('complete', { taskId: step.entityId });
             }
           }}
           onOpenExecution={handleOpenExecution}
@@ -1150,6 +1168,7 @@ export default function CommandCenter() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {panelOrder.map(panelId => {
               if (!isPanelVisibleInMode(panelId, focusMode)) return null;
+              if (!matchesPanelFilter(panelId, panelFilter)) return null;
               const content = renderPanel(panelId);
               if (!content) return null;
               const isFullWidth = !PAIRED_PANELS.has(panelId);
@@ -1204,7 +1223,7 @@ export default function CommandCenter() {
                     onClick={() => setSelectedItem({ kind: 'action', data: action })}
                   >
                     <button
-                      onClick={(e) => { e.stopPropagation(); if (action.relatedTaskId) { completeTask(action.relatedTaskId); showPostActionToast('complete', { isOverdue: action.timeWindow === 'Overdue' }); } }}
+                      onClick={(e) => { e.stopPropagation(); if (action.relatedTaskId) { completeTask(action.relatedTaskId); showPostActionToast('complete', { taskId: action.relatedTaskId, isOverdue: action.timeWindow === 'Overdue' }); } }}
                       className="mt-0.5 h-5 w-5 rounded-md border-2 border-muted-foreground/30 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors shrink-0"
                     >
                       <Check className="h-3 w-3 text-transparent group-hover:text-primary transition-colors" />
