@@ -71,6 +71,63 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_intelligence_profile: {
+        Row: {
+          active_days_last_30: number
+          avg_daily_actions: number
+          avg_response_time_bucket: string | null
+          avg_time_to_close_bucket: string | null
+          best_time_of_day_bucket: string | null
+          created_at: string
+          deal_close_rate_estimate: number
+          income_trend: string
+          last_updated: string
+          lead_conversion_rate_estimate: number
+          preferred_channel_call_pct: number
+          preferred_channel_email_pct: number
+          preferred_channel_text_pct: number
+          risk_tolerance: string
+          stability_trend: string
+          user_id: string
+        }
+        Insert: {
+          active_days_last_30?: number
+          avg_daily_actions?: number
+          avg_response_time_bucket?: string | null
+          avg_time_to_close_bucket?: string | null
+          best_time_of_day_bucket?: string | null
+          created_at?: string
+          deal_close_rate_estimate?: number
+          income_trend?: string
+          last_updated?: string
+          lead_conversion_rate_estimate?: number
+          preferred_channel_call_pct?: number
+          preferred_channel_email_pct?: number
+          preferred_channel_text_pct?: number
+          risk_tolerance?: string
+          stability_trend?: string
+          user_id: string
+        }
+        Update: {
+          active_days_last_30?: number
+          avg_daily_actions?: number
+          avg_response_time_bucket?: string | null
+          avg_time_to_close_bucket?: string | null
+          best_time_of_day_bucket?: string | null
+          created_at?: string
+          deal_close_rate_estimate?: number
+          income_trend?: string
+          last_updated?: string
+          lead_conversion_rate_estimate?: number
+          preferred_channel_call_pct?: number
+          preferred_channel_email_pct?: number
+          preferred_channel_text_pct?: number
+          risk_tolerance?: string
+          stability_trend?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       alerts: {
         Row: {
           created_at: string
@@ -1004,6 +1061,53 @@ export type Database = {
           workload_bucket?: string | null
         }
         Relationships: []
+      }
+      organization_intelligence_summary: {
+        Row: {
+          activity_distribution: Json
+          avg_income_forecast: number
+          avg_stability_score: number
+          created_at: string
+          id: string
+          last_updated: string
+          opportunity_distribution: Json
+          organization_id: string
+          risk_distribution: Json
+          total_agents: number
+        }
+        Insert: {
+          activity_distribution?: Json
+          avg_income_forecast?: number
+          avg_stability_score?: number
+          created_at?: string
+          id?: string
+          last_updated?: string
+          opportunity_distribution?: Json
+          organization_id: string
+          risk_distribution?: Json
+          total_agents?: number
+        }
+        Update: {
+          activity_distribution?: Json
+          avg_income_forecast?: number
+          avg_stability_score?: number
+          created_at?: string
+          id?: string
+          last_updated?: string
+          opportunity_distribution?: Json
+          organization_id?: string
+          risk_distribution?: Json
+          total_agents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_intelligence_summary_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organizations: {
         Row: {
