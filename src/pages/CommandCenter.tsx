@@ -47,6 +47,7 @@ import { IncomeProtectionShield } from '@/components/IncomeProtectionShield';
 import { AdaptiveStrategyMode } from '@/components/AdaptiveStrategyMode';
 import { WeeklyCommandReview } from '@/components/WeeklyCommandReview';
 import { ActionWorkspaceDrawer } from '@/components/ActionWorkspaceDrawer';
+import { PreparedActionsCard } from '@/components/PreparedActionsCard';
 import { ExecutionQueuePanel } from '@/components/ExecutionQueuePanel';
 import { LearningTransparencyPanel } from '@/components/LearningTransparencyPanel';
 import { NetworkBenchmarksPanel } from '@/components/NetworkBenchmarksPanel';
@@ -66,6 +67,7 @@ import { useRankChangeTracker, type RankChange } from '@/hooks/useRankChangeTrac
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { getAutonomyLevel, type PreparedAction } from '@/lib/preparedActions';
 import { computeMoneyModelBatch, suggestAction, type MoneyModelResult } from '@/lib/moneyModel';
 import type { RiskLevel, Deal, Lead, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
@@ -120,6 +122,7 @@ export default function CommandCenter() {
   });
   const [stressReductionDismissed, setStressReductionDismissed] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [autonomyLevel] = useState(() => getAutonomyLevel());
 
   // Panel layout
   const { panelOrder, updateOrder, applyPreset, resetToDefault } = usePanelLayout(user?.id);
@@ -529,6 +532,35 @@ export default function CommandCenter() {
             burnoutCritical={burnoutCritical}
             predictiveSignals={predictiveSignals}
             onOpenExecution={handleOpenExecution}
+          />
+        );
+      case 'prepared-actions':
+        return (
+          <PreparedActionsCard
+            deals={deals}
+            leads={leads}
+            tasks={tasks}
+            moneyResults={moneyResults}
+            opportunityResults={opportunityResults}
+            autonomyLevel={autonomyLevel}
+            onReviewAction={(action) => {
+              if (action.entityType === 'deal') {
+                const deal = deals.find(d => d.id === action.entityId);
+                if (deal) setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: moneyResults.find(r => r.dealId === action.entityId) || null });
+              } else {
+                const lead = leads.find(l => l.id === action.entityId);
+                if (lead) setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: opportunityResults.find(r => r.leadId === action.entityId) || null });
+              }
+            }}
+            onExecuteAction={(action) => {
+              if (action.entityType === 'deal') {
+                const deal = deals.find(d => d.id === action.entityId);
+                if (deal) setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: moneyResults.find(r => r.dealId === action.entityId) || null });
+              } else {
+                const lead = leads.find(l => l.id === action.entityId);
+                if (lead) setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: opportunityResults.find(r => r.leadId === action.entityId) || null });
+              }
+            }}
           />
         );
       case 'execution-queue':

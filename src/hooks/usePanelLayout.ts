@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type PanelId =
   | 'autopilot'
+  | 'prepared-actions'
   | 'money-at-risk'
   | 'opportunity-heat'
   | 'income-forecast'
@@ -27,6 +28,7 @@ export type PanelId =
 
 export const DEFAULT_PANEL_ORDER: PanelId[] = [
   'autopilot',
+  'prepared-actions',
   'execution-queue',
   'money-at-risk',
   'opportunity-heat',

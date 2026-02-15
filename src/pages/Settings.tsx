@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sun, Moon, User, LogOut, Info, Clock } from 'lucide-react';
+import { Sun, Moon, User, LogOut, Info, Clock, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +11,7 @@ import { NetworkSettingsSection } from '@/components/NetworkSettingsSection';
 import { MarketSettingsSection } from '@/components/MarketSettingsSection';
 import { useMarketConditions } from '@/hooks/useMarketConditions';
 import { useSessionMode, type SessionMode } from '@/hooks/useSessionMode';
+import { getAutonomyLevel, setAutonomyLevel, getFeedbackStats, type AutonomyLevel } from '@/lib/preparedActions';
 import Admin from '@/pages/Admin';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +24,8 @@ export default function Settings() {
   const { currentMode, autoMode, override, setModeOverride } = useSessionMode();
   const { conditions: marketConditions, updateConditions: updateMarketConditions, resetConditions: resetMarketConditions } = useMarketConditions();
   const [tab, setTab] = useState<typeof TABS[number]>('Preferences');
+  const [autonomy, setAutonomy] = useState<AutonomyLevel>(() => getAutonomyLevel());
+  const feedbackStats = getFeedbackStats();
 
   const isAdmin = user?.role === 'admin';
 
@@ -121,6 +124,40 @@ export default function Settings() {
         onUpdate={updateMarketConditions}
         onReset={resetMarketConditions}
       />
+
+      {/* Autonomous Preparation */}
+      <section className="rounded-lg border border-border bg-card p-4 mb-4">
+        <h2 className="text-sm font-semibold mb-1 flex items-center gap-2"><Bot className="h-4 w-4" /> Autonomous Preparation</h2>
+        <p className="text-xs text-muted-foreground mb-3">
+          Controls how aggressively Deal Pilot prepares actions for you. Nothing is ever sent automatically.
+        </p>
+        <Select
+          value={autonomy}
+          onValueChange={(v) => { setAutonomy(v as AutonomyLevel); setAutonomyLevel(v as AutonomyLevel); }}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="minimal">Minimal — Only urgent items</SelectItem>
+            <SelectItem value="balanced">Balanced — Urgent + important</SelectItem>
+            <SelectItem value="aggressive">Aggressive — Most opportunities</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground mt-2">
+          Current: <span className="font-medium capitalize">{autonomy}</span>
+        </p>
+        {feedbackStats.total > 0 && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Feedback Summary</p>
+            <div className="flex gap-4 text-xs">
+              <span className="text-opportunity">{feedbackStats.positive} helpful</span>
+              <span className="text-muted-foreground">{feedbackStats.neutral} somewhat</span>
+              <span className="text-urgent">{feedbackStats.negative} not helpful</span>
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* Daily Operating Mode */}
       <section className="rounded-lg border border-border bg-card p-4 mb-4">
