@@ -3,7 +3,7 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/EmptyState';
-import { Target, DollarSign, Calendar, X, Users } from 'lucide-react';
+import { Target, DollarSign, Calendar, X, Users, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Deal, DealStage, RiskLevel, DealParticipant } from '@/types';
 import { PARTICIPANT_ROLE_LABELS } from '@/types';
@@ -143,9 +143,25 @@ function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAd
   onAddMeAsParticipant: (dealId: string) => Promise<void>;
   orgUsers: { id: string; name: string }[];
 }) {
-  const { user } = useAuth();
+  const { user, logAdminAction } = useAuth();
   const userComm = deal.userCommission ?? deal.commission;
   const hasParticipant = participants.some(p => p.userId === user?.id);
+  const [showOutcomeNote, setShowOutcomeNote] = useState(false);
+  const [outcomeNote, setOutcomeNote] = useState('');
+  const [markingOutcome, setMarkingOutcome] = useState(false);
+
+  const handleOutcome = async (type: 'closed' | 'cancelled') => {
+    setMarkingOutcome(true);
+    const field = type === 'closed' ? 'closed_at' : 'cancelled_at';
+    await supabase.from('deals').update({
+      [field]: new Date().toISOString(),
+      outcome_note: outcomeNote || null,
+    } as any).eq('id', deal.id);
+    await logAdminAction(`deal_${type}`, { dealId: deal.id });
+    toast({ description: `Deal marked as ${type}.` });
+    setMarkingOutcome(false);
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-background/80 backdrop-blur-sm" onClick={onClose}>
@@ -170,6 +186,31 @@ function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAd
             </div>
           )}
         </div>
+
+        {/* Outcome Buttons */}
+        {deal.stage !== 'closed' && (
+          <div className="mt-4 pt-3 border-t border-border space-y-2">
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => handleOutcome('closed')} disabled={markingOutcome}>
+                <Check className="h-3 w-3 mr-1" /> Mark Closed
+              </Button>
+              <Button size="sm" variant="outline" className="flex-1 text-xs text-muted-foreground" onClick={() => handleOutcome('cancelled')} disabled={markingOutcome}>
+                Mark Cancelled
+              </Button>
+            </div>
+            <button onClick={() => setShowOutcomeNote(!showOutcomeNote)} className="text-[10px] text-muted-foreground hover:text-foreground">
+              {showOutcomeNote ? 'Hide note' : 'Add note (optional)'}
+            </button>
+            {showOutcomeNote && (
+              <textarea
+                value={outcomeNote}
+                onChange={e => setOutcomeNote(e.target.value)}
+                placeholder="Outcome note…"
+                className="w-full text-xs rounded-md border border-border bg-background p-2 resize-none h-16"
+              />
+            )}
+          </div>
+        )}
 
         {/* Add Me Banner */}
         {!hasParticipant && user?.id && (

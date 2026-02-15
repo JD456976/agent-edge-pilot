@@ -21,6 +21,8 @@ import { MoneyAtRiskPanel } from '@/components/MoneyAtRiskPanel';
 import { MoneyRiskDrawer } from '@/components/MoneyRiskDrawer';
 import { OpportunityHeatPanel } from '@/components/OpportunityHeatPanel';
 import { computeOpportunityBatch, type OpportunityHeatResult, type UserCommissionDefaults } from '@/lib/leadMoneyModel';
+import { useScoringPreferences } from '@/hooks/useScoringPreferences';
+import { useRankChangeTracker, type RankChange } from '@/hooks/useRankChangeTracker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -105,11 +107,23 @@ export default function CommandCenter() {
   const totalRevenue = activeDeals.reduce((s, d) => s + d.commission, 0);
   const dealsNeedingAttention = panels.dealsAtRisk.length;
 
-  // Money Model
+  // Scoring preferences
+  const { prefs: scoringPrefs, loaded: scoringLoaded } = useScoringPreferences(user?.id);
+
+  // Money Model (with user scoring weights)
+  const riskWeights = useMemo(() => scoringLoaded ? {
+    inactivity_3d_points: scoringPrefs.inactivity_3d_points,
+    inactivity_7d_points: scoringPrefs.inactivity_7d_points,
+    closing_7d_points: scoringPrefs.closing_7d_points,
+    closing_3d_points: scoringPrefs.closing_3d_points,
+    milestone_points: scoringPrefs.milestone_points,
+    drift_conflict_points: scoringPrefs.drift_conflict_points,
+  } : undefined, [scoringPrefs, scoringLoaded]);
+
   const moneyResults = useMemo(() => {
     if (!user?.id) return [];
-    return computeMoneyModelBatch(activeDeals, dealParticipants, user.id);
-  }, [activeDeals, dealParticipants, user?.id]);
+    return computeMoneyModelBatch(activeDeals, dealParticipants, user.id, new Date(), riskWeights);
+  }, [activeDeals, dealParticipants, user?.id, riskWeights]);
 
   const topMoneyAtRisk = useMemo(() => {
     const sorted = [...moneyResults].filter(r => r.personalCommissionAtRisk > 0)
@@ -134,14 +148,27 @@ export default function CommandCenter() {
       });
   }, [user?.id]);
 
+  const oppWeights = useMemo(() => scoringLoaded ? {
+    lead_hot_points: scoringPrefs.lead_hot_points,
+    lead_warm_points: scoringPrefs.lead_warm_points,
+    lead_new_48h_points: scoringPrefs.lead_new_48h_points,
+    engagement_points: scoringPrefs.engagement_points,
+    gap_2d_points: scoringPrefs.gap_2d_points,
+    gap_5d_points: scoringPrefs.gap_5d_points,
+    drift_new_lead_points: scoringPrefs.drift_new_lead_points,
+  } : undefined, [scoringPrefs, scoringLoaded]);
+
   const opportunityResults = useMemo(() => {
     if (!user?.id) return [];
-    return computeOpportunityBatch(leads, tasks, userDefaults);
-  }, [leads, tasks, userDefaults, user?.id]);
+    return computeOpportunityBatch(leads, tasks, userDefaults, new Date(), oppWeights);
+  }, [leads, tasks, userDefaults, user?.id, oppWeights]);
 
   const topOpportunity = useMemo(() => {
     return opportunityResults[0] || null;
   }, [opportunityResults]);
+
+  // Rank change tracker
+  const { dealChanges, leadChanges } = useRankChangeTracker(moneyResults, opportunityResults);
 
   const handleMoneySelect = useCallback((result: MoneyModelResult, deal: Deal) => {
     setMoneyDrawerResult(result);
@@ -328,6 +355,8 @@ export default function CommandCenter() {
             onSelect={handleMoneySelect}
             onAddCommissionToDeals={() => navigate('/pipeline')}
             refreshData={refreshData}
+            dealChanges={dealChanges}
+            riskWeights={riskWeights}
           />
         </PanelErrorBoundary>
         <PanelErrorBoundary>
@@ -336,6 +365,8 @@ export default function CommandCenter() {
             tasks={tasks}
             userId={user?.id || ''}
             onStartAction={handleOpportunityAction}
+            leadChanges={leadChanges}
+            oppWeights={oppWeights}
           />
         </PanelErrorBoundary>
       </div>

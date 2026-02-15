@@ -95,30 +95,48 @@ export function computeStageProbability(deal: Deal, now: Date = new Date()): num
 
 // ── 4) Risk Score ────────────────────────────────────────────────────
 
+export interface RiskScoringWeights {
+  inactivity_3d_points?: number;
+  inactivity_7d_points?: number;
+  closing_7d_points?: number;
+  closing_3d_points?: number;
+  milestone_points?: number;
+  drift_conflict_points?: number;
+}
+
 export function computeRiskScore(
   deal: Deal,
   now: Date = new Date(),
+  weights?: RiskScoringWeights,
 ): { score: number; reasons: MoneyReasonCode[]; reasonPrimary: string } {
   let score = 0;
   const reasons: MoneyReasonCode[] = [];
   const explanations: string[] = [];
+
+  const w = {
+    inactivity_3d: weights?.inactivity_3d_points ?? 20,
+    inactivity_7d: weights?.inactivity_7d_points ?? 40,
+    closing_7d: weights?.closing_7d_points ?? 20,
+    closing_3d: weights?.closing_3d_points ?? 30,
+    milestone: weights?.milestone_points ?? 20,
+    drift_conflict: weights?.drift_conflict_points ?? 30,
+  };
 
   // Inactivity
   const touchDate = deal.lastTouchedAt || deal.createdAt;
   if (touchDate) {
     const days = daysBetween(now, new Date(touchDate));
     if (days > 7) {
-      score += 40;
+      score += w.inactivity_7d;
       reasons.push('no_activity_7d');
-      explanations.push(`No activity ${Math.round(days)} days`);
+      explanations.push(`No activity ${Math.round(days)} days (+${w.inactivity_7d})`);
     } else if (days > 3) {
-      score += 20;
+      score += w.inactivity_3d;
       reasons.push('no_activity_3d');
-      explanations.push(`No activity ${Math.round(days)} days`);
+      explanations.push(`No activity ${Math.round(days)} days (+${w.inactivity_3d})`);
     }
   } else {
-    // No timestamps at all — very stale
-    score += 40;
+    score += w.inactivity_7d;
     reasons.push('no_activity_7d');
     explanations.push('No activity timestamps available');
   }
@@ -127,13 +145,13 @@ export function computeRiskScore(
   if (deal.closeDate) {
     const daysToClose = daysBetween(new Date(deal.closeDate), now);
     if (daysToClose >= 0 && daysToClose <= 3) {
-      score += 30;
+      score += w.closing_3d;
       reasons.push('close_3d');
-      explanations.push(`Closing in ${Math.round(daysToClose)} days`);
+      explanations.push(`Closing in ${Math.round(daysToClose)} days (+${w.closing_3d})`);
     } else if (daysToClose > 3 && daysToClose <= 7) {
-      score += 20;
+      score += w.closing_7d;
       reasons.push('close_7d');
-      explanations.push(`Closing in ${Math.round(daysToClose)} days`);
+      explanations.push(`Closing in ${Math.round(daysToClose)} days (+${w.closing_7d})`);
     }
   }
 
@@ -141,30 +159,30 @@ export function computeRiskScore(
   const ms = deal.milestoneStatus;
   if (ms) {
     if (ms.inspection === 'unknown' || ms.inspection === 'scheduled') {
-      score += 20;
+      score += w.milestone;
       reasons.push('inspection_unresolved');
-      explanations.push('Inspection unresolved');
+      explanations.push(`Inspection unresolved (+${w.milestone})`);
     }
     if (ms.financing === 'unknown' || ms.financing === 'preapproved') {
-      score += 20;
+      score += w.milestone;
       reasons.push('financing_unresolved');
-      explanations.push('Financing unresolved');
+      explanations.push(`Financing unresolved (+${w.milestone})`);
     }
     if (ms.appraisal === 'unknown') {
-      score += 20;
+      score += w.milestone;
       reasons.push('appraisal_unknown');
-      explanations.push('Appraisal unknown');
+      explanations.push(`Appraisal unknown (+${w.milestone})`);
     }
   }
 
-  // Drift conflict (check riskFlags for drift indicators)
+  // Drift conflict
   const driftFlags = (deal.riskFlags || []).some(f =>
     f.toLowerCase().includes('drift') || f.toLowerCase().includes('conflict')
   );
   if (driftFlags) {
-    score += 30;
+    score += w.drift_conflict;
     reasons.push('drift_conflict');
-    explanations.push('Drift conflict detected');
+    explanations.push(`Drift conflict detected (+${w.drift_conflict})`);
   }
 
   const clamped = clampScore(score);
@@ -211,11 +229,12 @@ export function computeMoneyModel(
   allParticipants: DealParticipant[],
   userId: string,
   now: Date = new Date(),
+  riskWeights?: RiskScoringWeights,
 ): MoneyModelResult {
   const { total, hasParticipant, splitWarning } = computePersonalCommissionTotal(deal, allParticipants, userId);
   const stageProbability = computeStageProbability(deal, now);
   const expectedPersonalCommission = clampMoney(Math.round(total * stageProbability));
-  const { score: riskScore, reasons, reasonPrimary } = computeRiskScore(deal, now);
+  const { score: riskScore, reasons, reasonPrimary } = computeRiskScore(deal, now, riskWeights);
   const personalCommissionAtRisk = clampMoney(Math.round(expectedPersonalCommission * (riskScore / 100)));
 
   let confidence = computeConfidence(deal, hasParticipant, splitWarning);
@@ -274,13 +293,14 @@ export function computeMoneyModelBatch(
   allParticipants: DealParticipant[],
   userId: string,
   now: Date = new Date(),
+  riskWeights?: RiskScoringWeights,
 ): MoneyModelResult[] {
   return deals.map(deal => {
     const key = cacheKey(deal, allParticipants, userId);
     const cached = cache.get(deal.id);
     if (cached && cached.key === key) return cached.result;
 
-    const result = computeMoneyModel(deal, allParticipants, userId, now);
+    const result = computeMoneyModel(deal, allParticipants, userId, now, riskWeights);
     cache.set(deal.id, { result, key });
     return result;
   });

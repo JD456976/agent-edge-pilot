@@ -206,7 +206,9 @@ export type Database = {
       deals: {
         Row: {
           assigned_to_user_id: string | null
+          cancelled_at: string | null
           close_date: string
+          closed_at: string | null
           commission_amount: number
           commission_rate: number | null
           created_at: string
@@ -221,6 +223,7 @@ export type Database = {
           milestone_financing: string | null
           milestone_inspection: string | null
           organization_id: string | null
+          outcome_note: string | null
           price: number
           referral_fee_percent: number | null
           risk_flags: string[] | null
@@ -231,7 +234,9 @@ export type Database = {
         }
         Insert: {
           assigned_to_user_id?: string | null
+          cancelled_at?: string | null
           close_date?: string
+          closed_at?: string | null
           commission_amount?: number
           commission_rate?: number | null
           created_at?: string
@@ -246,6 +251,7 @@ export type Database = {
           milestone_financing?: string | null
           milestone_inspection?: string | null
           organization_id?: string | null
+          outcome_note?: string | null
           price?: number
           referral_fee_percent?: number | null
           risk_flags?: string[] | null
@@ -256,7 +262,9 @@ export type Database = {
         }
         Update: {
           assigned_to_user_id?: string | null
+          cancelled_at?: string | null
           close_date?: string
+          closed_at?: string | null
           commission_amount?: number
           commission_rate?: number | null
           created_at?: string
@@ -271,6 +279,7 @@ export type Database = {
           milestone_financing?: string | null
           milestone_inspection?: string | null
           organization_id?: string | null
+          outcome_note?: string | null
           price?: number
           referral_fee_percent?: number | null
           risk_flags?: string[] | null
@@ -667,6 +676,7 @@ export type Database = {
       leads: {
         Row: {
           assigned_to_user_id: string | null
+          converted_at: string | null
           created_at: string
           engagement_score: number
           id: string
@@ -680,14 +690,17 @@ export type Database = {
           lead_temperature:
             | Database["public"]["Enums"]["lead_temperature"]
             | null
+          lost_at: string | null
           name: string
           notes: string | null
           organization_id: string | null
+          outcome_note: string | null
           source: string
           status_tags: string[] | null
         }
         Insert: {
           assigned_to_user_id?: string | null
+          converted_at?: string | null
           created_at?: string
           engagement_score?: number
           id?: string
@@ -701,14 +714,17 @@ export type Database = {
           lead_temperature?:
             | Database["public"]["Enums"]["lead_temperature"]
             | null
+          lost_at?: string | null
           name: string
           notes?: string | null
           organization_id?: string | null
+          outcome_note?: string | null
           source?: string
           status_tags?: string[] | null
         }
         Update: {
           assigned_to_user_id?: string | null
+          converted_at?: string | null
           created_at?: string
           engagement_score?: number
           id?: string
@@ -722,9 +738,11 @@ export type Database = {
           lead_temperature?:
             | Database["public"]["Enums"]["lead_temperature"]
             | null
+          lost_at?: string | null
           name?: string
           notes?: string | null
           organization_id?: string | null
+          outcome_note?: string | null
           source?: string
           status_tags?: string[] | null
         }
@@ -818,10 +836,65 @@ export type Database = {
           },
         ]
       }
+      scoring_preferences: {
+        Row: {
+          closing_3d_points: number
+          closing_7d_points: number
+          drift_conflict_points: number
+          drift_new_lead_points: number
+          engagement_points: number
+          gap_2d_points: number
+          gap_5d_points: number
+          inactivity_3d_points: number
+          inactivity_7d_points: number
+          lead_hot_points: number
+          lead_new_48h_points: number
+          lead_warm_points: number
+          milestone_points: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          closing_3d_points?: number
+          closing_7d_points?: number
+          drift_conflict_points?: number
+          drift_new_lead_points?: number
+          engagement_points?: number
+          gap_2d_points?: number
+          gap_5d_points?: number
+          inactivity_3d_points?: number
+          inactivity_7d_points?: number
+          lead_hot_points?: number
+          lead_new_48h_points?: number
+          lead_warm_points?: number
+          milestone_points?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          closing_3d_points?: number
+          closing_7d_points?: number
+          drift_conflict_points?: number
+          drift_new_lead_points?: number
+          engagement_points?: number
+          gap_2d_points?: number
+          gap_5d_points?: number
+          inactivity_3d_points?: number
+          inactivity_7d_points?: number
+          lead_hot_points?: number
+          lead_new_48h_points?: number
+          lead_warm_points?: number
+          milestone_points?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           assigned_to_user_id: string | null
           completed_at: string | null
+          completion_note: string | null
           created_at: string
           due_at: string
           id: string
@@ -838,6 +911,7 @@ export type Database = {
         Insert: {
           assigned_to_user_id?: string | null
           completed_at?: string | null
+          completion_note?: string | null
           created_at?: string
           due_at?: string
           id?: string
@@ -854,6 +928,7 @@ export type Database = {
         Update: {
           assigned_to_user_id?: string | null
           completed_at?: string | null
+          completion_note?: string | null
           created_at?: string
           due_at?: string
           id?: string

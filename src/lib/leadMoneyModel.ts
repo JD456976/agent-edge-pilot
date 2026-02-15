@@ -103,42 +103,63 @@ function daysSince(dateStr: string | undefined | null, now: Date): number {
   return (now.getTime() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24);
 }
 
+export interface OpportunityScoringWeights {
+  lead_hot_points?: number;
+  lead_warm_points?: number;
+  lead_new_48h_points?: number;
+  engagement_points?: number;
+  gap_2d_points?: number;
+  gap_5d_points?: number;
+  drift_new_lead_points?: number;
+}
+
 export function computeOpportunityHeatScore(
   lead: Lead,
   hasUpcomingTask: boolean,
   hasDriftSignal: boolean = false,
   now: Date = new Date(),
+  weights?: OpportunityScoringWeights,
 ): { score: number; reasons: string[] } {
   let score = 0;
   const reasons: string[] = [];
 
+  const w = {
+    hot: weights?.lead_hot_points ?? 30,
+    warm: weights?.lead_warm_points ?? 15,
+    new48h: weights?.lead_new_48h_points ?? 20,
+    engagement: weights?.engagement_points ?? 15,
+    gap2d: weights?.gap_2d_points ?? 15,
+    gap5d: weights?.gap_5d_points ?? 25,
+    drift: weights?.drift_new_lead_points ?? 20,
+  };
+
   // Intent: temperature
   if (lead.leadTemperature === 'hot') {
-    score += 30;
-    reasons.push('Hot lead');
+    score += w.hot;
+    reasons.push(`Hot lead (+${w.hot})`);
   } else if (lead.leadTemperature === 'warm') {
-    score += 15;
-    reasons.push('Warm lead');
+    score += w.warm;
+    reasons.push(`Warm lead (+${w.warm})`);
   }
 
   // Intent: new lead
   const daysSinceCreated = daysSince(lead.createdAt, now);
   if (daysSinceCreated < 2) {
-    score += 20;
-    reasons.push('New lead (< 48h)');
+    score += w.new48h;
+    reasons.push(`New lead (< 48h) (+${w.new48h})`);
   }
 
   // Intent: engagement
   if (lead.engagementScore > 0) {
-    score += 15;
-    reasons.push('Engagement signals present');
+    score += w.engagement;
+    reasons.push(`Engagement signals present (+${w.engagement})`);
   }
 
   // Intent: returning activity
   const daysSinceActivity = daysSince(lead.lastActivityAt, now);
   const daysSinceContact = daysSince(lead.lastContactAt, now);
   if (daysSinceActivity < 1 && daysSinceContact > 5) {
-    score += 15;
+    score += w.engagement;
     reasons.push(`Returned after ${Math.round(daysSinceContact)} days`);
   }
 
@@ -146,18 +167,18 @@ export function computeOpportunityHeatScore(
   if (!hasUpcomingTask) {
     const touchDays = Math.min(daysSinceActivity, daysSinceContact);
     if (touchDays > 5) {
-      score += 25;
-      reasons.push(`No follow-up, ${Math.round(touchDays)}d since contact`);
+      score += w.gap5d;
+      reasons.push(`No follow-up, ${Math.round(touchDays)}d since contact (+${w.gap5d})`);
     } else if (touchDays > 2) {
-      score += 15;
-      reasons.push('No upcoming task scheduled');
+      score += w.gap2d;
+      reasons.push(`No upcoming task scheduled (+${w.gap2d})`);
     }
   }
 
   // Drift signal
   if (hasDriftSignal) {
-    score += 20;
-    reasons.push('New data available from CRM');
+    score += w.drift;
+    reasons.push(`New data available from CRM (+${w.drift})`);
   }
 
   return {
@@ -181,6 +202,7 @@ export function computeOpportunityBatch(
   tasks: { relatedLeadId?: string; completedAt?: string }[],
   userDefaults?: UserCommissionDefaults,
   now: Date = new Date(),
+  weights?: OpportunityScoringWeights,
 ): OpportunityHeatResult[] {
   // Build set of leads with upcoming tasks
   const leadsWithTasks = new Set<string>();
@@ -192,7 +214,7 @@ export function computeOpportunityBatch(
 
   return leads.map(lead => {
     const hasTask = leadsWithTasks.has(lead.id);
-    const { score, reasons } = computeOpportunityHeatScore(lead, hasTask, false, now);
+    const { score, reasons } = computeOpportunityHeatScore(lead, hasTask, false, now, weights);
     const estimate = estimateLeadCommission(lead, userDefaults);
     const opportunityValue = clampNumber(
       Math.round(estimate.estimatedPersonalCommission * (score / 100))
