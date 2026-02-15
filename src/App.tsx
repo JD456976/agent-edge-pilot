@@ -22,6 +22,8 @@ import Insights from "@/pages/Insights";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 import Install from "@/pages/Install";
+import AppStoreAssets from "@/pages/AppStoreAssets";
+import { ReviewPrompt } from "@/components/ReviewPrompt";
 
 const queryClient = new QueryClient();
 
@@ -121,6 +123,7 @@ function AppRoutes() {
       <Route path="/settings" element={<Navigate to="/?workspace=settings" replace />} />
       <Route path="/admin" element={<Navigate to="/?workspace=settings" replace />} />
       <Route path="/install" element={<Install />} />
+      <Route path="/app-store-assets" element={<AppStoreAssets />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -138,6 +141,7 @@ const App = () => (
               <WorkspaceProvider>
                 <EntityNavigationProvider>
                   <AppRoutes />
+                  <ReviewPrompt />
                 </EntityNavigationProvider>
               </WorkspaceProvider>
             </BrowserRouter>
