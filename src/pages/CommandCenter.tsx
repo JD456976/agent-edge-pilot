@@ -88,6 +88,10 @@ import { getAutonomyLevel, type PreparedAction } from '@/lib/preparedActions';
 import { computeMoneyModelBatch, suggestAction, type MoneyModelResult } from '@/lib/moneyModel';
 import { useEntityNavigation } from '@/contexts/EntityNavigationContext';
 import { LazyPanel } from '@/components/LazyPanel';
+import { DailyStreakBadge } from '@/components/DailyStreakBadge';
+import { ExportSnapshotButton } from '@/components/ExportSnapshotButton';
+import { usePinnedPanels } from '@/hooks/usePinnedPanels';
+import { PanelPinButton } from '@/components/PanelPinButton';
 import type { RiskLevel, Deal, Lead, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 const SNOOZE_STORAGE_KEY = 'dp-snooze-counts';
@@ -146,6 +150,9 @@ export default function CommandCenter() {
   const [autonomyLevel] = useState(() => getAutonomyLevel());
   const [showWeeklyPlanner, setShowWeeklyPlanner] = useState(false);
   const [panelFilter, setPanelFilter] = useState('');
+
+  // Pinned panels
+  const { pinnedPanels, togglePin, isPinned, sortWithPins } = usePinnedPanels();
 
   // Focus Mode
   const { focusMode, updateFocusMode } = useFocusMode();
@@ -960,11 +967,22 @@ export default function CommandCenter() {
       {/* Sticky Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm -mx-4 px-4 py-3 border-b border-transparent [&:not(:first-child)]:border-border">
         <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-xl font-bold">Command Center</h1>
-            <p className="text-sm text-muted-foreground">Today's Briefing · {today}</p>
+          <div className="flex items-center gap-2">
+            <div>
+              <h1 className="text-xl font-bold">Command Center</h1>
+              <p className="text-sm text-muted-foreground">Today's Briefing · {today}</p>
+            </div>
+            <DailyStreakBadge eodStreak={habitStats.eodStreak} briefStreak={habitStats.briefStreak} />
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
+            <ExportSnapshotButton
+              totalRevenue={totalRevenue}
+              totalMoneyAtRisk={totalMoneyAtRisk}
+              stabilityScore={stabilityResult.score}
+              overdueCount={overdueTasks.length}
+              activeDeals={activeDeals.length}
+              momentum={momentum}
+            />
             <PanelSearchFilter onFilterChange={setPanelFilter} />
             <PanelLayoutControls
               editMode={editMode}
@@ -1164,9 +1182,9 @@ export default function CommandCenter() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext items={panelOrder} strategy={verticalListSortingStrategy}>
+        <SortableContext items={sortWithPins(panelOrder)} strategy={verticalListSortingStrategy}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {panelOrder.map(panelId => {
+            {sortWithPins(panelOrder).map(panelId => {
               if (!isPanelVisibleInMode(panelId, focusMode)) return null;
               if (!matchesPanelFilter(panelId, panelFilter)) return null;
               const content = renderPanel(panelId);
@@ -1175,9 +1193,16 @@ export default function CommandCenter() {
               return (
                 <SortablePanel key={panelId} id={panelId} editMode={editMode} fullWidth={isFullWidth}>
                   <PanelErrorBoundary>
-                    <LazyPanel skeletonLines={isFullWidth ? 4 : 3} forceMount={editMode || isDragging}>
-                      {content}
-                    </LazyPanel>
+                    <div className="relative group/pin">
+                      {editMode && (
+                        <div className="absolute top-2 right-2 z-10 opacity-0 group-hover/pin:opacity-100 transition-opacity">
+                          <PanelPinButton panelId={panelId} isPinned={isPinned(panelId)} onToggle={togglePin} />
+                        </div>
+                      )}
+                      <LazyPanel skeletonLines={isFullWidth ? 4 : 3} forceMount={editMode || isDragging}>
+                        {content}
+                      </LazyPanel>
+                    </div>
                   </PanelErrorBoundary>
                 </SortablePanel>
               );
