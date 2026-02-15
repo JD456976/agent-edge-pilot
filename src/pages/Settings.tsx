@@ -1,10 +1,11 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sun, Moon, User, Link2, LogOut, Info, Loader2, CheckCircle2, XCircle, AlertTriangle, Eye, Upload, Wifi } from 'lucide-react';
+import { Sun, Moon, User, Link2, LogOut, Info, Loader2, CheckCircle2, XCircle, AlertTriangle, Eye, Upload, Wifi, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +13,7 @@ import { FubSyncPreviewModal } from '@/components/FubSyncPreviewModal';
 import { FubImportReview } from '@/components/FubImportReview';
 import { ImportMatchingRules, ImportDryRunPanel } from '@/components/ImportSettings';
 import { ScoringCalibrationPanel } from '@/components/ScoringCalibrationPanel';
+import { useSessionMode, type SessionMode } from '@/hooks/useSessionMode';
 import { toast } from '@/hooks/use-toast';
 import { callEdgeFunction, type EdgeFunctionError } from '@/lib/edgeClient';
 import { EdgeErrorDisplay, EdgeDebugDrawer } from '@/components/EdgeErrorDisplay';
@@ -27,6 +29,7 @@ export default function Settings() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { currentMode, autoMode, override, setModeOverride } = useSessionMode();
 
   // FUB integration state
   const [integration, setIntegration] = useState<IntegrationState>({ status: 'disconnected', last4: null, lastValidated: null });
@@ -288,6 +291,31 @@ export default function Settings() {
 
       {/* Scoring Calibration */}
       <ScoringCalibrationPanel />
+
+      {/* Daily Operating Mode */}
+      <section className="rounded-lg border border-border bg-card p-4 mb-4">
+        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Clock className="h-4 w-4" /> Daily Operating Mode</h2>
+        <p className="text-xs text-muted-foreground mb-3">
+          Auto-detected: <span className="font-medium capitalize">{autoMode}</span>. Override for testing.
+        </p>
+        <Select
+          value={override ?? 'auto'}
+          onValueChange={(v) => setModeOverride(v === 'auto' ? null : v as SessionMode)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="auto">Auto (based on time)</SelectItem>
+            <SelectItem value="morning">Morning</SelectItem>
+            <SelectItem value="midday">Midday</SelectItem>
+            <SelectItem value="evening">Evening</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground mt-2">
+          Current mode: <span className="font-medium capitalize">{currentMode}</span>
+        </p>
+      </section>
 
       {/* Sign out */}
       <Button variant="outline" className="w-full" onClick={handleLogout}>

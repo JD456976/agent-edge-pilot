@@ -1,11 +1,12 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, Plus } from 'lucide-react';
+import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, Plus, Phone } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { buildCommandCenterPanels } from '@/lib/intelligenceEngine';
 import { getDailyBriefing, getMissedYesterdayCount, getMomentum, getPipelineWatch, getControlStatus, getProgressSnapshot, shouldShowStressReduction, getPostActionFeedback } from '@/lib/dailyIntelligence';
 import { useSessionMemory } from '@/hooks/useSessionMemory';
 import { useImportHighlight } from '@/hooks/useImportHighlight';
+import { useSessionMode, useSessionStartRisk } from '@/hooks/useSessionMode';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/EmptyState';
@@ -20,6 +21,8 @@ import { FubWatchlistPanel } from '@/components/FubWatchlistPanel';
 import { MoneyAtRiskPanel } from '@/components/MoneyAtRiskPanel';
 import { MoneyRiskDrawer } from '@/components/MoneyRiskDrawer';
 import { OpportunityHeatPanel } from '@/components/OpportunityHeatPanel';
+import { MorningFocusCard, MiddayStabilizationCard, EodSafetyCard } from '@/components/DailyModeCards';
+import { LogTouchModal } from '@/components/LogTouchModal';
 import { computeOpportunityBatch, type OpportunityHeatResult, type UserCommissionDefaults } from '@/lib/leadMoneyModel';
 import { useScoringPreferences } from '@/hooks/useScoringPreferences';
 import { useRankChangeTracker, type RankChange } from '@/hooks/useRankChangeTracker';
@@ -54,6 +57,7 @@ export default function CommandCenter() {
   const [moneyDrawerDeal, setMoneyDrawerDeal] = useState<Deal | null>(null);
   const navigate = useNavigate();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showLogTouch, setShowLogTouch] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<DetailItem | null>(null);
   const [snoozedIds, setSnoozedIds] = useState<Set<string>>(new Set());
@@ -62,6 +66,9 @@ export default function CommandCenter() {
     try { return JSON.parse(localStorage.getItem(SNOOZE_STORAGE_KEY) || '{}'); } catch { return {}; }
   });
   const [stressReductionDismissed, setStressReductionDismissed] = useState(false);
+
+  // Daily Operating Mode
+  const { currentMode } = useSessionMode();
 
   const showPostActionToast = useCallback((kind: 'complete' | 'snooze' | 'handled', context?: { isRiskDeal?: boolean; isOverdue?: boolean; isOpportunity?: boolean }) => {
     const feedback = getPostActionFeedback(kind, context);
@@ -213,6 +220,62 @@ export default function CommandCenter() {
   const progressItems = useMemo(() => getProgressSnapshot(tasks, deals, leads, previousSnapshot), [tasks, deals, leads, previousSnapshot]);
   const stressReduction = useMemo(() => shouldShowStressReduction(tasks, deals, previousSnapshot), [tasks, deals, previousSnapshot]);
 
+  // Daily mode computed values
+  const totalMoneyAtRisk = useMemo(() => moneyResults.reduce((s, r) => s + r.personalCommissionAtRisk, 0), [moneyResults]);
+  const sessionStartRisk = useSessionStartRisk(totalMoneyAtRisk, hasData);
+
+  const now = useMemo(() => new Date(), []);
+  const overdueTasks = useMemo(() => tasks.filter(t => !t.completedAt && new Date(t.dueAt) < now), [tasks, now]);
+
+  const todayStart = useMemo(() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0); return d;
+  }, []);
+
+  // EOD: deals at risk without touches today
+  const untouchedRiskDeals = useMemo(() => {
+    return deals.filter(d => d.stage !== 'closed' && (d.riskLevel === 'red' || d.riskLevel === 'yellow') && (!d.lastTouchedAt || new Date(d.lastTouchedAt) < todayStart));
+  }, [deals, todayStart]);
+
+  // EOD: hot leads without touches today
+  const untouchedHotLeads = useMemo(() => {
+    return leads.filter(l => (l.leadTemperature === 'hot' || l.engagementScore >= 80) && (!l.lastTouchedAt || new Date(l.lastTouchedAt) < todayStart));
+  }, [leads, todayStart]);
+
+  // Midday: risks reduced since session start
+  const risksReducedToday = useMemo(() => {
+    if (!previousSnapshot) return 0;
+    let count = 0;
+    for (const dealId of previousSnapshot.riskDealIds) {
+      const deal = deals.find(d => d.id === dealId);
+      if (deal && deal.riskLevel === 'green') count++;
+    }
+    return count;
+  }, [deals, previousSnapshot]);
+
+  // Mode-aware header
+  const modeHeader = useMemo(() => {
+    const riskCount = moneyResults.filter(r => r.personalCommissionAtRisk > 0).length;
+    const oppCount = opportunityResults.filter(r => r.opportunityScore >= 40).length;
+
+    switch (currentMode) {
+      case 'morning':
+        return {
+          message: 'Start by protecting income, then create new opportunities.',
+          subtext: `Top risks: ${riskCount}, Top opportunities: ${oppCount}`,
+        };
+      case 'midday':
+        return {
+          message: 'Stabilize risks and keep momentum.',
+          subtext: `Risks reduced today: ${risksReducedToday}`,
+        };
+      case 'evening':
+        return {
+          message: 'Make sure nothing critical is left unattended.',
+          subtext: `Open urgent items remaining: ${untouchedRiskDeals.length + overdueTasks.length}`,
+        };
+    }
+  }, [currentMode, moneyResults, opportunityResults, risksReducedToday, untouchedRiskDeals, overdueTasks]);
+
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   if (loading) {
@@ -283,11 +346,14 @@ export default function CommandCenter() {
           </div>
         )}
 
-        {/* Dynamic briefing message */}
+        {/* Mode-aware briefing message */}
         <div className="flex items-center gap-2">
           <span className="text-base">{briefing.icon}</span>
-          <span className="text-sm font-medium">{briefing.text}</span>
+          <span className="text-sm font-medium">{modeHeader.message}</span>
         </div>
+
+        {/* Mode subtext */}
+        <p className="text-xs text-muted-foreground">{modeHeader.subtext}</p>
 
         {/* Stats row */}
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5">
@@ -313,7 +379,9 @@ export default function CommandCenter() {
           </p>
         )}
 
-        <span className="text-xs text-muted-foreground block">Good morning, {user?.name?.split(' ')[0]}</span>
+        <span className="text-xs text-muted-foreground block">
+          {currentMode === 'morning' ? 'Good morning' : currentMode === 'midday' ? 'Good afternoon' : 'Good evening'}, {user?.name?.split(' ')[0]}
+        </span>
       </div>
 
       {/* Control Status & Progress */}
@@ -324,6 +392,41 @@ export default function CommandCenter() {
         stressReductionDismissed={stressReductionDismissed}
         onDismissStressReduction={() => setStressReductionDismissed(true)}
       />
+
+      {/* Daily Mode Cards */}
+      {currentMode === 'morning' && (
+        <MorningFocusCard
+          topRisk={topMoneyAtRisk}
+          topOpportunity={topOpportunity}
+          deals={deals}
+          leads={leads}
+          overdueTasks={overdueTasks}
+          onStartAction={() => {
+            // Scroll to recommended first action
+            if (topMoneyAtRisk && deals.find(d => d.id === topMoneyAtRisk.dealId)) {
+              handleMoneySelect(topMoneyAtRisk, deals.find(d => d.id === topMoneyAtRisk.dealId)!);
+            }
+          }}
+          onReviewAll={() => navigate('/tasks')}
+        />
+      )}
+      {currentMode === 'midday' && (
+        <MiddayStabilizationCard
+          currentTotalRisk={totalMoneyAtRisk}
+          sessionStart={sessionStartRisk}
+          risksReducedToday={risksReducedToday}
+        />
+      )}
+      {currentMode === 'evening' && (
+        <EodSafetyCard
+          untouchedRiskDeals={untouchedRiskDeals}
+          untouchedHotLeads={untouchedHotLeads}
+          overdueTasks={overdueTasks}
+          onLogTouch={() => setShowLogTouch(true)}
+          onCreateTask={() => setShowQuickAdd(true)}
+          onReviewItems={() => navigate('/tasks')}
+        />
+      )}
 
       {/* Recommended First Action */}
       <RecommendedFirstAction
@@ -555,6 +658,17 @@ export default function CommandCenter() {
 
       {/* Quick Add Modal */}
       {showQuickAdd && <QuickAddModal onClose={() => setShowQuickAdd(false)} />}
+
+      {/* Log Touch Modal (EOD) */}
+      {showLogTouch && untouchedRiskDeals.length > 0 && (
+        <LogTouchModal
+          open={true}
+          entityType="deal"
+          entityId={untouchedRiskDeals[0].id}
+          entityTitle={untouchedRiskDeals[0].title}
+          onClose={() => setShowLogTouch(false)}
+        />
+      )}
     </div>
   );
 }
