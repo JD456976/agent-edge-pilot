@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
+import { EntityNavigationProvider } from "@/contexts/EntityNavigationContext";
 import { AppLayout } from "@/components/AppLayout";
 import { WorkspaceOverlayShell } from "@/components/WorkspaceOverlayShell";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
@@ -129,7 +130,9 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <WorkspaceProvider>
-                <AppRoutes />
+                <EntityNavigationProvider>
+                  <AppRoutes />
+                </EntityNavigationProvider>
               </WorkspaceProvider>
             </BrowserRouter>
           </TooltipProvider>
