@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Activity, ChevronRight, X, Plus, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { PanelHelpTooltip } from '@/components/PanelHelpTooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -291,7 +292,14 @@ export function StabilityScorePanelV2({ inputs, previousScore, weekAvgScore, onC
               </span>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground mb-2">Score: {result.score}/100</p>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <p className="text-xs text-muted-foreground mb-2 cursor-help w-fit">Score: {result.score}/100</p>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[260px] text-xs leading-relaxed">
+              100 = fully balanced workload. Penalized by overdue tasks, untouched leads, upcoming deadlines, and income concentration. Higher is better.
+            </TooltipContent>
+          </Tooltip>
 
           {/* Top load indicators */}
           {loadIndicators.length > 0 && (

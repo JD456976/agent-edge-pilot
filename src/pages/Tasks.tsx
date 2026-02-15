@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { EmptyState } from '@/components/EmptyState';
@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ListChecks, Check, Plus, X } from 'lucide-react';
+import { ListChecks, Check, Plus, X, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { TaskType } from '@/types';
+import type { Task, TaskType } from '@/types';
 
 const TABS = ['Today', 'Overdue', 'Future'] as const;
 const TASK_TYPES: TaskType[] = ['call', 'text', 'email', 'showing', 'follow_up', 'closing', 'open_house', 'thank_you'];
@@ -40,6 +40,32 @@ export default function Tasks() {
     if (filterType !== 'all') list = list.filter(t => t.type === filterType);
     return list.sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime());
   }, [tasks, tab, filterType]);
+
+  // Deduplicate: group tasks with same title + same due date (day-level)
+  type TaskGroup = { primary: Task; duplicates: Task[] };
+  const groupedTasks = useMemo((): TaskGroup[] => {
+    const groups: Map<string, TaskGroup> = new Map();
+    for (const task of filtered) {
+      const dayKey = new Date(task.dueAt).toISOString().slice(0, 10);
+      const key = `${task.title.toLowerCase().trim()}::${dayKey}::${task.relatedDealId ?? ''}::${task.relatedLeadId ?? ''}`;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.duplicates.push(task);
+      } else {
+        groups.set(key, { primary: task, duplicates: [] });
+      }
+    }
+    return Array.from(groups.values());
+  }, [filtered]);
+
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const toggleGroup = useCallback((key: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
 
   const handleCreate = () => {
     if (!newTitle.trim() || !user) return;
@@ -103,31 +129,69 @@ export default function Tasks() {
       </div>
 
       {/* Task list */}
-      {filtered.length === 0 ? (
+      {groupedTasks.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">No tasks in this view</p>
       ) : (
         <div className="space-y-1">
-          {filtered.map(task => {
+          {groupedTasks.map(group => {
+            const task = group.primary;
             const done = !!task.completedAt;
             const overdue = !done && new Date(task.dueAt) < now;
+            const hasDupes = group.duplicates.length > 0;
+            const groupKey = task.id;
+            const isExpanded = expandedGroups.has(groupKey);
+            const allTasks = [task, ...group.duplicates];
+
             return (
-              <div key={task.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors">
-                <button
-                  onClick={() => done ? uncompleteTask(task.id) : completeTask(task.id)}
-                  className={cn('h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors', done ? 'bg-primary border-primary' : 'border-muted-foreground/30 hover:border-primary')}
-                >
-                  {done && <Check className="h-3 w-3 text-primary-foreground" />}
-                </button>
-                <div className={cn('flex-1 min-w-0', done && 'opacity-50')}>
-                  <p className={cn('text-sm font-medium truncate', done && 'line-through')}>{task.title}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{typeLabel[task.type]}</Badge>
-                    {task.importedFrom && <ImportSourceBadge importedFrom={task.importedFrom} compact />}
-                    <span className={cn('text-xs', overdue ? 'text-destructive font-medium' : 'text-muted-foreground')}>
-                      {overdue ? 'Overdue' : new Date(task.dueAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                    </span>
+              <div key={task.id}>
+                <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors">
+                  <button
+                    onClick={() => done ? uncompleteTask(task.id) : completeTask(task.id)}
+                    className={cn('h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors', done ? 'bg-primary border-primary' : 'border-muted-foreground/30 hover:border-primary')}
+                  >
+                    {done && <Check className="h-3 w-3 text-primary-foreground" />}
+                  </button>
+                  <div className={cn('flex-1 min-w-0', done && 'opacity-50')}>
+                    <p className={cn('text-sm font-medium truncate', done && 'line-through')}>{task.title}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{typeLabel[task.type]}</Badge>
+                      {task.importedFrom && <ImportSourceBadge importedFrom={task.importedFrom} compact />}
+                      <span className={cn('text-xs', overdue ? 'text-destructive font-medium' : 'text-muted-foreground')}>
+                        {overdue ? 'Overdue' : new Date(task.dueAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      </span>
+                    </div>
                   </div>
+                  {hasDupes && (
+                    <button
+                      onClick={() => toggleGroup(groupKey)}
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md border border-border"
+                    >
+                      <span>{group.duplicates.length + 1} similar</span>
+                      <ChevronDown className={cn('h-3 w-3 transition-transform', isExpanded && 'rotate-180')} />
+                    </button>
+                  )}
                 </div>
+                {hasDupes && isExpanded && (
+                  <div className="ml-8 border-l-2 border-border pl-3 space-y-1 mb-1">
+                    {group.duplicates.map(dup => {
+                      const dupDone = !!dup.completedAt;
+                      return (
+                        <div key={dup.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-accent/50 transition-colors">
+                          <button
+                            onClick={() => dupDone ? uncompleteTask(dup.id) : completeTask(dup.id)}
+                            className={cn('h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors', dupDone ? 'bg-primary border-primary' : 'border-muted-foreground/30 hover:border-primary')}
+                          >
+                            {dupDone && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                          </button>
+                          <span className={cn('text-xs truncate', dupDone && 'line-through opacity-50')}>{dup.title}</span>
+                          <span className="text-[10px] text-muted-foreground ml-auto">
+                            {new Date(dup.dueAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}

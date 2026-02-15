@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { DollarSign, Shield, ChevronRight, Settings, Plus, AlertTriangle, Bug, Wrench } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { PanelHelpTooltip } from '@/components/PanelHelpTooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -165,9 +166,16 @@ export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddC
           </button>
         )}
         {!emptyStateContent && totalAtRisk > 0 && (
-          <span className="text-xs font-medium text-urgent ml-auto">
-            {formatCurrency(totalAtRisk)} at risk
-          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-xs font-medium text-urgent ml-auto cursor-help">
+                {formatCurrency(totalAtRisk)} at risk
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[240px] text-xs leading-relaxed">
+              Total commission dollars that could be lost if at-risk deals stall or fall through. Based on inactivity, missed milestones, and closing timelines.
+            </TooltipContent>
+          </Tooltip>
         )}
       </div>
 
