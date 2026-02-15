@@ -7,13 +7,19 @@ interface LazyPanelProps {
   skeletonLines?: number;
   /** Root margin for IntersectionObserver (default "200px") */
   rootMargin?: string;
+  /** When true, skip lazy loading and render immediately (e.g. during drag) */
+  forceMount?: boolean;
 }
 
-export function LazyPanel({ children, skeletonLines = 3, rootMargin = '200px' }: LazyPanelProps) {
+export function LazyPanel({ children, skeletonLines = 3, rootMargin = '200px', forceMount }: LazyPanelProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [hasBeenVisible, setHasBeenVisible] = useState(false);
 
   useEffect(() => {
+    if (forceMount) {
+      setHasBeenVisible(true);
+      return;
+    }
     const el = ref.current;
     if (!el || hasBeenVisible) return;
 
@@ -29,7 +35,7 @@ export function LazyPanel({ children, skeletonLines = 3, rootMargin = '200px' }:
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [hasBeenVisible, rootMargin]);
+  }, [hasBeenVisible, rootMargin, forceMount]);
 
   return (
     <div ref={ref}>

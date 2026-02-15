@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, Plus, Phone } from 'lucide-react';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
@@ -11,7 +11,7 @@ import { useSessionMemory } from '@/hooks/useSessionMemory';
 import { useImportHighlight } from '@/hooks/useImportHighlight';
 import { useSessionMode, useSessionStartRisk } from '@/hooks/useSessionMode';
 import { useEndOfDaySummary } from '@/hooks/useEndOfDaySummary';
-import { usePanelLayout, type PanelId, type PresetKey } from '@/hooks/usePanelLayout';
+import { useCommandCenterLayout, type PanelId, type PresetKey } from '@/hooks/useCommandCenterLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/EmptyState';
@@ -141,7 +141,7 @@ export default function CommandCenter() {
     try { return JSON.parse(localStorage.getItem(SNOOZE_STORAGE_KEY) || '{}'); } catch { return {}; }
   });
   const [stressReductionDismissed, setStressReductionDismissed] = useState(false);
-  const [editMode, setEditMode] = useState(false);
+  const [editMode_unused, setEditMode_unused] = useState(false); // kept for compat but unused
   const [autonomyLevel] = useState(() => getAutonomyLevel());
   const [showWeeklyPlanner, setShowWeeklyPlanner] = useState(false);
 
@@ -157,25 +157,27 @@ export default function CommandCenter() {
   // Self-Optimizing Mode
   const { analysis: selfOptAnalysis, recordOutcome: recordSelfOptOutcome, getOptimizedDefaults } = useSelfOptimizing(user?.id);
 
-  // Panel layout
-  const { panelOrder, updateOrder, applyPreset, resetToDefault } = usePanelLayout(user?.id);
+  // Panel layout — single source of truth
+  const {
+    panelOrder, editMode, isDragging, setIsDragging,
+    toggleEditMode, reorder, applyPreset, resetToDefault,
+  } = useCommandCenterLayout(user?.id);
 
-  // DnD sensors
+  // DnD sensors — distance constraint prevents accidental drags
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor),
   );
 
+  const handleDragStart = useCallback((_event: DragStartEvent) => {
+    setIsDragging(true);
+  }, [setIsDragging]);
+
   const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setIsDragging(false);
     const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const oldIndex = panelOrder.indexOf(active.id as PanelId);
-      const newIndex = panelOrder.indexOf(over.id as PanelId);
-      if (oldIndex !== -1 && newIndex !== -1) {
-        updateOrder(arrayMove(panelOrder, oldIndex, newIndex));
-      }
-    }
-  }, [panelOrder, updateOrder]);
+    if (!over || active.id === over.id) return;
+    reorder(active.id as string, over.id as string);
+  }, [reorder, setIsDragging]);
 
   // Daily Operating Mode
   const { currentMode } = useSessionMode();
@@ -949,7 +951,7 @@ export default function CommandCenter() {
         <div className="flex items-center gap-2">
           <PanelLayoutControls
             editMode={editMode}
-            onToggleEdit={() => setEditMode(e => !e)}
+            onToggleEdit={toggleEditMode}
             onApplyPreset={applyPreset}
             onReset={resetToDefault}
           />
@@ -1138,6 +1140,7 @@ export default function CommandCenter() {
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={panelOrder} strategy={verticalListSortingStrategy}>
@@ -1150,7 +1153,7 @@ export default function CommandCenter() {
               return (
                 <SortablePanel key={panelId} id={panelId} editMode={editMode} fullWidth={isFullWidth}>
                   <PanelErrorBoundary>
-                    <LazyPanel skeletonLines={isFullWidth ? 4 : 3}>
+                    <LazyPanel skeletonLines={isFullWidth ? 4 : 3} forceMount={editMode || isDragging}>
                       {content}
                     </LazyPanel>
                   </PanelErrorBoundary>
