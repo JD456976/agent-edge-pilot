@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sun, Moon, User, LogOut, Info, Clock, Bot } from 'lucide-react';
+import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,6 +16,7 @@ import { useSessionMode, type SessionMode } from '@/hooks/useSessionMode';
 import { useStrategicSettings } from '@/hooks/useStrategicSettings';
 import { useSelfOptimizing } from '@/hooks/useSelfOptimizing';
 import { getAutonomyLevel, setAutonomyLevel, getFeedbackStats, type AutonomyLevel } from '@/lib/preparedActions';
+import { useHabitTracking } from '@/hooks/useHabitTracking';
 import Admin from '@/pages/Admin';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +33,7 @@ export default function Settings() {
   const [autonomy, setAutonomy] = useState<AutonomyLevel>(() => getAutonomyLevel());
   const feedbackStats = getFeedbackStats();
   const { prefs: selfOptPrefs, analysis: selfOptAnalysis, updatePrefs: updateSelfOptPrefs, resetLearning: resetSelfOptLearning, exportSummary: exportSelfOptSummary } = useSelfOptimizing(user?.id);
+  const { stats: habitStats } = useHabitTracking();
 
   const isAdmin = user?.role === 'admin';
 
@@ -176,6 +178,37 @@ export default function Settings() {
               <span className="text-opportunity">{feedbackStats.positive} helpful</span>
               <span className="text-muted-foreground">{feedbackStats.neutral} somewhat</span>
               <span className="text-urgent">{feedbackStats.negative} not helpful</span>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Daily Consistency */}
+      <section className="rounded-lg border border-border bg-card p-4 mb-4">
+        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Calendar className="h-4 w-4" /> Daily Consistency</h2>
+        <p className="text-xs text-muted-foreground mb-3">Your daily operating loop performance.</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs text-muted-foreground">Morning Brief</p>
+            <p className="text-lg font-semibold">{habitStats.briefStreak} day{habitStats.briefStreak !== 1 ? 's' : ''}</p>
+            <p className="text-[10px] text-muted-foreground">Consecutive days viewed</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">EOD Review</p>
+            <p className="text-lg font-semibold">{habitStats.eodStreak} day{habitStats.eodStreak !== 1 ? 's' : ''}</p>
+            <p className="text-[10px] text-muted-foreground">Consecutive days completed</p>
+          </div>
+        </div>
+        {habitStats.last7.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Last 7 Days</p>
+            <div className="flex gap-1">
+              {habitStats.last7.map(day => (
+                <div key={day.date} className="flex flex-col items-center gap-0.5">
+                  <div className={`w-5 h-5 rounded-sm ${day.briefViewed && day.eodCompleted ? 'bg-opportunity/20' : day.briefViewed || day.eodCompleted ? 'bg-warning/20' : 'bg-muted'}`} />
+                  <span className="text-[8px] text-muted-foreground">{new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'narrow' })}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
