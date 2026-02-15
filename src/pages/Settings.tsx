@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { getNoisePrefs, setNoisePrefs, type DriftFrequency, type WeeklyReviewDefault, type StableHideAfter } from '@/lib/noiseGovernor';
 import { useNavigate } from 'react-router-dom';
 import { useState, useRef, useCallback } from 'react';
+import { DataExportSection } from '@/components/DataExportSection';
 import { ScoringCalibrationPanel } from '@/components/ScoringCalibrationPanel';
 import { NetworkSettingsSection } from '@/components/NetworkSettingsSection';
 import { MarketSettingsSection } from '@/components/MarketSettingsSection';
@@ -458,6 +459,9 @@ export default function Settings() {
           Current mode: <span className="font-medium capitalize">{currentMode}</span>
         </p>
       </section>
+
+      {/* Data Export */}
+      <DataExportSection />
 
       {/* Account Actions */}
       <section className="rounded-lg border border-border bg-card p-4 mb-4">
