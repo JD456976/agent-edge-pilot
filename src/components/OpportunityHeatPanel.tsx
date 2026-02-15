@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { CommissionDefaultsModal } from '@/components/CommissionDefaultsModal';
 import { LogTouchModal } from '@/components/LogTouchModal';
 import { ActivityTrail } from '@/components/ActivityTrail';
+import { relativeTime } from '@/lib/relativeTime';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { Lead, Task } from '@/types';
@@ -290,6 +291,8 @@ export function OpportunityHeatPanel({ leads, tasks, userId, onStartAction, lead
                     <span className="text-xs text-muted-foreground">{lead.source || 'Unknown source'}</span>
                     <span className="text-xs text-muted-foreground">·</span>
                     <span className="text-xs text-muted-foreground">{result.reasonPrimary}</span>
+                    <span className="text-xs text-muted-foreground">·</span>
+                    <span className="text-xs text-muted-foreground">{relativeTime(lead.lastContactAt)}</span>
                   </div>
                 </div>
                 <div className="text-right shrink-0 flex flex-col items-end gap-1">
