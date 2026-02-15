@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { DollarSign, Shield, ChevronRight, Settings, Plus, AlertTriangle, Bug, Wrench } from 'lucide-react';
+import { PanelHelpTooltip } from '@/components/PanelHelpTooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CommissionDefaultsModal } from '@/components/CommissionDefaultsModal';
@@ -153,6 +154,7 @@ export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddC
       <div className="flex items-center gap-2 mb-1">
         <Shield className="h-4 w-4 text-urgent" />
         <h2 className="text-sm font-semibold">Money at Risk</h2>
+        <PanelHelpTooltip text="Your commission dollars that could be lost if deals stall. Based on inactivity, missed milestones, and closing timelines." />
         {showDevTools && (
           <button
             onClick={() => setShowDebugDrawer(true)}

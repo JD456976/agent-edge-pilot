@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Shield, Flame, Activity, Clock, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PanelHelpTooltip } from '@/components/PanelHelpTooltip';
 import { Badge } from '@/components/ui/badge';
 import type { CommandCenterPanels, CommandCenterAction, Deal, Lead } from '@/types';
 import type { MoneyModelResult } from '@/lib/moneyModel';
@@ -295,7 +296,10 @@ export function AutopilotPanel({
     return (
       <div className="rounded-lg border border-border bg-card p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Autopilot</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Autopilot</p>
+            <PanelHelpTooltip text="Your AI co-pilot. Analyzes risk, opportunity, and stability to recommend the single best next action." />
+          </div>
           <div className="flex items-center gap-1.5">
             {isPredictive && <span className="text-[10px] px-2 py-0.5 rounded-full border border-primary/20 text-primary bg-primary/5">Predictive</span>}
             <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', modeConfig.className)}>{modeConfig.label}</span>
@@ -314,7 +318,10 @@ export function AutopilotPanel({
     <div className={cn('rounded-lg border bg-card p-5 space-y-4', DIRECTIVE_STYLE[directive.type])}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Autopilot</p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Autopilot</p>
+          <PanelHelpTooltip text="Your AI co-pilot. Analyzes risk, opportunity, and stability to recommend the single best next action." />
+        </div>
         <div className="flex items-center gap-1.5">
           {hasExecutionTarget && <span className="text-[10px] px-2 py-0.5 rounded-full border border-primary/20 text-primary bg-primary/5">Execution Ready</span>}
           {isPredictive && <span className="text-[10px] px-2 py-0.5 rounded-full border border-primary/20 text-primary bg-primary/5">Predictive</span>}

@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { TrendingUp, Flame, Settings, ChevronRight, X, Check, Plus, Phone } from 'lucide-react';
+import { PanelHelpTooltip } from '@/components/PanelHelpTooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -227,6 +228,7 @@ export function OpportunityHeatPanel({ leads, tasks, userId, onStartAction, lead
       <div className="flex items-center gap-2 mb-1">
         <TrendingUp className="h-4 w-4 text-opportunity" />
         <h2 className="text-sm font-semibold">Opportunities Heating Up</h2>
+        <PanelHelpTooltip text="Leads showing the strongest buying or selling signals. Scored by engagement, temperature, and recency of contact." />
         {results.length > 0 && (
           <span className="text-xs text-muted-foreground ml-auto">
             {results.length} lead{results.length !== 1 ? 's' : ''}

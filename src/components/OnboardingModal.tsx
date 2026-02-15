@@ -56,6 +56,10 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
     if (authUser) {
       await supabase.from('profiles').update({ onboarding_completed: true } as any).eq('user_id', authUser.id);
     }
+    // Default new users to minimal focus mode for a less overwhelming first session
+    if (!localStorage.getItem('dp-focus-mode')) {
+      localStorage.setItem('dp-focus-mode', 'minimal');
+    }
     onComplete();
   };
 
@@ -137,29 +141,34 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
               <LayoutDashboard className="h-6 w-6 text-primary" />
             </div>
             <h2 className="text-lg font-bold">You're All Set</h2>
-            <p className="text-sm text-muted-foreground mb-2">Here's what you'll find in your Command Center:</p>
+            <p className="text-sm text-muted-foreground mb-2">Your Command Center will guide your day. Here's how it works:</p>
             <div className="text-left space-y-3 px-4">
               <div className="flex items-start gap-3">
                 <span className="status-dot bg-primary mt-1.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium">Recommended First Action</p>
-                  <p className="text-xs text-muted-foreground">The single most impactful thing to do right now</p>
+                  <p className="text-sm font-medium">Autopilot</p>
+                  <p className="text-xs text-muted-foreground">Recommends the single best next action based on your deals and leads</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="status-dot bg-urgent mt-1.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">Money at Risk</p>
+                  <p className="text-xs text-muted-foreground">Flags deals where your commission is in danger due to inactivity</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <span className="status-dot bg-opportunity mt-1.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium">Priority Actions</p>
-                  <p className="text-xs text-muted-foreground">Ranked by urgency, revenue impact, and decay risk</p>
+                  <p className="text-sm font-medium">Opportunities</p>
+                  <p className="text-xs text-muted-foreground">Highlights leads showing the strongest buying or selling signals</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <span className="status-dot bg-warning mt-1.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium">Deals at Risk</p>
-                  <p className="text-xs text-muted-foreground">Deals that need attention before they slip</p>
-                </div>
-              </div>
+            </div>
+            <div className="rounded-md bg-muted/50 p-3 mx-4">
+              <p className="text-xs text-muted-foreground">
+                💡 We've started you in <span className="font-medium text-foreground">Minimal Mode</span> to keep things simple. You can switch to Tactical or Strategic modes anytime from the top of the Command Center.
+              </p>
             </div>
             <Button className="w-full mt-4" onClick={finishOnboarding}>
               Go to Command Center
