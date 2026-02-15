@@ -44,6 +44,8 @@ import { AdaptiveStrategyMode } from '@/components/AdaptiveStrategyMode';
 import { WeeklyCommandReview } from '@/components/WeeklyCommandReview';
 import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
 import { ExecutionQueuePanel } from '@/components/ExecutionQueuePanel';
+import { LearningTransparencyPanel } from '@/components/LearningTransparencyPanel';
+import { useAgentLearning } from '@/hooks/useAgentLearning';
 import { computeOpportunityBatch, type OpportunityHeatResult, type UserCommissionDefaults } from '@/lib/leadMoneyModel';
 import { computeForecastBatch } from '@/lib/forecastModel';
 import { computeStabilityScore, type StabilityInputs } from '@/lib/stabilityModel';
@@ -137,6 +139,9 @@ export default function CommandCenter() {
   }, []);
 
   const panels = useMemo(() => buildCommandCenterPanels(leads, deals, tasks, alerts), [leads, deals, tasks, alerts]);
+
+  // Agent Learning Layer
+  const { calibration, snapshot: learningSnapshot, trackTaskCompletion, trackTaskIgnored, resetLearning } = useAgentLearning(deals, leads, tasks);
 
   const activeDeals = deals.filter(d => d.stage !== 'closed');
   const totalRevenue = activeDeals.reduce((s, d) => s + d.commission, 0);
@@ -862,6 +867,14 @@ export default function CommandCenter() {
             const result = moneyResults.find(r => r.dealId === threat.dealId);
             if (deal && result) handleMoneySelect(result, deal);
           }}
+        />
+      </PanelErrorBoundary>
+
+      {/* Learning Transparency Panel */}
+      <PanelErrorBoundary>
+        <LearningTransparencyPanel
+          snapshot={learningSnapshot}
+          onReset={resetLearning}
         />
       </PanelErrorBoundary>
 
