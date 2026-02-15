@@ -233,8 +233,35 @@ function stability(userId: string, batchId: string): SeedData {
 // ── Sync Pack ──
 function sync(userId: string, batchId: string): SeedData {
   const d = emptyData();
-  // Sync pack creates FUB import run history and drift summary data
-  // These go into fub_import_runs and fub_sync_state tables, handled separately
+  // Note: fub_sync_state and fub_import_runs are seeded via the reviewer
+  // auto-seed in AuthContext. This pack creates supporting demo leads/deals
+  // for the sync workspace to show non-empty state.
+  const leadId = crypto.randomUUID();
+  const dealId = crypto.randomUUID();
+
+  d.leads.push({
+    id: leadId, name: 'FUB Sync Lead — Kelly Brooks', source: 'Follow Up Boss',
+    last_contact_at: ago(1), engagement_score: 60,
+    notes: 'Imported from FUB. Last synced today.',
+    status_tags: ['warm', 'buyer'], assigned_to_user_id: userId,
+    created_at: ago(3), lead_temperature: 'warm',
+    imported_from: 'follow_up_boss', imported_at: ago(1),
+    ...tag(batchId),
+  });
+
+  d.deals.push({
+    id: dealId, title: '900 Sync Test Blvd', stage: 'offer_accepted', price: 340000,
+    commission_amount: 10200, close_date: day(20), risk_level: 'green',
+    assigned_to_user_id: userId, created_at: ago(10), last_touched_at: ago(1),
+    risk_flags: [], imported_from: 'follow_up_boss', imported_at: ago(1),
+    ...tag(batchId),
+  });
+
+  d.dealParticipants.push({
+    deal_id: dealId, user_id: userId, role: 'primary_agent', split_percent: 100,
+    ...tag(batchId),
+  });
+
   return d;
 }
 

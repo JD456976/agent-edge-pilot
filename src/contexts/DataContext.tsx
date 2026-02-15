@@ -208,6 +208,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     await supabase.from('deal_participants').insert(demo.dealParticipants);
     await supabase.from('tasks').insert(demo.tasks);
     await supabase.from('alerts').insert(demo.alerts);
+    if (demo.activityEvents && demo.activityEvents.length > 0) {
+      await supabase.from('activity_events').insert(demo.activityEvents);
+    }
 
     await supabase.from('admin_audit_events' as any).insert({
       admin_user_id: user.id,

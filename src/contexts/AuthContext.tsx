@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { supabase } from '@/integrations/supabase/client';
 import type { User, UserRole } from '@/types';
 import { generateDemoData } from '@/data/demo';
+import { saveStrategicSettings, DEFAULT_STRATEGIC_SETTINGS } from '@/lib/strategicEngine';
 
 interface AuthContextType {
   user: User | null;
@@ -95,6 +96,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await supabase.from('deal_participants').insert(demo.dealParticipants);
         await supabase.from('tasks').insert(demo.tasks);
         await supabase.from('alerts').insert(demo.alerts);
+        if (demo.activityEvents && demo.activityEvents.length > 0) {
+          await supabase.from('activity_events').insert(demo.activityEvents);
+        }
+
+        // Seed commission defaults so forecast panels show realistic numbers
+        await supabase.from('commission_defaults').upsert({
+          user_id: user.id,
+          default_commission_rate: 3.0,
+          default_split: 100,
+          default_referral_fee: 0,
+          typical_price_mid: 500000,
+        }, { onConflict: 'user_id' });
+
+        // Seed agent intelligence profile so Agent Profile panel is populated
+        await supabase.from('agent_intelligence_profile').upsert({
+          user_id: user.id,
+          deal_close_rate_estimate: 0.72,
+          lead_conversion_rate_estimate: 0.18,
+          preferred_channel_call_pct: 45,
+          preferred_channel_email_pct: 30,
+          preferred_channel_text_pct: 25,
+          avg_daily_actions: 8,
+          active_days_last_30: 22,
+          risk_tolerance: 'medium',
+          income_trend: 'rising',
+          stability_trend: 'stable',
+          avg_response_time_bucket: '1-4h',
+          avg_time_to_close_bucket: '30-45d',
+          best_time_of_day_bucket: '9am-12pm',
+        }, { onConflict: 'user_id' });
+
+        // Set income target in localStorage so forecast panels show meaningful targets
+        saveStrategicSettings({
+          ...DEFAULT_STRATEGIC_SETTINGS,
+          weeklyTarget: 8000,
+          monthlyTarget: 32000,
+        }, user.id);
+
         await supabase.from('profiles').update({ onboarding_completed: true } as any).eq('user_id', user.id);
         setOnboardingCompletedState(true);
       } catch (err) {

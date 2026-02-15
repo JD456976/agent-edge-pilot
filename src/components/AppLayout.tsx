@@ -27,6 +27,7 @@ import { KeyboardShortcutHint } from '@/components/KeyboardShortcutHint';
 import { TrialBanner, RestrictedModeBanner } from '@/components/TrialBanner';
 import { useEntitlement } from '@/contexts/EntitlementContext';
 import { NotificationPermissionPrompt } from '@/components/NotificationPermissionPrompt';
+import { DemoBanner } from '@/components/DemoBanner';
 
 const PaywallLazy = lazy(() => import('@/pages/Paywall'));
 
@@ -88,7 +89,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const { activeWorkspace, openWorkspace, closeWorkspace } = useWorkspace();
   const { requestOpenEntity } = useEntityNavigation();
-  const { tasks, deals, alerts } = useData();
+  const { tasks, deals, alerts, hasSeededData } = useData();
   const { canWrite, entitlementState } = useEntitlement();
   const [showPaywall, setShowPaywall] = useState(false);
 
@@ -160,6 +161,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <OfflineBanner />
+      {hasSeededData && <DemoBanner />}
       {/* Desktop sidebar */}
       <aside className="hidden md:fixed md:inset-y-0 md:left-0 md:flex md:w-56 md:flex-col border-r border-border bg-sidebar z-30" data-tour="sidebar-nav">
         <div className="flex items-center gap-2.5 px-4 h-14 border-b border-border">
