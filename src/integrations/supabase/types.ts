@@ -829,6 +829,7 @@ export type Database = {
         Row: {
           opted_in: boolean
           opted_in_at: string | null
+          show_playbooks: boolean
           updated_at: string
           use_network_priors: boolean
           user_id: string
@@ -836,6 +837,7 @@ export type Database = {
         Insert: {
           opted_in?: boolean
           opted_in_at?: string | null
+          show_playbooks?: boolean
           updated_at?: string
           use_network_priors?: boolean
           user_id: string
@@ -843,9 +845,82 @@ export type Database = {
         Update: {
           opted_in?: boolean
           opted_in_at?: string | null
+          show_playbooks?: boolean
           updated_at?: string
           use_network_priors?: boolean
           user_id?: string
+        }
+        Relationships: []
+      }
+      network_playbook_templates: {
+        Row: {
+          created_at: string
+          description: string
+          eligible_cohort_min: number
+          id: string
+          required_signals: Json
+          situation_key: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          eligible_cohort_min?: number
+          id?: string
+          required_signals?: Json
+          situation_key: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          eligible_cohort_min?: number
+          id?: string
+          required_signals?: Json
+          situation_key?: string
+        }
+        Relationships: []
+      }
+      network_playbooks: {
+        Row: {
+          cohort_key: string
+          cohort_size: number
+          confidence_band: string
+          created_at: string
+          effectiveness_band: string
+          guardrails: Json
+          id: string
+          period: string
+          playbook_steps: Json
+          situation_key: string
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          cohort_key: string
+          cohort_size: number
+          confidence_band: string
+          created_at?: string
+          effectiveness_band: string
+          guardrails?: Json
+          id?: string
+          period: string
+          playbook_steps?: Json
+          situation_key: string
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          cohort_key?: string
+          cohort_size?: number
+          confidence_band?: string
+          created_at?: string
+          effectiveness_band?: string
+          guardrails?: Json
+          id?: string
+          period?: string
+          playbook_steps?: Json
+          situation_key?: string
+          window_end?: string
+          window_start?: string
         }
         Relationships: []
       }
@@ -866,6 +941,7 @@ export type Database = {
           risk_bucket: string | null
           stage: string | null
           time_to_action_bucket: string | null
+          trigger_bucket: string | null
           user_id: string
           workload_bucket: string | null
         }
@@ -885,6 +961,7 @@ export type Database = {
           risk_bucket?: string | null
           stage?: string | null
           time_to_action_bucket?: string | null
+          trigger_bucket?: string | null
           user_id: string
           workload_bucket?: string | null
         }
@@ -904,6 +981,7 @@ export type Database = {
           risk_bucket?: string | null
           stage?: string | null
           time_to_action_bucket?: string | null
+          trigger_bucket?: string | null
           user_id?: string
           workload_bucket?: string | null
         }

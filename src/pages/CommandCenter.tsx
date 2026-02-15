@@ -46,7 +46,10 @@ import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
 import { ExecutionQueuePanel } from '@/components/ExecutionQueuePanel';
 import { LearningTransparencyPanel } from '@/components/LearningTransparencyPanel';
 import { NetworkBenchmarksPanel } from '@/components/NetworkBenchmarksPanel';
+import { CohortPlaybooksPanel } from '@/components/CohortPlaybooksPanel';
 import { useAgentLearning } from '@/hooks/useAgentLearning';
+import { useNetworkTelemetry } from '@/hooks/useNetworkTelemetry';
+import { useNetworkPlaybooks, type NetworkPlaybook } from '@/hooks/useNetworkPlaybooks';
 import { computeOpportunityBatch, type OpportunityHeatResult, type UserCommissionDefaults } from '@/lib/leadMoneyModel';
 import { computeForecastBatch } from '@/lib/forecastModel';
 import { computeStabilityScore, type StabilityInputs } from '@/lib/stabilityModel';
@@ -144,6 +147,9 @@ export default function CommandCenter() {
   // Agent Learning Layer
   const { calibration, snapshot: learningSnapshot, trackTaskCompletion, trackTaskIgnored, resetLearning } = useAgentLearning(deals, leads, tasks);
 
+  // Network Effect Layer
+  const { participation: networkParticipation } = useNetworkTelemetry();
+
   const activeDeals = deals.filter(d => d.stage !== 'closed');
   const totalRevenue = activeDeals.reduce((s, d) => s + d.commission, 0);
   const dealsNeedingAttention = panels.dealsAtRisk.length;
@@ -165,6 +171,9 @@ export default function CommandCenter() {
     if (!user?.id) return [];
     return computeMoneyModelBatch(activeDeals, dealParticipants, user.id, new Date(), riskWeights);
   }, [activeDeals, dealParticipants, user?.id, riskWeights]);
+
+  // Network Playbooks (after moneyResults)
+  const { playbooks: cohortPlaybooks, situations: playbookSituations } = useNetworkPlaybooks(leads, deals, tasks, moneyResults, networkParticipation.showPlaybooks);
 
   const topMoneyAtRisk = useMemo(() => {
     const sorted = [...moneyResults].filter(r => r.personalCommissionAtRisk > 0)
@@ -207,6 +216,24 @@ export default function CommandCenter() {
   const topOpportunity = useMemo(() => {
     return opportunityResults[0] || null;
   }, [opportunityResults]);
+
+  // Apply Playbook handler
+  const handleApplyPlaybook = useCallback(async (playbook: NetworkPlaybook, situation: { entityId: string; entityType: 'lead' | 'deal'; entityTitle: string }) => {
+    const timingToMs: Record<string, number> = { now: 0, under_1h: 3600000, same_day: 14400000, next_day: 86400000 };
+    for (const step of playbook.steps) {
+      const dueAt = new Date(Date.now() + (timingToMs[step.timing_bucket] || 0)).toISOString();
+      const actionLabel = step.notes_key.replace(/_/g, ' ');
+      await addTask({
+        title: `${actionLabel} — ${situation.entityTitle}`,
+        type: (step.action_type === 'call' ? 'call' : step.action_type === 'text' ? 'text' : step.action_type === 'email' ? 'email' : 'follow_up') as any,
+        dueAt,
+        relatedDealId: situation.entityType === 'deal' ? situation.entityId : undefined,
+        relatedLeadId: situation.entityType === 'lead' ? situation.entityId : undefined,
+        assignedToUserId: user?.id || '',
+      });
+    }
+    toast({ description: `Playbook applied: ${playbook.steps.length} tasks created`, duration: 3000 });
+  }, [addTask, user?.id]);
 
   // Rank change tracker
   const { dealChanges, leadChanges } = useRankChangeTracker(moneyResults, opportunityResults);
@@ -878,6 +905,17 @@ export default function CommandCenter() {
           onReset={resetLearning}
         />
       </PanelErrorBoundary>
+
+      {/* Cohort Playbooks */}
+      {cohortPlaybooks.length > 0 && (
+        <PanelErrorBoundary>
+          <CohortPlaybooksPanel
+            playbooks={cohortPlaybooks}
+            situations={playbookSituations}
+            onApplyPlaybook={handleApplyPlaybook}
+          />
+        </PanelErrorBoundary>
+      )}
 
       {/* Network Benchmarks */}
       <PanelErrorBoundary>

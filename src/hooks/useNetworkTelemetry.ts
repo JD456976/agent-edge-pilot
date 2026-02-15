@@ -10,6 +10,7 @@ type MoneyBucket = 'under_1k' | '1k_3k' | '3k_7k' | '7k_15k' | '15k_plus';
 type RiskBucket = 'low' | 'medium' | 'high';
 type OpportunityBucket = 'watch' | 'warm' | 'hot';
 type WorkloadBucket = 'stable' | 'watch' | 'strained' | 'overloaded';
+type TriggerBucket = 'overdue_task' | 'untouched_hot_lead' | 'closing_soon' | 'high_money_risk' | 'lead_decay' | 'drift_conflict' | 'none';
 
 interface TelemetryEvent {
   event_type: EventType;
@@ -24,11 +25,13 @@ interface TelemetryEvent {
   opportunity_bucket?: OpportunityBucket | null;
   workload_bucket?: WorkloadBucket | null;
   region_bucket?: string | null;
+  trigger_bucket?: TriggerBucket | null;
 }
 
 interface NetworkParticipation {
   optedIn: boolean;
   useNetworkPriors: boolean;
+  showPlaybooks: boolean;
   loading: boolean;
 }
 
@@ -37,45 +40,47 @@ export function useNetworkTelemetry() {
   const [participation, setParticipation] = useState<NetworkParticipation>({
     optedIn: false,
     useNetworkPriors: false,
+    showPlaybooks: true,
     loading: true,
   });
 
-  // Load participation status
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
       const { data } = await (supabase.from('network_participation' as any)
-        .select('opted_in, use_network_priors')
+        .select('opted_in, use_network_priors, show_playbooks')
         .eq('user_id', user.id)
         .maybeSingle() as any);
       setParticipation({
         optedIn: data?.opted_in ?? false,
         useNetworkPriors: data?.use_network_priors ?? false,
+        showPlaybooks: data?.show_playbooks ?? true,
         loading: false,
       });
     })();
   }, [user?.id]);
 
-  const setOptedIn = useCallback(async (value: boolean) => {
+  const updateField = useCallback(async (field: string, value: boolean) => {
     if (!user?.id) return;
-    await (supabase.from('network_participation' as any).upsert({
-      user_id: user.id,
-      opted_in: value,
-      opted_in_at: value ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString(),
-    } as any, { onConflict: 'user_id' }) as any);
-    setParticipation(p => ({ ...p, optedIn: value }));
+    const payload: any = { user_id: user.id, updated_at: new Date().toISOString(), [field]: value };
+    if (field === 'opted_in') payload.opted_in_at = value ? new Date().toISOString() : null;
+    await (supabase.from('network_participation' as any).upsert(payload, { onConflict: 'user_id' }) as any);
   }, [user?.id]);
 
+  const setOptedIn = useCallback(async (value: boolean) => {
+    await updateField('opted_in', value);
+    setParticipation(p => ({ ...p, optedIn: value }));
+  }, [updateField]);
+
   const setUseNetworkPriors = useCallback(async (value: boolean) => {
-    if (!user?.id) return;
-    await (supabase.from('network_participation' as any).upsert({
-      user_id: user.id,
-      use_network_priors: value,
-      updated_at: new Date().toISOString(),
-    } as any, { onConflict: 'user_id' }) as any);
+    await updateField('use_network_priors', value);
     setParticipation(p => ({ ...p, useNetworkPriors: value }));
-  }, [user?.id]);
+  }, [updateField]);
+
+  const setShowPlaybooks = useCallback(async (value: boolean) => {
+    await updateField('show_playbooks', value);
+    setParticipation(p => ({ ...p, showPlaybooks: value }));
+  }, [updateField]);
 
   const deleteMyData = useCallback(async () => {
     if (!user?.id) return;
@@ -83,7 +88,6 @@ export function useNetworkTelemetry() {
     await setOptedIn(false);
   }, [user?.id, setOptedIn]);
 
-  // Emit telemetry event (only if opted in)
   const emit = useCallback(async (event: TelemetryEvent) => {
     if (!user?.id || !participation.optedIn) return;
     await (supabase.from('network_telemetry_events' as any).insert({
@@ -98,11 +102,11 @@ export function useNetworkTelemetry() {
     emit,
     setOptedIn,
     setUseNetworkPriors,
+    setShowPlaybooks,
     deleteMyData,
   };
 }
 
-// Utility to compute money bucket from commission amount
 export function toMoneyBucket(commission: number): MoneyBucket {
   if (commission < 1000) return 'under_1k';
   if (commission < 3000) return '1k_3k';

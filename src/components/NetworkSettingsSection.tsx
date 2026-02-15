@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Shield, Trash2, Loader2, Globe, Info, Sparkles } from 'lucide-react';
+import { Shield, Trash2, Loader2, Globe, Info, Sparkles, BookMarked } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNetworkTelemetry } from '@/hooks/useNetworkTelemetry';
 import { toast } from '@/hooks/use-toast';
 
 export function NetworkSettingsSection() {
-  const { participation, setOptedIn, setUseNetworkPriors, deleteMyData } = useNetworkTelemetry();
+  const { participation, setOptedIn, setUseNetworkPriors, setShowPlaybooks, deleteMyData } = useNetworkTelemetry();
   const [deleting, setDeleting] = useState(false);
 
   if (participation.loading) return null;
@@ -69,6 +69,25 @@ export function NetworkSettingsSection() {
           </button>
         </div>
 
+        {/* Show playbooks toggle */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium flex items-center gap-1.5">
+              <BookMarked className="h-3.5 w-3.5 text-primary" />
+              Show cohort playbooks
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Surface action sequences that work well for agents in similar situations.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowPlaybooks(!participation.showPlaybooks)}
+            className="relative inline-flex h-6 w-11 items-center rounded-full bg-muted transition-colors"
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-primary transition-transform ${participation.showPlaybooks ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+
         {/* What's shared */}
         <details className="text-xs">
           <summary className="cursor-pointer text-muted-foreground flex items-center gap-1">
@@ -83,6 +102,7 @@ export function NetworkSettingsSection() {
               <li>Outcome bucket (converted, lost)</li>
               <li>Commission bracket (not exact amount)</li>
               <li>Risk and opportunity bands</li>
+              <li>Trigger context (overdue task, hot lead, etc.)</li>
             </ul>
             <p className="font-medium text-foreground mt-2">Never shared:</p>
             <ul className="list-disc pl-4 space-y-0.5">
