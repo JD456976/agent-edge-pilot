@@ -1,6 +1,6 @@
 import { ReactNode, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useWorkspace, type WorkspaceType } from '@/contexts/WorkspaceContext';
@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { CommandPalette } from '@/components/CommandPalette';
 import { SkinSelector } from '@/components/SkinSelector';
 import { QuickAddModal } from '@/components/QuickAddModal';
+import { OfflineBanner } from '@/components/OfflineBanner';
 
 type NavItem = { label: string; icon: React.ElementType } & (
   | { path: string; workspace?: undefined }
@@ -57,6 +58,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
+      <OfflineBanner />
       {/* Desktop sidebar */}
       <aside className="hidden md:fixed md:inset-y-0 md:left-0 md:flex md:w-56 md:flex-col border-r border-border bg-sidebar z-30">
         <div className="flex items-center gap-2.5 px-4 h-14 border-b border-border">
@@ -122,7 +124,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </div>
             <span className="font-bold text-sm">Deal Pilot</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <SkinSelector />
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme}>
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
