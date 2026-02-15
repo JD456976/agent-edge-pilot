@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.commission-backfill]
 verify_jwt = false
+
+[functions.network-aggregate]
+verify_jwt = false

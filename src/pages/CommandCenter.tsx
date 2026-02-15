@@ -45,6 +45,7 @@ import { WeeklyCommandReview } from '@/components/WeeklyCommandReview';
 import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
 import { ExecutionQueuePanel } from '@/components/ExecutionQueuePanel';
 import { LearningTransparencyPanel } from '@/components/LearningTransparencyPanel';
+import { NetworkBenchmarksPanel } from '@/components/NetworkBenchmarksPanel';
 import { useAgentLearning } from '@/hooks/useAgentLearning';
 import { computeOpportunityBatch, type OpportunityHeatResult, type UserCommissionDefaults } from '@/lib/leadMoneyModel';
 import { computeForecastBatch } from '@/lib/forecastModel';
@@ -875,6 +876,20 @@ export default function CommandCenter() {
         <LearningTransparencyPanel
           snapshot={learningSnapshot}
           onReset={resetLearning}
+        />
+      </PanelErrorBoundary>
+
+      {/* Network Benchmarks */}
+      <PanelErrorBoundary>
+        <NetworkBenchmarksPanel
+          agentMetrics={{
+            followUpCompletionRate: tasks.length > 0
+              ? tasks.filter(t => t.completedAt).length / tasks.length
+              : undefined,
+            dealCloseRate: deals.length > 0
+              ? deals.filter(d => d.stage === 'closed').length / deals.length
+              : undefined,
+          }}
         />
       </PanelErrorBoundary>
 
