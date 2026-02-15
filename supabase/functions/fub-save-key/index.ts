@@ -23,16 +23,14 @@ Deno.serve(async (req) => {
     if (!serviceKey) return new Response(JSON.stringify({ error: "Server config error: missing service key" }), { status: 500, headers: corsHeaders });
     if (!encryptionKey) return new Response(JSON.stringify({ error: "Server config error: missing encryption key" }), { status: 500, headers: corsHeaders });
 
-    // Authenticate user via getClaims
     const anonClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims)
+    const { data: { user }, error: userError } = await anonClient.auth.getUser();
+    if (userError || !user)
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
 
-    const userId = claimsData.claims.sub as string;
+    const userId = user.id;
 
     const { api_key } = await req.json();
     if (!api_key || typeof api_key !== "string" || api_key.trim().length < 4) {
