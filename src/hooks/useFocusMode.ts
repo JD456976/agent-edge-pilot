@@ -7,7 +7,7 @@ export function useFocusMode() {
   const [focusMode, setFocusMode] = useState<FocusMode>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === 'tactical' || stored === 'strategic' || stored === 'minimal') return stored;
+      if (stored === 'tactical' || stored === 'strategic' || stored === 'minimal' || stored === 'deals' || stored === 'leads' || stored === 'tasks') return stored;
     } catch {}
     return 'tactical';
   });

@@ -93,6 +93,7 @@ import { DailyStreakBadge } from '@/components/DailyStreakBadge';
 import { ExportSnapshotButton } from '@/components/ExportSnapshotButton';
 import { usePinnedPanels } from '@/hooks/usePinnedPanels';
 import { PanelPinButton } from '@/components/PanelPinButton';
+import { PanelHelpTooltip } from '@/components/PanelHelpTooltip';
 import { usePanelCollapse } from '@/hooks/usePanelCollapse';
 import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -1271,11 +1272,12 @@ export default function CommandCenter() {
                 <SortablePanel key={panelId} id={panelId} editMode={editMode} fullWidth={isFullWidth} label={PANEL_LABELS[panelId]} isCollapsed={isCollapsed(panelId)} onToggleCollapse={() => toggleCollapse(panelId)}>
                   <PanelErrorBoundary>
                     <div className="relative group/pin">
-                      {editMode && (
-                        <div className="absolute top-2 right-2 z-10 opacity-0 group-hover/pin:opacity-100 transition-opacity">
+                      <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover/pin:opacity-100 transition-opacity">
+                        <PanelHelpTooltip panelId={panelId} />
+                        {editMode && (
                           <PanelPinButton panelId={panelId} isPinned={isPinned(panelId)} onToggle={togglePin} />
-                        </div>
-                      )}
+                        )}
+                      </div>
                       <LazyPanel skeletonLines={isFullWidth ? 4 : 3} forceMount={editMode || isDragging}>
                         {content}
                       </LazyPanel>
