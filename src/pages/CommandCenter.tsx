@@ -46,7 +46,7 @@ import { OpportunityRadarPanel } from '@/components/OpportunityRadarPanel';
 import { IncomeProtectionShield } from '@/components/IncomeProtectionShield';
 import { AdaptiveStrategyMode } from '@/components/AdaptiveStrategyMode';
 import { WeeklyCommandReview } from '@/components/WeeklyCommandReview';
-import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
+import { ActionWorkspaceDrawer } from '@/components/ActionWorkspaceDrawer';
 import { ExecutionQueuePanel } from '@/components/ExecutionQueuePanel';
 import { LearningTransparencyPanel } from '@/components/LearningTransparencyPanel';
 import { NetworkBenchmarksPanel } from '@/components/NetworkBenchmarksPanel';
@@ -416,17 +416,23 @@ export default function CommandCenter() {
     }
   }, [deals, leads, moneyResults, opportunityResults]);
 
-  const handleExecutionFollowUp = useCallback(async (title: string, dueAt: string, entityId: string, entityType: 'deal' | 'lead') => {
+  const handleExecutionFollowUp = useCallback(async (title: string, type: string, dueAt: string, entityId: string, entityType: 'deal' | 'lead') => {
     await addTask({
       title,
-      type: 'follow_up',
+      type: (type || 'follow_up') as any,
       dueAt,
       relatedDealId: entityType === 'deal' ? entityId : undefined,
       relatedLeadId: entityType === 'lead' ? entityId : undefined,
       assignedToUserId: user?.id || '',
     });
-    toast({ description: `Follow-up created: ${title}`, duration: 3000 });
+    toast({ description: `Task created: ${title}`, duration: 3000 });
   }, [addTask, user?.id]);
+
+  const handleExecutionLogTouch = useCallback((entityType: 'deal' | 'lead', entityId: string, entityTitle: string, touchType: string, note?: string) => {
+    setExecutionEntity(null);
+    setTouchTarget({ entityType, entityId, entityTitle });
+    setShowLogTouch(true);
+  }, []);
 
   const handleForecastCreateTask = useCallback(async (title: string, dealId: string) => {
     await addTask({
@@ -694,12 +700,14 @@ export default function CommandCenter() {
             onAction={(item) => {
               if (item.entityType === 'lead') {
                 const lead = leads.find(l => l.id === item.entityId);
-                const opp = opportunityResults.find(r => r.leadId === item.entityId);
-                if (lead && opp) handleOpportunityAction(lead, opp);
+                if (!lead) return;
+                const or = opportunityResults.find(r => r.leadId === item.entityId) || null;
+                setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: or });
               } else if (item.entityType === 'deal') {
                 const deal = deals.find(d => d.id === item.entityId);
-                const result = moneyResults.find(r => r.dealId === item.entityId);
-                if (deal && result) handleMoneySelect(result, deal);
+                if (!deal) return;
+                const mr = moneyResults.find(r => r.dealId === item.entityId) || null;
+                setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: mr });
               }
             }}
           />
@@ -1234,8 +1242,8 @@ export default function CommandCenter() {
         onNavigateToTasks={() => navigate('/?workspace=work')}
       />
 
-      {/* Action Composer / Execution Drawer */}
-      <ActionComposerDrawer
+      {/* Action Workspace Drawer */}
+      <ActionWorkspaceDrawer
         open={!!executionEntity}
         onClose={() => setExecutionEntity(null)}
         entity={executionEntity?.entity || null}
@@ -1243,12 +1251,8 @@ export default function CommandCenter() {
         moneyResult={executionEntity?.moneyResult}
         oppResult={executionEntity?.oppResult}
         tasks={tasks}
-        onCreateFollowUp={handleExecutionFollowUp}
-        onLogTouch={(entityType, entityId, entityTitle) => {
-          setExecutionEntity(null);
-          setTouchTarget({ entityType, entityId, entityTitle });
-          setShowLogTouch(true);
-        }}
+        onCreateTask={handleExecutionFollowUp}
+        onLogTouch={handleExecutionLogTouch}
       />
     </div>
   );

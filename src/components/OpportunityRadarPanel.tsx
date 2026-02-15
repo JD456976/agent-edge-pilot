@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Radar, Flame, Clock, UserCheck, DollarSign, Play } from 'lucide-react';
+import { Radar, Flame, Clock, UserCheck, DollarSign, Phone, MessageSquare, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Deal, Lead, Task } from '@/types';
@@ -152,8 +152,14 @@ export function OpportunityRadarPanel({ leads, deals, tasks, opportunityResults,
                   {item.estimatedValue && <span className="text-xs font-medium text-opportunity">{formatCurrency(item.estimatedValue)}</span>}
                 </div>
               </div>
-              <Button size="sm" variant="ghost" className="text-xs shrink-0" onClick={() => onAction?.(item)}>
-                <Play className="h-3 w-3" />
+              <Button size="sm" variant="outline" className="text-xs shrink-0" onClick={() => onAction?.(item)}>
+                {item.type === 'warm_decay' ? (
+                  <><MessageSquare className="h-3 w-3 mr-1" /> Re-Engage</>
+                ) : item.type === 'uncontacted_referral' ? (
+                  <><Phone className="h-3 w-3 mr-1" /> Contact Lead</>
+                ) : (
+                  <><Flame className="h-3 w-3 mr-1" /> Engage Lead</>
+                )}
               </Button>
             </div>
           );

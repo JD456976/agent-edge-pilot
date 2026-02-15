@@ -348,7 +348,7 @@ export function AutopilotPanel({
           <div className="flex items-center gap-2 pt-1">
             <Button size="sm" variant="default" className="text-xs" onClick={handleAction}>
               <Check className="h-3.5 w-3.5 mr-1" />
-              Start Action
+              {directive.type === 'protect' ? 'Generate Recovery Plan' : directive.type === 'create' ? 'Engage Lead Now' : 'Clear Overdue Tasks'}
             </Button>
             {hasExecutionTarget && onOpenExecution && (
               <Button

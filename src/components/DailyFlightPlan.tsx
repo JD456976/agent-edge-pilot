@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Plane, Shield, Flame, Wrench, Play, Clock, DollarSign, FileText } from 'lucide-react';
+import { Plane, Shield, Flame, Wrench, Phone, Clock, DollarSign, FileText, Mail, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Deal, Lead, Task } from '@/types';
@@ -218,11 +218,17 @@ export function DailyFlightPlan({ deals, leads, tasks, moneyResults, opportunity
               <div className="flex items-center gap-1 shrink-0">
                 {step.entityType && step.entityType !== 'task' && step.entityId && onOpenExecution && (
                   <Button size="sm" variant="ghost" className="text-xs px-2" onClick={() => onOpenExecution(step.entityId!, step.entityType as 'deal' | 'lead')}>
-                    <FileText className="h-3 w-3" />
+                    <FileText className="h-3 w-3 mr-1" /> Open Script
                   </Button>
                 )}
                 <Button size="sm" variant="outline" className="text-xs" onClick={() => onStartAction?.(step)}>
-                  <Play className="h-3 w-3 mr-1" /> Start
+                  {step.category === 'protect' ? (
+                    <><Phone className="h-3 w-3 mr-1" /> Call Now</>
+                  ) : step.category === 'create' ? (
+                    <><MessageSquare className="h-3 w-3 mr-1" /> Engage Now</>
+                  ) : (
+                    <><Shield className="h-3 w-3 mr-1" /> Create Follow-Up</>
+                  )}
                 </Button>
               </div>
             </div>
