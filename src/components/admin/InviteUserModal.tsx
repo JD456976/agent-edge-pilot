@@ -123,7 +123,6 @@ export function InviteUserModal({ teams, onClose, onInvited }: Props) {
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="agent">Agent</SelectItem>
                 <SelectItem value="reviewer">Reviewer</SelectItem>
-                <SelectItem value="beta">Beta</SelectItem>
               </SelectContent>
             </Select>
           </div>

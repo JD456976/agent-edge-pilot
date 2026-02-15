@@ -156,7 +156,7 @@ export function FubSyncPreviewModal({ open, onClose, data, loading, error }: Fub
             )}
 
             <Button disabled className="w-full mt-4" variant="outline">
-              Ready to Import (Coming Soon)
+              Review & Import
             </Button>
           </>
         )}

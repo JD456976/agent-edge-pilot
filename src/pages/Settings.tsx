@@ -203,7 +203,7 @@ function NotificationPreferencesSection() {
 const TABS = ['Preferences', 'Admin'] as const;
 
 export default function Settings() {
-  const { user, logout, isReviewer } = useAuth();
+  const { user, logout, isReviewer, isProtected } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const { currentMode, autoMode, override, setModeOverride } = useSessionMode();
@@ -220,7 +220,7 @@ export default function Settings() {
     setNoisePrefsState(next);
   };
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' && isProtected;
 
   const handleLogout = async () => {
     await logout();

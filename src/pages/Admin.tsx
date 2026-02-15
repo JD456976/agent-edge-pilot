@@ -148,7 +148,7 @@ export default function Admin() {
       seed_demo_data: 'Seeded demo data',
       seed_packs: 'Seeded scenario packs',
       clear_seeded_data: 'Cleared seeded data',
-      wipe_data: 'Wiped test data',
+      wipe_data: 'Cleared all data',
       create_organization: 'Created organization',
       team_created: 'Created team',
       team_renamed: 'Renamed team',
@@ -191,11 +191,11 @@ export default function Admin() {
 
       {/* Data Tools */}
       <section className="rounded-lg border border-border bg-card p-4 mb-6">
-        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Database className="h-4 w-4" /> Test Data Tools</h2>
+        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Database className="h-4 w-4" /> Data Tools</h2>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" onClick={() => setShowSeedPacks(true)}><Plus className="h-4 w-4 mr-1" /> Seed Packs</Button>
-          <Button size="sm" variant="outline" onClick={handleSeedDemoData}><Plus className="h-4 w-4 mr-1" /> Legacy Seed</Button>
-          <Button size="sm" variant="destructive" onClick={() => setShowWipeConfirm(true)}><Trash2 className="h-4 w-4 mr-1" /> Wipe All Data</Button>
+          <Button size="sm" variant="outline" onClick={handleSeedDemoData}><Plus className="h-4 w-4 mr-1" /> Quick Seed</Button>
+          <Button size="sm" variant="destructive" onClick={() => setShowWipeConfirm(true)}><Trash2 className="h-4 w-4 mr-1" /> Clear All Data</Button>
         </div>
         {showWipeConfirm && (
           <div className="mt-4 p-4 rounded-lg border border-destructive/30 bg-destructive/5">
