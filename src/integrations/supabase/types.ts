@@ -1643,6 +1643,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_deal_owner_or_admin: {
+        Args: { _deal_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_deal_participant: {
+        Args: { _deal_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_last_admin_in_org: { Args: { p_user_id: string }; Returns: boolean }
       store_encrypted_api_key: {
         Args: { p_api_key: string; p_encryption_key: string; p_user_id: string }
