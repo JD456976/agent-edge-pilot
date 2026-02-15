@@ -223,7 +223,7 @@ function ContextPanel({ entity, entityType, moneyResult, oppResult, tasks: entit
           </div>
         )}
 
-        <ActivityTrail entityId={entity.id} entityType="deal" limit={3} />
+        <ActivityTrail entityId={entity.id} entityType="deal" />
       </div>
     );
   }
@@ -279,7 +279,7 @@ function ContextPanel({ entity, entityType, moneyResult, oppResult, tasks: entit
         </div>
       )}
 
-      <ActivityTrail entityId={entity.id} entityType="lead" limit={3} />
+      <ActivityTrail entityId={entity.id} entityType="lead" />
     </div>
   );
 }
