@@ -4,6 +4,7 @@ import { useData } from '@/contexts/DataContext';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { IncomeForecastPanelV2 } from '@/components/IncomeForecastPanelV2';
 import { LeadSourceROIPanel } from '@/components/LeadSourceROIPanel';
+import { CommissionForecastBySource } from '@/components/CommissionForecastBySource';
 import { StabilityScorePanelV2 } from '@/components/StabilityScorePanelV2';
 import { IncomeVolatilityPanel } from '@/components/IncomeVolatilityPanel';
 import { PipelineFragilityPanel } from '@/components/PipelineFragilityPanel';
@@ -224,9 +225,14 @@ export default function Insights() {
       )}
 
       {tab === 'Sources' && (
-        <PanelErrorBoundary>
-          <LeadSourceROIPanel leads={leads} deals={deals} />
-        </PanelErrorBoundary>
+        <div className="space-y-4">
+          <PanelErrorBoundary>
+            <LeadSourceROIPanel leads={leads} deals={deals} />
+          </PanelErrorBoundary>
+          <PanelErrorBoundary>
+            <CommissionForecastBySource leads={leads} deals={deals} />
+          </PanelErrorBoundary>
+        </div>
       )}
     </div>
   );

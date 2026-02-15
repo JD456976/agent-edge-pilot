@@ -53,3 +53,15 @@ verify_jwt = false
 
 [functions.ai-follow-up]
 verify_jwt = false
+
+[functions.fub-ghosting-recovery]
+verify_jwt = false
+
+[functions.fub-tag-sync]
+verify_jwt = false
+
+[functions.fub-bulk-push]
+verify_jwt = false
+
+[functions.voice-transcribe]
+verify_jwt = false

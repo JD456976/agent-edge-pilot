@@ -20,6 +20,9 @@ import { LeadRoutingPanel } from '@/components/LeadRoutingPanel';
 import { FubAppointmentsPanel } from '@/components/FubAppointmentsPanel';
 import { SmartNumberInsightsPanel } from '@/components/SmartNumberInsightsPanel';
 import { WebhookConfigPanel } from '@/components/WebhookConfigPanel';
+import { FubTagSyncPanel } from '@/components/FubTagSyncPanel';
+import { BulkFubPushModal } from '@/components/BulkFubPushModal';
+import { useData } from '@/contexts/DataContext';
 
 interface IntegrationState {
   status: 'disconnected' | 'connected' | 'invalid' | 'error';
@@ -29,6 +32,7 @@ interface IntegrationState {
 
 export default function Sync() {
   const { user, logAdminAction } = useAuth();
+  const { leads, deals } = useData();
   const [integration, setIntegration] = useState<IntegrationState>({ status: 'disconnected', last4: null, lastValidated: null });
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -43,6 +47,7 @@ export default function Sync() {
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [pastRuns, setPastRuns] = useState<any[]>([]);
   const [lastError, setLastError] = useState<EdgeFunctionError | null>(null);
+  const [bulkPushOpen, setBulkPushOpen] = useState(false);
 
   const loadIntegration = useCallback(async () => {
     if (!user) return;
@@ -185,9 +190,14 @@ export default function Sync() {
             </div>
           )}
           {integration.status === 'connected' && <ImportDryRunPanel integration={{ status: integration.status, lastValidated: integration.lastValidated }} />}
-          <Button size="sm" className="w-full" onClick={handleStageImport} disabled={integration.status !== 'connected' || staging}>
-            {staging ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />} Stage Import
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" className="flex-1" onClick={handleStageImport} disabled={integration.status !== 'connected' || staging}>
+              {staging ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />} Stage Import
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setBulkPushOpen(true)} disabled={integration.status !== 'connected'}>
+              <Upload className="h-4 w-4 mr-1" /> Bulk Push
+            </Button>
+          </div>
         </div>
         <EdgeDebugDrawer />
       </section>
@@ -204,7 +214,7 @@ export default function Sync() {
         </div>
       )}
 
-      {/* Appointments & Smart Numbers */}
+      {/* Appointments, Smart Numbers & Tag Sync */}
       {integration.status === 'connected' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <PanelErrorBoundary>
@@ -214,6 +224,11 @@ export default function Sync() {
             <SmartNumberInsightsPanel hasIntegration={integration.status === 'connected'} />
           </PanelErrorBoundary>
         </div>
+      )}
+      {integration.status === 'connected' && (
+        <PanelErrorBoundary>
+          <FubTagSyncPanel leads={leads} hasIntegration={integration.status === 'connected'} />
+        </PanelErrorBoundary>
       )}
 
       {/* Import History */}
@@ -254,6 +269,7 @@ export default function Sync() {
       </PanelErrorBoundary>
 
       <FubSyncPreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} data={previewData} loading={previewLoading} error={previewError} />
+      <BulkFubPushModal open={bulkPushOpen} onClose={() => setBulkPushOpen(false)} leads={leads} deals={deals} />
     </div>
   );
 }

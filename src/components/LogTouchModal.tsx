@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Phone, MessageSquare, Mail, Home, StickyNote, CalendarPlus } from 'lucide-react';
+import { Phone, MessageSquare, Mail, Home, StickyNote, CalendarPlus, Mic } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { toast } from '@/hooks/use-toast';
+import { callEdgeFunction } from '@/lib/edgeClient';
+import { VoiceNoteLogger } from '@/components/VoiceNoteLogger';
 
 const TOUCH_TYPES = [
   { value: 'call', label: 'Call', icon: Phone },
@@ -40,6 +42,7 @@ export function LogTouchModal({ open, onClose, entityType, entityId, entityTitle
   const [createFollowUp, setCreateFollowUp] = useState(false);
   const [followUpDate, setFollowUpDate] = useState<Date>(addDays(new Date(), 1));
   const [submitting, setSubmitting] = useState(false);
+  const [showVoice, setShowVoice] = useState(false);
 
   const handleSubmit = async () => {
     if (!user?.id) return;
@@ -89,6 +92,20 @@ export function LogTouchModal({ open, onClose, entityType, entityId, entityTitle
         });
       }
 
+      // Auto-push note to FUB (best-effort, don't block)
+      if (entityType === 'lead') {
+        const { data: leadData } = await supabase.from('leads').select('imported_from').eq('id', entityId).maybeSingle();
+        const fubId = (leadData as any)?.imported_from?.startsWith('fub:') ? (leadData as any).imported_from.replace('fub:', '') : null;
+        if (fubId) {
+          callEdgeFunction('fub-push', {
+            entity_type: 'note',
+            entity_id: entityId,
+            action: 'create',
+            fields: { fub_person_id: parseInt(fubId), body: note || `${touchType} logged via Deal Pilot`, subject: `Deal Pilot: ${touchType}` },
+          }).catch(() => {}); // silent
+        }
+      }
+
       await refreshData();
       toast({ description: `Touch logged — ${touchType}` });
       onClose();
@@ -97,6 +114,7 @@ export function LogTouchModal({ open, onClose, entityType, entityId, entityTitle
       setTouchType('call');
       setCreateFollowUp(false);
       setFollowUpDate(addDays(new Date(), 1));
+      setShowVoice(false);
     } catch (err) {
       console.error('LogTouch error:', err);
       toast({ description: 'Something went wrong. Touch not saved.' });
@@ -138,12 +156,33 @@ export function LogTouchModal({ open, onClose, entityType, entityId, entityTitle
           </div>
 
           {/* Note */}
-          <Textarea
-            placeholder="Quick note (optional)"
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            className="min-h-[60px] text-sm resize-none"
-          />
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground">Note</Label>
+              <Button size="sm" variant="ghost" className="text-xs h-6 px-2" onClick={() => setShowVoice(!showVoice)}>
+                <Mic className="h-3 w-3 mr-1" /> {showVoice ? 'Hide' : 'Voice'}
+              </Button>
+            </div>
+            {showVoice && (
+              <VoiceNoteLogger
+                entityType={entityType}
+                entityId={entityId}
+                entityTitle={entityTitle}
+                onNoteReady={(cleanedNote, type) => {
+                  setNote(cleanedNote);
+                  const validType = TOUCH_TYPES.find(t => t.value === type);
+                  if (validType) setTouchType(validType.value);
+                  setShowVoice(false);
+                }}
+              />
+            )}
+            <Textarea
+              placeholder="Quick note (optional)"
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              className="min-h-[60px] text-sm resize-none"
+            />
+          </div>
 
           {/* Follow-up toggle */}
           <div className="space-y-2">
