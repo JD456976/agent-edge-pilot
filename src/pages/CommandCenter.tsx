@@ -1215,7 +1215,7 @@ export default function CommandCenter() {
                 );
               })}
               <button
-                onClick={() => {/* TODO: navigate to full actions list */}}
+                onClick={() => navigate('/?workspace=work')}
                 className="w-full text-center text-xs text-primary hover:text-primary/80 transition-colors py-2"
               >
                 View All Actions <ChevronRight className="inline h-3 w-3" />
