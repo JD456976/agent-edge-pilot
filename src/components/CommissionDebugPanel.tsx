@@ -51,11 +51,11 @@ export function CommissionDebugPanel({ resolution }: Props) {
           <div className="flex items-center justify-between border-t border-border pt-1.5">
             <span className="text-muted-foreground">Confidence</span>
             <span className={`font-medium ${
-              resolution.confidenceLevel === 'high' ? 'text-foreground' :
-              resolution.confidenceLevel === 'medium' ? 'text-warning' :
+              resolution.confidence === 'HIGH' ? 'text-foreground' :
+              resolution.confidence === 'MEDIUM' ? 'text-warning' :
               'text-urgent'
             }`}>
-              {resolution.confidenceLevel.toUpperCase()}
+              {resolution.confidence}
             </span>
           </div>
 

@@ -93,9 +93,8 @@ function mapParticipant(row: any, profileName?: string): DealParticipant {
   };
 }
 
-function computeUserCommission(dealRow: any, participants: DealParticipant[], userId: string): number {
-  // Build a minimal Deal object for the resolver
-  const deal: Deal = {
+function buildDealForResolver(dealRow: any): Deal {
+  return {
     id: dealRow.id,
     title: dealRow.title,
     stage: dealRow.stage,
@@ -112,8 +111,17 @@ function computeUserCommission(dealRow: any, participants: DealParticipant[], us
       appraisal: dealRow.milestone_appraisal || 'unknown',
     },
   };
+}
+
+function resolveAndEnrich(dealRow: any, participants: DealParticipant[], userId: string): Partial<Deal> {
+  const deal = buildDealForResolver(dealRow);
   const resolution = resolvePersonalCommission(deal, participants, userId);
-  return resolution.personalCommissionTotal;
+  return {
+    personalCommissionTotal: resolution.personalCommissionTotal,
+    personalCommissionConfidence: resolution.confidence,
+    personalCommissionWarnings: resolution.warnings,
+    personalCommissionDetails: resolution.details as unknown as Record<string, unknown>,
+  };
 }
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
@@ -147,8 +155,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const mappedParticipants = (participantsRes.data || []).map(r => mapParticipant(r, profileMap.get(r.user_id)));
 
     const mappedDeals = (dealsRes.data || []).map(r => {
-      const uc = computeUserCommission(r, mappedParticipants, user.id);
-      return mapDeal(r, uc);
+      const enrichment = resolveAndEnrich(r, mappedParticipants, user.id);
+      return { ...mapDeal(r, enrichment.personalCommissionTotal), ...enrichment };
     });
 
     setLeads((leadsRes.data || []).map(mapLead));

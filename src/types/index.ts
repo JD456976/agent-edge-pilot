@@ -61,6 +61,14 @@ export interface Deal {
   importedFrom?: string | null;
   importRunId?: string | null;
   importedAt?: string | null;
+  /** Resolved personal commission total */
+  personalCommissionTotal?: number;
+  /** Resolution confidence: HIGH, MEDIUM, LOW */
+  personalCommissionConfidence?: 'HIGH' | 'MEDIUM' | 'LOW';
+  /** Resolution warnings */
+  personalCommissionWarnings?: string[];
+  /** Full resolution detail object */
+  personalCommissionDetails?: Record<string, unknown>;
 }
 
 export interface DealParticipant {

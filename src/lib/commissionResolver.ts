@@ -1,44 +1,69 @@
 /**
- * Personal Commission Resolution Engine
+ * Personal Commission Resolution Engine (Money Brain)
  *
  * Computes the agent's actual personal commission per deal using the
  * Deal Commission Editor data and participant system.
  *
- * Calculation order:
+ * Calculation order (deterministic):
  *   1. Determine commission base (percentage / flat / custom)
  *   2. Side logic (informational only for v1)
  *   3. Participant splits
- *   4. Referral adjustments (out / in)
- *   5. Team split
- *   6. Flat override
+ *   4. Referral adjustments (out then in)
+ *   5. Team split multiplier
+ *   6. Flat / commission override (highest priority)
+ *
+ * Example cases (inline):
+ *   - $500K deal, 3% rate, 60% split → base $15K, user $9K
+ *   - Same deal with 25% referral out → $9K - $3.75K = $5.25K
+ *   - Same with 80% team split → $5.25K × 0.80 = $4.2K
+ *   - Flat override $3K → final $3K regardless
  */
 
 import type { Deal, DealParticipant } from '@/types';
 
 // ── Types ────────────────────────────────────────────────────────────
 
-export type ResolutionConfidence = 'high' | 'medium' | 'low';
+export type ResolutionConfidence = 'HIGH' | 'MEDIUM' | 'LOW';
 
-export interface CalculationStep {
-  label: string;
-  value: number;
-  note?: string;
+export type CommissionType = 'percentage' | 'flat' | 'custom';
+
+export interface CommissionResolutionDetails {
+  baseCommission: number;
+  commissionType: CommissionType;
+  dealPrice?: number;
+  commissionRate?: number;
+  flatAmount?: number;
+  customAmount?: number;
+  userSplitPct?: number;
+  referralOutPct?: number;
+  referralInPct?: number;
+  teamSplitPct?: number;
+  flatOverride?: number;
+  appliedSteps: string[];
 }
 
 export interface CommissionResolution {
   personalCommissionTotal: number;
-  confidenceLevel: ResolutionConfidence;
+  confidence: ResolutionConfidence;
   warnings: string[];
-  calculationDetails: CalculationStep[];
+  details: CommissionResolutionDetails;
+  /** @deprecated Use `confidence` instead */
+  confidenceLevel: ResolutionConfidence;
+  /** @deprecated Use `details.appliedSteps` instead */
+  calculationDetails: { label: string; value: number; note?: string }[];
   hasParticipant: boolean;
   splitWarning: boolean;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-function clamp(v: number): number {
-  if (!Number.isFinite(v)) return 0;
-  return Math.max(0, v);
+export function clampNumber(
+  n: number,
+  min: number = 0,
+  max: number = Number.MAX_SAFE_INTEGER,
+): number {
+  if (!Number.isFinite(n) || Number.isNaN(n)) return min;
+  return Math.max(min, Math.min(max, n));
 }
 
 // ── Main Resolution Function ─────────────────────────────────────────
@@ -49,39 +74,53 @@ export function resolvePersonalCommission(
   currentUserId: string,
 ): CommissionResolution {
   const warnings: string[] = [];
-  const steps: CalculationStep[] = [];
-  let confidenceMissing = 0;
+  const steps: { label: string; value: number; note?: string }[] = [];
+  const appliedSteps: string[] = [];
+  let confidenceDowngrades = 0;
 
   // ── Step 1: Determine commission base ──────────────────────────────
 
-  // Infer commission type from deal data:
-  //   - If commissionRate is set and > 0, treat as percentage
-  //   - Otherwise use flat commission_amount
   const hasRate = deal.commissionRate !== undefined && deal.commissionRate !== null && deal.commissionRate > 0;
   let baseCommission: number;
-  let commissionTypeLabel: string;
+  let commissionType: CommissionType;
+  let detailRate: number | undefined;
+  let detailFlat: number | undefined;
+  let detailCustom: number | undefined;
 
   if (hasRate) {
-    baseCommission = clamp(Math.round(deal.price * (deal.commissionRate! / 100)));
-    commissionTypeLabel = `${deal.commissionRate}% of $${deal.price.toLocaleString()}`;
+    commissionType = 'percentage';
+    detailRate = deal.commissionRate!;
+    if (!deal.price || deal.price <= 0) {
+      warnings.push('Missing deal price for percentage commission');
+      confidenceDowngrades++;
+    }
+    baseCommission = clampNumber(Math.round((deal.price || 0) * (deal.commissionRate! / 100)));
+    appliedSteps.push(`Base = ${deal.price} × ${deal.commissionRate}% = ${baseCommission}`);
+    steps.push({ label: 'Base commission', value: baseCommission, note: `${deal.commissionRate}% of $${(deal.price || 0).toLocaleString()}` });
   } else if (deal.commission > 0) {
-    baseCommission = clamp(deal.commission);
-    commissionTypeLabel = 'Flat / stored amount';
+    commissionType = 'flat';
+    detailFlat = deal.commission;
+    baseCommission = clampNumber(deal.commission);
+    appliedSteps.push(`Base = flat $${baseCommission}`);
+    steps.push({ label: 'Base commission', value: baseCommission, note: 'Flat / stored amount' });
   } else {
+    commissionType = 'percentage'; // default assumption
     baseCommission = 0;
-    commissionTypeLabel = 'Unknown — no rate or amount';
-    confidenceMissing++;
-    warnings.push('Base commission unknown — neither rate nor amount set');
+    confidenceDowngrades++;
+    warnings.push('Commission base is $0');
+    appliedSteps.push('Base = $0 (no rate or amount set)');
+    steps.push({ label: 'Base commission', value: 0, note: 'Unknown — no rate or amount' });
   }
 
-  steps.push({ label: 'Base commission', value: baseCommission, note: commissionTypeLabel });
+  baseCommission = clampNumber(baseCommission);
 
   // ── Step 2: Side logic (informational only) ────────────────────────
 
   const side = (deal as any).side || 'buy';
+  appliedSteps.push(`Side: ${side} (informational)`);
   steps.push({ label: 'Side', value: baseCommission, note: `${side} side (informational)` });
 
-  // ── Step 3: Participant splits ─────────────────────────────────────
+  // ── Step 3: Find participant + apply splits ────────────────────────
 
   const dealParticipants = allParticipants.filter(p => p.dealId === deal.id);
   const myParticipant = dealParticipants.find(p => p.userId === currentUserId);
@@ -90,89 +129,153 @@ export function resolvePersonalCommission(
 
   if (splitWarning) {
     warnings.push(`Total participant splits exceed 100% (${totalSplit}%)`);
-    confidenceMissing++;
+    confidenceDowngrades++;
   }
 
   let userShare: number;
+  let userSplitPct: number | undefined;
 
   if (!myParticipant) {
     userShare = 0;
-    warnings.push('No participant entry for agent');
+    warnings.push('No participant entry for this agent');
+    appliedSteps.push('No participant entry → $0');
     steps.push({ label: 'User split', value: 0, note: 'No participant entry' });
-  } else {
-    const splitPct = myParticipant.splitPercent ?? 0;
-    if (splitPct <= 0 && (myParticipant.commissionOverride === undefined || myParticipant.commissionOverride === null)) {
+
+    // Return early with LOW confidence
+    const details: CommissionResolutionDetails = {
+      baseCommission,
+      commissionType,
+      dealPrice: deal.price || undefined,
+      commissionRate: detailRate,
+      flatAmount: detailFlat,
+      customAmount: detailCustom,
+      appliedSteps,
+    };
+    const result: CommissionResolution = {
+      personalCommissionTotal: 0,
+      confidence: 'LOW',
+      confidenceLevel: 'LOW',
+      warnings,
+      details,
+      calculationDetails: steps,
+      hasParticipant: false,
+      splitWarning,
+    };
+    return result;
+  }
+
+  const splitPct = myParticipant.splitPercent ?? 0;
+  userSplitPct = splitPct;
+
+  if (splitPct === null || splitPct === undefined || splitPct <= 0) {
+    if ((myParticipant.commissionOverride === undefined || myParticipant.commissionOverride === null) || myParticipant.commissionOverride <= 0) {
       userShare = 0;
-      warnings.push('Agent split is 0%');
+      warnings.push('Agent split is 0% (no personal commission assigned)');
+      confidenceDowngrades++;
+      appliedSteps.push('Split 0% → $0');
       steps.push({ label: 'User split', value: 0, note: '0% split' });
     } else {
-      userShare = baseCommission * (splitPct / 100);
-      steps.push({ label: 'User split', value: clamp(Math.round(userShare)), note: `${splitPct}% of base` });
+      userShare = 0; // will be overridden below
+      warnings.push('Missing split percent for agent');
+      confidenceDowngrades++;
+      appliedSteps.push('Split missing, override will apply');
+      steps.push({ label: 'User split', value: 0, note: 'Missing split, override pending' });
     }
+  } else {
+    userShare = baseCommission * (splitPct / 100);
+    appliedSteps.push(`Split: ${baseCommission} × ${splitPct}% = ${Math.round(userShare)}`);
+    steps.push({ label: 'User split', value: clampNumber(Math.round(userShare)), note: `${splitPct}% of base` });
   }
 
   // ── Step 4: Referral adjustments ───────────────────────────────────
 
   const referralOutPct = deal.referralFeePercent ?? 0;
+  let detailRefOut: number | undefined;
+  let detailRefIn: number | undefined;
+
   if (referralOutPct > 0) {
+    detailRefOut = referralOutPct;
     const deduction = baseCommission * (referralOutPct / 100);
     userShare -= deduction;
-    steps.push({ label: 'Referral out', value: clamp(Math.round(userShare)), note: `-${referralOutPct}% of base ($${Math.round(deduction).toLocaleString()})` });
+    userShare = clampNumber(userShare);
+    appliedSteps.push(`Referral out: -${referralOutPct}% of base ($${Math.round(deduction)})`);
+    steps.push({ label: 'Referral out', value: clampNumber(Math.round(userShare)), note: `-${referralOutPct}% of base ($${Math.round(deduction).toLocaleString()})` });
   }
 
-  // Referral in — not stored on deal yet, but support if present
   const referralInPct = (deal as any).referralInPercent ?? 0;
   if (referralInPct > 0) {
+    detailRefIn = referralInPct;
     const addition = baseCommission * (referralInPct / 100);
     userShare += addition;
-    steps.push({ label: 'Referral in', value: clamp(Math.round(userShare)), note: `+${referralInPct}% of base ($${Math.round(addition).toLocaleString()})` });
+    userShare = clampNumber(userShare);
+    appliedSteps.push(`Referral in: +${referralInPct}% of base ($${Math.round(addition)})`);
+    steps.push({ label: 'Referral in', value: clampNumber(Math.round(userShare)), note: `+${referralInPct}% of base ($${Math.round(addition).toLocaleString()})` });
   }
-
-  userShare = clamp(userShare);
 
   // ── Step 5: Team split ─────────────────────────────────────────────
 
   const teamSplitPct = (deal as any).teamSplitPercent ?? 0;
-  if (teamSplitPct > 0) {
-    userShare *= (1 - teamSplitPct / 100);
-    userShare = clamp(userShare);
-    steps.push({ label: 'After team split', value: Math.round(userShare), note: `-${teamSplitPct}% team` });
+  let detailTeam: number | undefined;
+
+  if (teamSplitPct > 0 && teamSplitPct < 100) {
+    detailTeam = teamSplitPct;
+    userShare *= (teamSplitPct / 100);
+    userShare = clampNumber(userShare);
+    appliedSteps.push(`Team split: × ${teamSplitPct}% = $${Math.round(userShare)}`);
+    steps.push({ label: 'After team split', value: Math.round(userShare), note: `${teamSplitPct}% team` });
   }
 
-  // ── Step 6: Flat override ──────────────────────────────────────────
+  // ── Step 6: Overrides (highest priority) ───────────────────────────
 
-  if (myParticipant?.commissionOverride !== undefined && myParticipant.commissionOverride !== null && myParticipant.commissionOverride > 0) {
+  let detailFlatOverride: number | undefined;
+
+  if (myParticipant.commissionOverride !== undefined && myParticipant.commissionOverride !== null && myParticipant.commissionOverride > 0) {
+    detailFlatOverride = myParticipant.commissionOverride;
     userShare = myParticipant.commissionOverride;
-    steps.push({ label: 'Flat override applied', value: clamp(Math.round(userShare)), note: `Override: $${myParticipant.commissionOverride.toLocaleString()}` });
+    appliedSteps.push(`Override applied: $${myParticipant.commissionOverride}`);
+    steps.push({ label: 'Override applied', value: clampNumber(Math.round(userShare)), note: `Override: $${myParticipant.commissionOverride.toLocaleString()}` });
   }
 
-  const personalCommissionTotal = clamp(Math.round(userShare));
+  const personalCommissionTotal = clampNumber(Math.round(userShare));
+  appliedSteps.push(`Final: $${personalCommissionTotal}`);
   steps.push({ label: 'Personal commission', value: personalCommissionTotal });
 
   // ── Step 7: Confidence ─────────────────────────────────────────────
 
-  let confidenceLevel: ResolutionConfidence;
-  const hasParticipant = !!myParticipant;
+  let confidence: ResolutionConfidence;
 
-  if (!hasParticipant) {
-    confidenceLevel = 'low';
+  if (confidenceDowngrades === 0) {
+    confidence = 'HIGH';
+  } else if (confidenceDowngrades === 1) {
+    confidence = 'MEDIUM';
   } else {
-    // Check for missing data
-    if (!deal.lastTouchedAt && !deal.createdAt) confidenceMissing++;
-    const ms = deal.milestoneStatus;
-    if (!ms || (ms.inspection === 'unknown' && ms.financing === 'unknown' && ms.appraisal === 'unknown')) confidenceMissing++;
-
-    if (confidenceMissing === 0) confidenceLevel = 'high';
-    else if (confidenceMissing === 1) confidenceLevel = 'medium';
-    else confidenceLevel = 'low';
+    confidence = 'LOW';
   }
+
+  // Build details
+  const details: CommissionResolutionDetails = {
+    baseCommission,
+    commissionType,
+    dealPrice: deal.price || undefined,
+    commissionRate: detailRate,
+    flatAmount: detailFlat,
+    customAmount: detailCustom,
+    userSplitPct,
+    referralOutPct: detailRefOut,
+    referralInPct: detailRefIn,
+    teamSplitPct: detailTeam,
+    flatOverride: detailFlatOverride,
+    appliedSteps,
+  };
 
   return {
     personalCommissionTotal,
-    confidenceLevel,
+    confidence,
+    confidenceLevel: confidence, // deprecated alias
     warnings,
-    calculationDetails: steps,
-    hasParticipant,
+    details,
+    calculationDetails: steps, // deprecated alias
+    hasParticipant: true,
     splitWarning,
   };
 }
