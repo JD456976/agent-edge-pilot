@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { BookOpen, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, DollarSign, AlertTriangle, Target, Lightbulb, Globe } from 'lucide-react';
+import { getWeeklyReviewDefaultExpanded, getWeeklyReviewUserOverride, setWeeklyReviewUserOverride, getNoisePrefs } from '@/lib/noiseGovernor';
+import { NoiseSuppressionHint } from '@/components/NoiseSuppressionHint';
 import { cn } from '@/lib/utils';
 import { useNetworkBenchmarks } from '@/hooks/useNetworkBenchmarks';
 import type { Deal, Lead, Task } from '@/types';
@@ -19,8 +21,19 @@ function formatCurrency(n: number) {
 }
 
 export function WeeklyCommandReview({ deals, leads, tasks, moneyResults, stabilityScore, totalMoneyAtRisk }: Props) {
-  const [expanded, setExpanded] = useState(false);
+  const userOverride = getWeeklyReviewUserOverride();
+  const defaultExpanded = getWeeklyReviewDefaultExpanded();
+  const isAutoCollapsed = !defaultExpanded && userOverride === null;
+  const [expanded, setExpanded] = useState(userOverride ?? defaultExpanded);
   const { benchmark } = useNetworkBenchmarks();
+
+  const handleToggle = useCallback(() => {
+    setExpanded(prev => {
+      const next = !prev;
+      setWeeklyReviewUserOverride(next);
+      return next;
+    });
+  }, []);
 
   const review = useMemo(() => {
     const now = new Date();
@@ -74,7 +87,7 @@ export function WeeklyCommandReview({ deals, leads, tasks, moneyResults, stabili
 
   return (
     <div className="rounded-lg border border-border bg-card p-5 space-y-4">
-      <button onClick={() => setExpanded(!expanded)} className="flex items-center justify-between w-full">
+      <button onClick={handleToggle} className="flex items-center justify-between w-full">
         <div className="flex items-center gap-2">
           <BookOpen className="h-4 w-4 text-primary" />
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Weekly Command Review</p>
@@ -85,6 +98,14 @@ export function WeeklyCommandReview({ deals, leads, tasks, moneyResults, stabili
           {expanded ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
         </div>
       </button>
+
+      {/* Auto-collapse hint */}
+      {isAutoCollapsed && !expanded && (
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] text-muted-foreground/60 italic">Weekly review is most useful on Mon/Fri.</p>
+          <NoiseSuppressionHint reason="Auto-collapsed on non-review days (Tue–Thu, Sat–Sun)" />
+        </div>
+      )}
 
       {/* Summary row always visible */}
       <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-xs text-muted-foreground">

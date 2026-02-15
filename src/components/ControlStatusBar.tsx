@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { ControlStatus, ProgressItem } from '@/lib/dailyIntelligence';
+import { checkStableFilter } from '@/lib/noiseGovernor';
+import { NoiseSuppressionHint } from '@/components/NoiseSuppressionHint';
 
 interface Props {
   controlStatus: ControlStatus;
@@ -25,6 +27,11 @@ export function ControlStatusBar({
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const config = statusConfig[controlStatus];
+
+  const stableFilter = useMemo(() => checkStableFilter(controlStatus), [controlStatus]);
+
+  // Hide entirely when stable for N consecutive days
+  if (stableFilter.hidden) return null;
 
   return (
     <div className="space-y-2">

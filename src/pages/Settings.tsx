@@ -1,9 +1,10 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar } from 'lucide-react';
+import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getNoisePrefs, setNoisePrefs, type DriftFrequency, type WeeklyReviewDefault, type StableHideAfter } from '@/lib/noiseGovernor';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { ScoringCalibrationPanel } from '@/components/ScoringCalibrationPanel';
@@ -34,6 +35,11 @@ export default function Settings() {
   const feedbackStats = getFeedbackStats();
   const { prefs: selfOptPrefs, analysis: selfOptAnalysis, updatePrefs: updateSelfOptPrefs, resetLearning: resetSelfOptLearning, exportSummary: exportSelfOptSummary } = useSelfOptimizing(user?.id);
   const { stats: habitStats } = useHabitTracking();
+  const [noisePrefs, setNoisePrefsState] = useState(() => getNoisePrefs());
+  const updateNoisePref = (partial: Partial<typeof noisePrefs>) => {
+    const next = setNoisePrefs(partial);
+    setNoisePrefsState(next);
+  };
 
   const isAdmin = user?.role === 'admin';
 
@@ -212,6 +218,49 @@ export default function Settings() {
             </div>
           </div>
         )}
+      </section>
+
+      {/* Noise Controls */}
+      <section className="rounded-lg border border-border bg-card p-4 mb-4">
+        <h2 className="text-sm font-semibold mb-1 flex items-center gap-2"><Volume2 className="h-4 w-4" /> Noise Controls</h2>
+        <p className="text-xs text-muted-foreground mb-3">
+          Control how often non-urgent signals appear. Reduces alert fatigue over time.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs text-muted-foreground">Drift alert frequency</Label>
+            <Select value={noisePrefs.driftFrequency} onValueChange={(v) => updateNoisePref({ driftFrequency: v as DriftFrequency })}>
+              <SelectTrigger className="w-full mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="every_session">Every session</SelectItem>
+                <SelectItem value="4_hours">Every 4 hours</SelectItem>
+                <SelectItem value="daily">Once daily</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Weekly review default</Label>
+            <Select value={noisePrefs.weeklyReviewDefault} onValueChange={(v) => updateNoisePref({ weeklyReviewDefault: v as WeeklyReviewDefault })}>
+              <SelectTrigger className="w-full mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Auto (Mon/Fri)</SelectItem>
+                <SelectItem value="always_collapsed">Always collapsed</SelectItem>
+                <SelectItem value="always_expanded">Always expanded</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Hide stable status after</Label>
+            <Select value={String(noisePrefs.stableHideAfterDays)} onValueChange={(v) => updateNoisePref({ stableHideAfterDays: v === 'never' ? 'never' : parseInt(v) as 3 | 5 })}>
+              <SelectTrigger className="w-full mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="3">3 days</SelectItem>
+                <SelectItem value="5">5 days</SelectItem>
+                <SelectItem value="never">Never</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </section>
 
       {/* Daily Operating Mode */}
