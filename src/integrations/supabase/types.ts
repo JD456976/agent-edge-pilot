@@ -222,6 +222,7 @@ export type Database = {
           referral_fee_percent: number | null
           risk_flags: string[] | null
           risk_level: Database["public"]["Enums"]["risk_level"]
+          side: string
           stage: Database["public"]["Enums"]["deal_stage"]
           title: string
         }
@@ -246,6 +247,7 @@ export type Database = {
           referral_fee_percent?: number | null
           risk_flags?: string[] | null
           risk_level?: Database["public"]["Enums"]["risk_level"]
+          side?: string
           stage?: Database["public"]["Enums"]["deal_stage"]
           title: string
         }
@@ -270,6 +272,7 @@ export type Database = {
           referral_fee_percent?: number | null
           risk_flags?: string[] | null
           risk_level?: Database["public"]["Enums"]["risk_level"]
+          side?: string
           stage?: Database["public"]["Enums"]["deal_stage"]
           title?: string
         }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import type { Deal, DealStage, RiskLevel, DealParticipant } from '@/types';
 import { PARTICIPANT_ROLE_LABELS } from '@/types';
 import { ImportSourceBadge } from '@/components/ImportSourceBadge';
+import { DealCommissionEditor, type DealCommissionState, type ParticipantEdit } from '@/components/DealCommissionEditor';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 const STAGES: { key: DealStage; label: string }[] = [
@@ -105,12 +108,15 @@ function ParticipantsList({ participants, deal }: { participants: DealParticipan
   );
 }
 
-function DealDetail({ deal, tasks, participants, onClose }: {
+function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, orgUsers }: {
   deal: Deal;
   tasks: { id: string; title: string; completedAt?: string }[];
   participants: DealParticipant[];
   onClose: () => void;
+  onCommissionSave: (dealId: string, state: DealCommissionState, participantEdits: ParticipantEdit[]) => Promise<void>;
+  orgUsers: { id: string; name: string }[];
 }) {
+  const { user } = useAuth();
   const userComm = deal.userCommission ?? deal.commission;
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-background/80 backdrop-blur-sm" onClick={onClose}>
@@ -136,7 +142,14 @@ function DealDetail({ deal, tasks, participants, onClose }: {
           )}
         </div>
 
-        <ParticipantsList participants={participants} deal={deal} />
+        {/* Commission Editor */}
+        <DealCommissionEditor
+          deal={deal}
+          participants={participants}
+          currentUserId={user?.id || ''}
+          orgUsers={orgUsers}
+          onSave={(state, participantEdits) => onCommissionSave(deal.id, state, participantEdits)}
+        />
 
         {tasks.length > 0 && (
           <div className="mt-4 pt-4 border-t border-border">
@@ -154,8 +167,71 @@ function DealDetail({ deal, tasks, participants, onClose }: {
 }
 
 export default function Pipeline() {
-  const { deals, tasks, dealParticipants, hasData, seedDemoData } = useData();
+  const { user } = useAuth();
+  const { deals, tasks, dealParticipants, hasData, seedDemoData, refreshData, updateDealParticipant, addDealParticipant, deleteDealParticipant } = useData();
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [orgUsers, setOrgUsers] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from('profiles').select('user_id, name').eq('is_deleted', false);
+      if (data) setOrgUsers(data.map(p => ({ id: p.user_id, name: p.name })));
+    })();
+  }, []);
+
+  const handleCommissionSave = async (dealId: string, state: DealCommissionState, participantEdits: ParticipantEdit[]) => {
+    // Update deal-level commission fields
+    const commissionAmount = state.commissionType === 'percentage'
+      ? Math.round((deals.find(d => d.id === dealId)?.price ?? 0) * (state.commissionRate / 100))
+      : state.commissionType === 'flat' ? state.flatAmount : state.customAmount;
+
+    await supabase.from('deals').update({
+      commission_amount: commissionAmount,
+      commission_rate: state.commissionType === 'percentage' ? state.commissionRate : null,
+      referral_fee_percent: state.referralOutPercent || 0,
+      side: state.side,
+    } as any).eq('id', dealId);
+
+    // Handle participant edits
+    for (const p of participantEdits) {
+      if (p.isDeleted && p.id) {
+        await deleteDealParticipant(p.id);
+      } else if (p.isNew && p.userId) {
+        await addDealParticipant({
+          dealId,
+          userId: p.userId,
+          role: p.role,
+          splitPercent: p.splitPercent,
+          commissionOverride: p.commissionOverride ?? undefined,
+        });
+      } else if (p.id) {
+        await updateDealParticipant({
+          id: p.id,
+          dealId,
+          userId: p.userId,
+          userName: p.userName,
+          role: p.role,
+          splitPercent: p.splitPercent,
+          commissionOverride: p.commissionOverride ?? undefined,
+        });
+      }
+    }
+
+    // Ensure current user has a participant entry
+    const hasUserEntry = participantEdits.some(p => p.userId === user?.id && !p.isDeleted);
+    if (!hasUserEntry && user?.id) {
+      await addDealParticipant({
+        dealId,
+        userId: user.id,
+        role: 'primary_agent',
+        splitPercent: state.splitPercent,
+        commissionOverride: state.flatOverride ?? undefined,
+      });
+    }
+
+    await refreshData();
+    toast({ description: 'Commission details saved.' });
+  };
 
   if (!hasData) {
     return (
@@ -202,6 +278,8 @@ export default function Pipeline() {
           tasks={relatedTasks}
           participants={selectedParticipants}
           onClose={() => setSelectedDeal(null)}
+          onCommissionSave={handleCommissionSave}
+          orgUsers={orgUsers}
         />
       )}
     </div>
