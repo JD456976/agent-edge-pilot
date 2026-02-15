@@ -146,31 +146,42 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const [leadsRes, dealsRes, tasksRes, alertsRes, participantsRes, profilesRes] = await Promise.all([
-      supabase.from('leads').select('*'),
-      supabase.from('deals').select('*'),
-      supabase.from('tasks').select('*'),
-      supabase.from('alerts').select('*'),
-      supabase.from('deal_participants').select('*'),
-      supabase.from('profiles').select('user_id, name'),
-    ]);
+    try {
+      const [leadsRes, dealsRes, tasksRes, alertsRes, participantsRes, profilesRes] = await Promise.all([
+        supabase.from('leads').select('*'),
+        supabase.from('deals').select('*'),
+        supabase.from('tasks').select('*'),
+        supabase.from('alerts').select('*'),
+        supabase.from('deal_participants').select('*'),
+        supabase.from('profiles').select('user_id, name'),
+      ]);
 
-    const profileMap = new Map<string, string>();
-    profilesRes.data?.forEach(p => profileMap.set(p.user_id, p.name));
+      const profileMap = new Map<string, string>();
+      (profilesRes.data || []).forEach(p => profileMap.set(p.user_id, p.name));
 
-    const mappedParticipants = (participantsRes.data || []).map(r => mapParticipant(r, profileMap.get(r.user_id)));
+      const mappedParticipants = (participantsRes.data || []).map(r => mapParticipant(r, profileMap.get(r.user_id)));
 
-    const mappedDeals = (dealsRes.data || []).map(r => {
-      const enrichment = resolveAndEnrich(r, mappedParticipants, user.id);
-      return { ...mapDeal(r, enrichment.personalCommissionTotal), ...enrichment };
-    });
+      const mappedDeals = (dealsRes.data || []).map(r => {
+        try {
+          const enrichment = resolveAndEnrich(r, mappedParticipants, user.id);
+          return { ...mapDeal(r, enrichment.personalCommissionTotal), ...enrichment };
+        } catch {
+          // If commission resolution fails for a deal, still show it with defaults
+          return mapDeal(r);
+        }
+      });
 
-    setLeads((leadsRes.data || []).map(mapLead));
-    setDeals(mappedDeals);
-    setTasks((tasksRes.data || []).map(mapTask));
-    setAlerts((alertsRes.data || []).map(mapAlert));
-    setDealParticipants(mappedParticipants);
-    setLoading(false);
+      setLeads((leadsRes.data || []).map(mapLead));
+      setDeals(mappedDeals);
+      setTasks((tasksRes.data || []).map(mapTask));
+      setAlerts((alertsRes.data || []).map(mapAlert));
+      setDealParticipants(mappedParticipants);
+    } catch (err) {
+      console.error('Failed to load data:', err);
+      // Keep existing state rather than wiping on transient failure
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -284,22 +295,40 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const completeTask = async (id: string) => {
-    await supabase.from('tasks').update({ completed_at: new Date().toISOString() }).eq('id', id);
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, completedAt: new Date().toISOString() } : t));
+    const completedAt = new Date().toISOString();
+    // Optimistic update
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, completedAt } : t));
+    const { error } = await supabase.from('tasks').update({ completed_at: completedAt }).eq('id', id);
+    if (error) {
+      // Rollback on failure
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, completedAt: undefined } : t));
+      console.error('Failed to complete task:', error);
+    }
   };
 
   const uncompleteTask = async (id: string) => {
-    await supabase.from('tasks').update({ completed_at: null }).eq('id', id);
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, completedAt: undefined } : t));
+    const prev = tasks.find(t => t.id === id);
+    // Optimistic update
+    setTasks(ts => ts.map(t => t.id === id ? { ...t, completedAt: undefined } : t));
+    const { error } = await supabase.from('tasks').update({ completed_at: null }).eq('id', id);
+    if (error) {
+      // Rollback
+      setTasks(ts => ts.map(t => t.id === id ? { ...t, completedAt: prev?.completedAt } : t));
+      console.error('Failed to uncomplete task:', error);
+    }
   };
 
   const addTask = async (task: Omit<Task, 'id'>) => {
-    const { data } = await supabase.from('tasks').insert({
+    const { data, error } = await supabase.from('tasks').insert({
       title: task.title, type: task.type as any, due_at: task.dueAt,
       related_lead_id: task.relatedLeadId || null,
       related_deal_id: task.relatedDealId || null,
       assigned_to_user_id: task.assignedToUserId,
     }).select().single();
+    if (error) {
+      console.error('Failed to add task:', error);
+      return;
+    }
     if (data) setTasks(prev => [...prev, mapTask(data)]);
   };
 
