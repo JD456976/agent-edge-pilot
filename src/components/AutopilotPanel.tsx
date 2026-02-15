@@ -24,6 +24,12 @@ interface NextAction {
   value?: number;
 }
 
+interface PredictiveSignal {
+  type: 'failure' | 'ghosting' | 'fragility' | 'volatility' | 'decay';
+  label: string;
+  severity: 'high' | 'medium';
+}
+
 interface Props {
   panels: CommandCenterPanels;
   onComplete: (taskId: string) => void;
@@ -43,6 +49,7 @@ interface Props {
   onStabilityAction?: () => void;
   onCreateTask?: (title: string, dealId?: string, leadId?: string) => void;
   burnoutCritical?: boolean;
+  predictiveSignals?: PredictiveSignal[];
 }
 
 function formatCurrency(n: number) {
@@ -152,6 +159,7 @@ export function AutopilotPanel({
   totalMoneyAtRisk = 0,
   onStabilityAction, onCreateTask,
   burnoutCritical = false,
+  predictiveSignals = [],
 }: Props) {
   const [showSnooze, setShowSnooze] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -178,9 +186,31 @@ export function AutopilotPanel({
   const riskValue = topMoneyAtRisk?.personalCommissionAtRisk ?? 0;
   const oppValue = topOpportunity?.opportunityValue ?? 0;
 
+  const isPredictive = predictiveSignals.length > 0;
+  const topPredictiveSignal = predictiveSignals[0] || null;
+
   const directive = useMemo(
-    () => determineDirective(operatingMode, stabilityScore, riskValue, oppValue),
-    [operatingMode, stabilityScore, riskValue, oppValue],
+    () => {
+      // If predictive signals override — highest severity predictive signal drives directive
+      if (topPredictiveSignal?.severity === 'high') {
+        if (topPredictiveSignal.type === 'failure' || topPredictiveSignal.type === 'ghosting') {
+          return {
+            type: 'protect' as DirectiveType,
+            title: 'Prevent Income Loss',
+            reason: topPredictiveSignal.label,
+          };
+        }
+        if (topPredictiveSignal.type === 'fragility' || topPredictiveSignal.type === 'volatility') {
+          return {
+            type: 'create' as DirectiveType,
+            title: 'Stabilize Pipeline',
+            reason: topPredictiveSignal.label,
+          };
+        }
+      }
+      return determineDirective(operatingMode, stabilityScore, riskValue, oppValue);
+    },
+    [operatingMode, stabilityScore, riskValue, oppValue, topPredictiveSignal],
   );
 
   // Determine next best action
@@ -262,7 +292,10 @@ export function AutopilotPanel({
       <div className="rounded-lg border border-border bg-card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Autopilot</p>
-          <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', modeConfig.className)}>{modeConfig.label}</span>
+          <div className="flex items-center gap-1.5">
+            {isPredictive && <span className="text-[10px] px-2 py-0.5 rounded-full border border-primary/20 text-primary bg-primary/5">Predictive</span>}
+            <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', modeConfig.className)}>{modeConfig.label}</span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-muted-foreground" />
@@ -278,7 +311,8 @@ export function AutopilotPanel({
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Autopilot</p>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          {isPredictive && <span className="text-[10px] px-2 py-0.5 rounded-full border border-primary/20 text-primary bg-primary/5">Predictive</span>}
           <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', modeConfig.className)}>{modeConfig.label}</span>
         </div>
       </div>
