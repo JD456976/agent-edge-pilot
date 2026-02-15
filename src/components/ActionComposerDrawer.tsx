@@ -1,12 +1,25 @@
-import { useState, useMemo } from 'react';
-import { MessageSquare, Mail, Phone, Copy, Check, Edit3, ChevronDown, ChevronUp, Shield, Target } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+/**
+ * ActionComposerDrawer — Full-screen action workspace with
+ * left context panel + right execution tabs.
+ * Enhanced for the "Default Interface" layer.
+ */
+
+import { useState, useMemo, useCallback } from 'react';
+import {
+  Phone, MessageSquare, Mail, ListTodo, StickyNote,
+  Copy, Check, Shield, ChevronDown, ChevronUp,
+  Clock, AlertTriangle, TrendingUp,
+} from 'lucide-react';
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
-import type { Deal, Lead, Task } from '@/types';
+import { ActivityTrail } from '@/components/ActivityTrail';
+import type { Deal, Lead, Task, TaskType } from '@/types';
 import type { MoneyModelResult } from '@/lib/moneyModel';
 import type { OpportunityHeatResult } from '@/lib/leadMoneyModel';
 import {
@@ -19,9 +32,10 @@ import {
   type CommunicationDraft,
   type CallBrief,
   type ObjectionEntry,
-  type FollowUpSuggestion,
   type ConfidenceLevel,
 } from '@/lib/executionEngine';
+
+type WorkspaceTab = 'call' | 'text' | 'email' | 'task' | 'notes';
 
 interface Props {
   open: boolean;
@@ -31,12 +45,20 @@ interface Props {
   moneyResult?: MoneyModelResult | null;
   oppResult?: OpportunityHeatResult | null;
   tasks?: Task[];
+  onCreateTask?: (title: string, type: TaskType, dueAt: string, entityId: string, entityType: 'deal' | 'lead') => void;
+  onLogTouch?: (entityType: 'deal' | 'lead', entityId: string, entityTitle: string, touchType: string, note?: string) => void;
+  onCompleteTask?: (taskId: string) => void;
+  // Legacy compat
   onCreateFollowUp?: (title: string, dueAt: string, entityId: string, entityType: 'deal' | 'lead') => void;
-  onLogTouch?: (entityType: 'deal' | 'lead', entityId: string, entityTitle: string) => void;
 }
 
 function formatCurrency(n: number) {
   return n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
+}
+
+function daysSince(dateStr: string | undefined | null): number {
+  if (!dateStr) return 999;
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
 }
 
 const CONFIDENCE_STYLE: Record<ConfidenceLevel, string> = {
@@ -45,16 +67,244 @@ const CONFIDENCE_STYLE: Record<ConfidenceLevel, string> = {
   LOW: 'bg-muted text-muted-foreground border-border',
 };
 
-type DraftTab = 'sms' | 'email' | 'call';
+const CALL_OUTCOMES = [
+  { id: 'no_answer', label: 'No Answer', touchType: 'call', note: 'Called — no answer' },
+  { id: 'spoke_briefly', label: 'Spoke Briefly', touchType: 'call', note: 'Had a brief conversation' },
+  { id: 'scheduled_meeting', label: 'Scheduled', touchType: 'call', note: 'Scheduled a meeting' },
+  { id: 'needs_followup', label: 'Follow-Up', touchType: 'call', note: 'Needs follow-up' },
+] as const;
 
-export function ActionComposerDrawer({ open, onClose, entity, entityType, moneyResult, oppResult, tasks, onCreateFollowUp, onLogTouch }: Props) {
-  const [activeTab, setActiveTab] = useState<DraftTab>('sms');
-  const [editedSms, setEditedSms] = useState<string | null>(null);
-  const [editedEmail, setEditedEmail] = useState<string | null>(null);
+type EmailTone = 'direct' | 'friendly' | 'professional';
+
+function adjustEmailTone(body: string, tone: EmailTone): string {
+  if (tone === 'direct') return body.replace(/I hope you're doing well\.\s*/g, '').replace(/I wanted to/g, 'I need to').replace(/Best regards/g, 'Thanks');
+  if (tone === 'friendly') return body.replace(/Best regards/g, 'Looking forward to hearing from you!\n\nWarmly');
+  return body;
+}
+
+function generateSmsVariants(name: string, context: string): { label: string; text: string }[] {
+  return [
+    { label: 'Short', text: `Hi ${name}, checking in — do you have a moment to connect today?` },
+    { label: 'Medium', text: `Hi ${name}, I wanted to follow up on our conversation. ${context ? context + ' ' : ''}Are you available for a quick chat?` },
+    { label: 'Friendly', text: `Hey ${name}! Hope you're doing well. I've been thinking about your situation and had a few ideas. Would love to chat when you have a moment.` },
+  ];
+}
+
+function getSmartDueDate(entity: Deal | Lead, entityType: 'deal' | 'lead'): string {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(9, 0, 0, 0);
+  if (entityType === 'deal') {
+    const deal = entity as Deal;
+    if (deal.riskLevel === 'red') return new Date().toISOString();
+    if (deal.riskLevel === 'yellow') return tomorrow.toISOString();
+  } else {
+    const lead = entity as Lead;
+    if (lead.leadTemperature === 'hot') return new Date().toISOString();
+    if (lead.leadTemperature === 'warm') return tomorrow.toISOString();
+  }
+  const in2days = new Date();
+  in2days.setDate(in2days.getDate() + 2);
+  in2days.setHours(9, 0, 0, 0);
+  return in2days.toISOString();
+}
+
+// ── Post-Action Bar ──────────────────────────────────────────────────
+
+function PostActionBar({ onLogTouch, onScheduleFollowUp, onDone }: {
+  onLogTouch: () => void;
+  onScheduleFollowUp: () => void;
+  onDone: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-primary/15 bg-primary/5 p-4 space-y-3">
+      <p className="text-sm font-medium">Action completed — what's next?</p>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" className="text-xs" onClick={onLogTouch}>
+          <Phone className="h-3 w-3 mr-1" /> Log Touch
+        </Button>
+        <Button size="sm" variant="outline" className="text-xs" onClick={onScheduleFollowUp}>
+          <Clock className="h-3 w-3 mr-1" /> Schedule Follow-Up
+        </Button>
+        <Button size="sm" variant="ghost" className="text-xs" onClick={onDone}>
+          Done
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Context Panel ────────────────────────────────────────────────────
+
+function ContextPanel({ entity, entityType, moneyResult, oppResult, tasks: entityTasks }: {
+  entity: Deal | Lead;
+  entityType: 'deal' | 'lead';
+  moneyResult?: MoneyModelResult | null;
+  oppResult?: OpportunityHeatResult | null;
+  tasks?: Task[];
+}) {
+  const relatedTasks = useMemo(() => {
+    if (!entityTasks) return [];
+    return entityTasks.filter(t => {
+      if (entityType === 'deal') return t.relatedDealId === entity.id;
+      return t.relatedLeadId === entity.id;
+    }).filter(t => !t.completedAt).slice(0, 5);
+  }, [entityTasks, entity.id, entityType]);
+
+  if (entityType === 'deal') {
+    const deal = entity as Deal;
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-md border border-border p-2">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Price</p>
+            <p className="text-sm font-semibold">{formatCurrency(deal.price)}</p>
+          </div>
+          <div className="rounded-md border border-border p-2">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Commission</p>
+            <p className="text-sm font-semibold">{formatCurrency(deal.commission)}</p>
+          </div>
+          <div className="rounded-md border border-border p-2">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Stage</p>
+            <p className="text-xs font-medium capitalize">{deal.stage.replace('_', ' ')}</p>
+          </div>
+          <div className="rounded-md border border-border p-2">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Close</p>
+            <p className="text-xs font-medium">{new Date(deal.closeDate).toLocaleDateString()}</p>
+          </div>
+        </div>
+
+        {moneyResult && moneyResult.personalCommissionAtRisk > 0 && (
+          <div className="rounded-md border border-warning/20 bg-warning/5 p-2.5">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <AlertTriangle className="h-3 w-3 text-warning" />
+              <p className="text-[10px] font-medium text-warning">At Risk</p>
+            </div>
+            <p className="text-sm font-semibold">{formatCurrency(moneyResult.personalCommissionAtRisk)}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{moneyResult.reasonPrimary}</p>
+          </div>
+        )}
+
+        {deal.milestoneStatus && (
+          <div className="space-y-1">
+            {(['inspection', 'financing', 'appraisal'] as const).map(key => {
+              const val = deal.milestoneStatus?.[key] || 'unknown';
+              return (
+                <div key={key} className="flex items-center justify-between text-[11px]">
+                  <span className="capitalize text-muted-foreground">{key}</span>
+                  <span className={val === 'unknown' ? 'text-warning' : 'text-opportunity'}>{val}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {deal.riskFlags && deal.riskFlags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {deal.riskFlags.map((f, i) => (
+              <span key={i} className="text-[9px] px-1.5 py-0.5 rounded bg-urgent/10 text-urgent">{f}</span>
+            ))}
+          </div>
+        )}
+
+        <p className="text-[10px] text-muted-foreground">
+          Last contact: {deal.lastTouchedAt ? `${daysSince(deal.lastTouchedAt)}d ago` : 'Unknown'}
+        </p>
+
+        {relatedTasks.length > 0 && (
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Open Tasks</p>
+            {relatedTasks.map(task => (
+              <div key={task.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <ListTodo className="h-2.5 w-2.5 shrink-0" />
+                <span className="truncate">{task.title}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <ActivityTrail entityId={entity.id} entityType="deal" limit={3} />
+      </div>
+    );
+  }
+
+  const lead = entity as Lead;
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-md border border-border p-2">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Temp</p>
+          <p className={cn('text-xs font-semibold capitalize', lead.leadTemperature === 'hot' ? 'text-urgent' : lead.leadTemperature === 'warm' ? 'text-warning' : 'text-muted-foreground')}>
+            {lead.leadTemperature || 'Cold'}
+          </p>
+        </div>
+        <div className="rounded-md border border-border p-2">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Engagement</p>
+          <p className="text-xs font-semibold">{lead.engagementScore}</p>
+        </div>
+        <div className="rounded-md border border-border p-2">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Source</p>
+          <p className="text-xs">{lead.source || '—'}</p>
+        </div>
+        <div className="rounded-md border border-border p-2">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Last Contact</p>
+          <p className="text-xs">{daysSince(lead.lastContactAt)}d ago</p>
+        </div>
+      </div>
+
+      {oppResult && oppResult.opportunityValue > 0 && (
+        <div className="rounded-md border border-opportunity/20 bg-opportunity/5 p-2.5">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <TrendingUp className="h-3 w-3 text-opportunity" />
+            <p className="text-[10px] font-medium text-opportunity">Opportunity</p>
+          </div>
+          <p className="text-sm font-semibold">{formatCurrency(oppResult.opportunityValue)}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">{oppResult.reasonPrimary}</p>
+        </div>
+      )}
+
+      {lead.notes && (
+        <p className="text-[10px] text-muted-foreground line-clamp-3">{lead.notes}</p>
+      )}
+
+      {relatedTasks.length > 0 && (
+        <div>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Open Tasks</p>
+          {relatedTasks.map(task => (
+            <div key={task.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <ListTodo className="h-2.5 w-2.5 shrink-0" />
+              <span className="truncate">{task.title}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <ActivityTrail entityId={entity.id} entityType="lead" limit={3} />
+    </div>
+  );
+}
+
+// ── Main Component ───────────────────────────────────────────────────
+
+export function ActionComposerDrawer({
+  open, onClose, entity, entityType,
+  moneyResult, oppResult, tasks,
+  onCreateTask, onLogTouch, onCompleteTask, onCreateFollowUp,
+}: Props) {
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('call');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showObjections, setShowObjections] = useState(false);
-  const [showFollowUp, setShowFollowUp] = useState(false);
-  const [followUpCreated, setFollowUpCreated] = useState(false);
+  const [callOutcomeLogged, setCallOutcomeLogged] = useState(false);
+  const [showPostAction, setShowPostAction] = useState(false);
+  const [selectedSmsIndex, setSelectedSmsIndex] = useState(0);
+  const [emailTone, setEmailTone] = useState<EmailTone>('professional');
+  const [editedEmail, setEditedEmail] = useState<string | null>(null);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskType, setTaskType] = useState<TaskType>('follow_up');
+  const [taskDueAt, setTaskDueAt] = useState('');
+  const [taskCreated, setTaskCreated] = useState(false);
+  const [noteText, setNoteText] = useState('');
+  const [noteLogged, setNoteLogged] = useState(false);
 
   const context = useMemo((): ExecutionContext | null => {
     if (!entity) return null;
@@ -79,51 +329,110 @@ export function ActionComposerDrawer({ open, onClose, entity, entityType, moneyR
     return anticipateObjections(entity, entityType);
   }, [entity, entityType]);
 
-  const followUp = useMemo((): FollowUpSuggestion | null => {
-    if (!entity) return null;
-    return generateFollowUp(entity, entityType);
+  const smsVariants = useMemo(() => {
+    if (!context) return [];
+    return generateSmsVariants(context.entityName, context.riskSignals[0] || '');
+  }, [context]);
+
+  const emailBody = useMemo(() => {
+    if (!draft) return '';
+    return adjustEmailTone(draft.email.body, emailTone);
+  }, [draft, emailTone]);
+
+  const smartDueDate = useMemo(() => {
+    if (!entity) return new Date().toISOString();
+    return getSmartDueDate(entity, entityType);
   }, [entity, entityType]);
 
-  const handleCopy = (text: string, field: string) => {
+  const handleClose = useCallback(() => {
+    setCallOutcomeLogged(false);
+    setShowPostAction(false);
+    setSelectedSmsIndex(0);
+    setEditedEmail(null);
+    setEmailTone('professional');
+    setTaskTitle('');
+    setTaskType('follow_up');
+    setTaskDueAt('');
+    setTaskCreated(false);
+    setNoteText('');
+    setNoteLogged(false);
+    setShowObjections(false);
+    setCopiedField(null);
+    onClose();
+  }, [onClose]);
+
+  const handleCopy = useCallback((text: string, field: string) => {
     navigator.clipboard.writeText(text).then(() => {
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
     });
-  };
+  }, []);
 
-  const handleCreateFollowUp = () => {
-    if (!followUp || !context || followUpCreated) return;
-    onCreateFollowUp?.(followUp.title, followUp.dueAt, context.entityId, context.entityType);
-    setFollowUpCreated(true);
-  };
-
-  const handleLogTouch = () => {
+  const handleCallOutcome = useCallback((outcome: typeof CALL_OUTCOMES[number]) => {
     if (!context) return;
-    onLogTouch?.(context.entityType, context.entityId, context.entityName);
-  };
+    onLogTouch?.(context.entityType, context.entityId, context.entityName, outcome.touchType, outcome.note);
+    setCallOutcomeLogged(true);
+    setShowPostAction(true);
+  }, [context, onLogTouch]);
+
+  const handleCreateTask = useCallback(() => {
+    if (!context || !taskTitle.trim()) return;
+    const dueAt = taskDueAt || smartDueDate;
+    onCreateTask?.(taskTitle, taskType, dueAt, context.entityId, context.entityType);
+    setTaskCreated(true);
+  }, [context, taskTitle, taskType, taskDueAt, smartDueDate, onCreateTask]);
+
+  const handleLogNote = useCallback(() => {
+    if (!context || !noteText.trim()) return;
+    onLogTouch?.(context.entityType, context.entityId, context.entityName, 'note', noteText);
+    setNoteLogged(true);
+    setShowPostAction(true);
+  }, [context, noteText, onLogTouch]);
+
+  const handlePostActionFollowUp = useCallback(() => {
+    if (!context || !entity) return;
+    setShowPostAction(false);
+    setActiveTab('task');
+    const followUp = generateFollowUp(entity, entityType);
+    if (followUp) {
+      setTaskTitle(followUp.title);
+      setTaskType(followUp.contactType);
+      setTaskDueAt(followUp.dueAt);
+    }
+  }, [context, entity, entityType]);
+
+  const handlePostActionLogTouch = useCallback(() => {
+    if (!context) return;
+    setShowPostAction(false);
+    onLogTouch?.(context.entityType, context.entityId, context.entityName, 'follow_up', '');
+  }, [context, onLogTouch]);
 
   if (!entity || !context || !draft) return null;
 
-  const smsText = editedSms ?? draft.sms;
-  const emailText = editedEmail ?? draft.email.body;
-
-  const tabs: { key: DraftTab; label: string; icon: typeof MessageSquare }[] = [
-    { key: 'sms', label: 'SMS', icon: MessageSquare },
+  const tabs: { key: WorkspaceTab; label: string; icon: typeof Phone }[] = [
+    { key: 'call', label: 'Call', icon: Phone },
+    { key: 'text', label: 'Text', icon: MessageSquare },
     { key: 'email', label: 'Email', icon: Mail },
-    { key: 'call', label: 'Call Brief', icon: Phone },
+    { key: 'task', label: 'Task', icon: ListTodo },
+    { key: 'notes', label: 'Notes', icon: StickyNote },
   ];
 
+  const displayEmail = editedEmail ?? emailBody;
+
   return (
-    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+    <Sheet open={open} onOpenChange={(v) => !v && handleClose()}>
+      <SheetContent className="w-full sm:max-w-2xl lg:max-w-4xl overflow-y-auto p-0">
         <PanelErrorBoundary>
-          <SheetHeader className="pb-3">
+          {/* Header */}
+          <div className="sticky top-0 z-10 bg-card border-b border-border px-5 py-3">
             <div className="flex items-center justify-between">
-              <div>
-                <SheetTitle className="text-base">Ready to Send</SheetTitle>
-                <SheetDescription className="text-xs">{context.entityName}</SheetDescription>
+              <div className="min-w-0 flex-1">
+                <SheetTitle className="text-base leading-tight">{context.entityName}</SheetTitle>
+                <SheetDescription className="text-xs mt-0.5">
+                  {entityType === 'deal' ? `${(entity as Deal).stage.replace('_', ' ')} · ${formatCurrency((entity as Deal).price)}` : `${(entity as Lead).leadTemperature || 'Lead'} · ${(entity as Lead).source}`}
+                </SheetDescription>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', CONFIDENCE_STYLE[context.confidence.level])}>
                   {context.confidence.level}
                 </span>
@@ -134,200 +443,226 @@ export function ActionComposerDrawer({ open, onClose, entity, entityType, moneyR
                 )}
               </div>
             </div>
-          </SheetHeader>
-
-          {/* Confidence & Context */}
-          <div className="rounded-md border border-border bg-background/50 p-3 mb-4 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Target className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-xs font-medium">Execution Confidence: {context.confidence.level}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">{context.confidence.reason}</p>
-            {context.confidence.upside > 0 && (
-              <p className="text-xs text-muted-foreground">Potential upside: {formatCurrency(context.confidence.upside)}</p>
-            )}
           </div>
 
-          {/* Tab selector */}
-          <div className="flex gap-1 mb-4">
-            {tabs.map(tab => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors',
-                    activeTab === tab.key ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent',
-                  )}
-                >
-                  <Icon className="h-3 w-3" /> {tab.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* SMS Tab */}
-          {activeTab === 'sms' && (
-            <div className="space-y-3">
-              <Textarea
-                value={smsText}
-                onChange={(e) => setEditedSms(e.target.value)}
-                className="min-h-[100px] text-sm"
-              />
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" className="text-xs" onClick={() => handleCopy(smsText, 'sms')}>
-                  {copiedField === 'sms' ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-                  {copiedField === 'sms' ? 'Copied' : 'Copy SMS'}
-                </Button>
-                <Button size="sm" variant="outline" className="text-xs" onClick={handleLogTouch}>
-                  Log Touch
-                </Button>
-              </div>
+          {/* Split layout: Context left, Execution right */}
+          <div className="flex flex-col lg:flex-row min-h-0">
+            {/* Left: Context */}
+            <div className="lg:w-[260px] lg:border-r lg:border-border p-4 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto bg-background/50 shrink-0">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Context</p>
+              <ContextPanel entity={entity} entityType={entityType} moneyResult={moneyResult} oppResult={oppResult} tasks={tasks} />
             </div>
-          )}
 
-          {/* Email Tab */}
-          {activeTab === 'email' && (
-            <div className="space-y-3">
-              <div className="rounded-md border border-border p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Subject:</span>
-                  <button onClick={() => handleCopy(draft.email.subject, 'subject')} className="text-xs text-primary hover:text-primary/80 transition-colors">
-                    {copiedField === 'subject' ? 'Copied' : 'Copy'}
-                  </button>
-                </div>
-                <p className="text-sm font-medium">{draft.email.subject}</p>
-              </div>
-              <Textarea
-                value={emailText}
-                onChange={(e) => setEditedEmail(e.target.value)}
-                className="min-h-[180px] text-sm"
-              />
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" className="text-xs" onClick={() => handleCopy(`Subject: ${draft.email.subject}\n\n${emailText}`, 'email')}>
-                  {copiedField === 'email' ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-                  {copiedField === 'email' ? 'Copied' : 'Copy Email'}
-                </Button>
-                <Button size="sm" variant="outline" className="text-xs" onClick={handleLogTouch}>
-                  Log Touch
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Call Brief Tab */}
-          {activeTab === 'call' && callBrief && (
-            <div className="space-y-3">
-              <div className="rounded-md border border-border bg-background/50 p-3 space-y-3">
-                <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Who</p>
-                  <p className="text-sm font-medium">{callBrief.who}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Status</p>
-                  <p className="text-xs">{callBrief.status}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Why Now</p>
-                  <p className="text-xs">{callBrief.whyNow}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Key Risks</p>
-                  <ul className="space-y-1 mt-1">
-                    {callBrief.keyRisks.map((r, i) => (
-                      <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                        <Shield className="h-3 w-3 text-warning shrink-0 mt-0.5" />
-                        {r}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Desired Outcome</p>
-                  <p className="text-xs font-medium">{callBrief.desiredOutcome}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Conversation Flow</p>
-                  <ol className="space-y-1 mt-1">
-                    {callBrief.conversationFlow.map((step, i) => (
-                      <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">{i + 1}.</span>
-                        {step}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
+            {/* Right: Execution */}
+            <div className="flex-1 min-w-0">
+              {/* Tabs */}
+              <div className="flex gap-0.5 px-4 py-2 border-b border-border overflow-x-auto">
+                {tabs.map(tab => {
+                  const Icon = tab.icon;
+                  return (
+                    <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+                      className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap',
+                        activeTab === tab.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground')}>
+                      <Icon className="h-3.5 w-3.5" /> {tab.label}
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Talking points copy */}
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-xs"
-                onClick={() => handleCopy(draft.callPoints.join('\n'), 'callpoints')}
-              >
-                {copiedField === 'callpoints' ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-                {copiedField === 'callpoints' ? 'Copied' : 'Copy Talking Points'}
-              </Button>
-            </div>
-          )}
+              {/* Post-Action Bar */}
+              {showPostAction && (
+                <div className="px-4 pt-3">
+                  <PostActionBar onLogTouch={handlePostActionLogTouch} onScheduleFollowUp={handlePostActionFollowUp} onDone={handleClose} />
+                </div>
+              )}
 
-          {/* Objection Anticipation */}
-          {objections.length > 0 && (
-            <div className="mt-4 border-t border-border pt-4">
-              <button onClick={() => setShowObjections(!showObjections)} className="flex items-center gap-1.5 w-full text-xs text-muted-foreground hover:text-foreground transition-colors">
-                {showObjections ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                Likely Objections ({objections.length})
-              </button>
-              {showObjections && (
-                <div className="space-y-2.5 mt-3">
-                  {objections.map((obj, i) => (
-                    <div key={i} className="rounded-md border border-border bg-background/50 p-3 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-medium">{obj.objection}</p>
-                        <Badge variant="outline" className="text-[10px]">{obj.confidence}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{obj.response}</p>
+              <div className="px-4 py-4 space-y-4">
+                {/* CALL */}
+                {activeTab === 'call' && callBrief && (
+                  <div className="space-y-4">
+                    <div className="rounded-md border border-primary/10 bg-primary/5 p-3">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Goal</p>
+                      <p className="text-sm font-medium">{callBrief.desiredOutcome}</p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Follow-Up Generator */}
-          {followUp && (
-            <div className="mt-4 border-t border-border pt-4">
-              <button onClick={() => setShowFollowUp(!showFollowUp)} className="flex items-center gap-1.5 w-full text-xs text-muted-foreground hover:text-foreground transition-colors">
-                {showFollowUp ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                Next Follow-Up
-              </button>
-              {showFollowUp && (
-                <div className="rounded-md border border-border bg-background/50 p-3 mt-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px] capitalize">{followUp.contactType.replace('_', ' ')}</Badge>
-                    <span className="text-xs text-muted-foreground">{followUp.timing}</span>
-                  </div>
-                  <p className="text-sm font-medium">{followUp.title}</p>
-                  <p className="text-xs text-muted-foreground">{followUp.draft}</p>
-                  <Button
-                    size="sm"
-                    variant={followUpCreated ? 'outline' : 'default'}
-                    className="text-xs"
-                    disabled={followUpCreated}
-                    onClick={handleCreateFollowUp}
-                  >
-                    {followUpCreated ? (
-                      <><Check className="h-3 w-3 mr-1" /> Created</>
-                    ) : (
-                      'Create Follow-Up Task'
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Talking Points</p>
+                      <ol className="space-y-1.5">
+                        {callBrief.conversationFlow.map((step, i) => (
+                          <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                            <span className="text-[10px] font-mono text-primary shrink-0 mt-0.5">{i + 1}.</span>{step}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                    {callBrief.keyRisks.length > 0 && callBrief.keyRisks[0] !== 'No active risk flags' && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Watch For</p>
+                        {callBrief.keyRisks.map((r, i) => (
+                          <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground mb-1">
+                            <Shield className="h-3 w-3 text-warning shrink-0 mt-0.5" />{r}
+                          </div>
+                        ))}
+                      </div>
                     )}
-                  </Button>
-                </div>
-              )}
+                    {objections.length > 0 && (
+                      <div>
+                        <button onClick={() => setShowObjections(!showObjections)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+                          {showObjections ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          Objection Responses ({objections.length})
+                        </button>
+                        {showObjections && (
+                          <div className="space-y-2 mt-2">
+                            {objections.map((obj, i) => (
+                              <div key={i} className="rounded-md border border-border bg-background/50 p-2.5 space-y-1">
+                                <p className="text-xs font-medium">{obj.objection}</p>
+                                <p className="text-xs text-muted-foreground">{obj.response}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Script</p>
+                        <Button size="sm" variant="ghost" className="text-xs h-6" onClick={() => handleCopy(draft.callPoints.join('\n'), 'script')}>
+                          {copiedField === 'script' ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                          {copiedField === 'script' ? 'Copied' : 'Copy'}
+                        </Button>
+                      </div>
+                      <div className="rounded-md border border-border bg-background/50 p-2.5 text-xs text-muted-foreground space-y-1">
+                        {draft.callPoints.map((p, i) => <p key={i}>• {p}</p>)}
+                      </div>
+                    </div>
+                    {!callOutcomeLogged && (
+                      <div className="border-t border-border pt-3">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Log Outcome</p>
+                        <div className="flex flex-wrap gap-2">
+                          {CALL_OUTCOMES.map(o => (
+                            <Button key={o.id} size="sm" variant="outline" className="text-xs" onClick={() => handleCallOutcome(o)}>{o.label}</Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {callOutcomeLogged && !showPostAction && (
+                      <div className="rounded-md bg-opportunity/5 border border-opportunity/20 p-2.5 text-xs text-opportunity flex items-center gap-2">
+                        <Check className="h-3.5 w-3.5" /> Outcome logged
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TEXT */}
+                {activeTab === 'text' && (
+                  <div className="space-y-3">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Templates</p>
+                    {smsVariants.map((v, i) => (
+                      <button key={i} onClick={() => setSelectedSmsIndex(i)}
+                        className={cn('w-full text-left rounded-md border p-2.5 transition-colors', i === selectedSmsIndex ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30')}>
+                        <p className="text-[10px] text-muted-foreground font-medium mb-0.5">{v.label}</p>
+                        <p className="text-xs">{v.text}</p>
+                      </button>
+                    ))}
+                    <Button size="sm" variant="outline" className="text-xs" onClick={() => handleCopy(smsVariants[selectedSmsIndex]?.text || '', 'sms')}>
+                      {copiedField === 'sms' ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                      {copiedField === 'sms' ? 'Copied' : 'Copy Text'}
+                    </Button>
+                  </div>
+                )}
+
+                {/* EMAIL */}
+                {activeTab === 'email' && draft && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-xs">Subject</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input value={draft.email.subject} readOnly className="text-sm h-8" />
+                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => handleCopy(draft.email.subject, 'subject')}>
+                          {copiedField === 'subject' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        </Button>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <Label className="text-xs">Body</Label>
+                        <div className="flex gap-1">
+                          {(['direct', 'professional', 'friendly'] as EmailTone[]).map(t => (
+                            <button key={t} onClick={() => { setEmailTone(t); setEditedEmail(null); }}
+                              className={cn('text-[10px] px-2 py-0.5 rounded-full capitalize', emailTone === t ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent')}>{t}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <Textarea value={displayEmail} onChange={e => setEditedEmail(e.target.value)} className="min-h-[180px] text-xs" />
+                    </div>
+                    <Button size="sm" variant="outline" className="text-xs" onClick={() => handleCopy(displayEmail, 'email')}>
+                      {copiedField === 'email' ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                      {copiedField === 'email' ? 'Copied' : 'Copy Email'}
+                    </Button>
+                  </div>
+                )}
+
+                {/* TASK */}
+                {activeTab === 'task' && (
+                  <div className="space-y-3">
+                    {!taskCreated ? (
+                      <>
+                        <div>
+                          <Label className="text-xs">Task Title</Label>
+                          <Input value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder={`Follow up with ${context.entityName}`} className="mt-1 h-8 text-sm" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Type</Label>
+                            <Select value={taskType} onValueChange={v => setTaskType(v as TaskType)}>
+                              <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {['call', 'text', 'email', 'follow_up', 'showing', 'closing'].map(t => (
+                                  <SelectItem key={t} value={t} className="text-xs capitalize">{t.replace('_', ' ')}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Due</Label>
+                            <Input type="date" value={taskDueAt ? new Date(taskDueAt).toISOString().split('T')[0] : new Date(smartDueDate).toISOString().split('T')[0]} onChange={e => setTaskDueAt(new Date(e.target.value).toISOString())} className="mt-1 h-8 text-xs" />
+                          </div>
+                        </div>
+                        <Button size="sm" onClick={handleCreateTask} disabled={!taskTitle.trim()}>
+                          <ListTodo className="h-3 w-3 mr-1" /> Create Task
+                        </Button>
+                      </>
+                    ) : (
+                      <div className="rounded-md bg-opportunity/5 border border-opportunity/20 p-2.5 text-xs text-opportunity flex items-center gap-2">
+                        <Check className="h-3.5 w-3.5" /> Task created
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* NOTES */}
+                {activeTab === 'notes' && (
+                  <div className="space-y-3">
+                    {!noteLogged ? (
+                      <>
+                        <div>
+                          <Label className="text-xs">Quick Note</Label>
+                          <Textarea value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Capture key points..." className="mt-1 min-h-[100px] text-xs" />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">Notes linked to {context.entityName} and influence recommendations.</p>
+                        <Button size="sm" onClick={handleLogNote} disabled={!noteText.trim()}>
+                          <StickyNote className="h-3 w-3 mr-1" /> Save Note
+                        </Button>
+                      </>
+                    ) : (
+                      <div className="rounded-md bg-opportunity/5 border border-opportunity/20 p-2.5 text-xs text-opportunity flex items-center gap-2">
+                        <Check className="h-3.5 w-3.5" /> Note saved
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+          </div>
         </PanelErrorBoundary>
       </SheetContent>
     </Sheet>
