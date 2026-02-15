@@ -264,8 +264,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </div>
 
       {/* Mobile bottom tabs */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 border-t border-border bg-card z-30 safe-area-bottom">
-        <div className="flex items-center justify-around h-16 px-2">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 border-t border-border bg-card z-50 safe-area-bottom" style={{ position: 'fixed' }}>
+        <div className="flex items-center justify-around h-14 px-2">
           {items.map(item => {
             const key = item.workspace ?? item.path ?? 'home';
             return (
@@ -274,7 +274,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 onClick={() => handleNavClick(item)}
                 aria-label={item.label}
                 className={cn(
-                  'flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-colors min-w-0',
+                  'flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg transition-colors min-w-0',
                   isActive(item) ? 'text-primary' : 'text-muted-foreground'
                 )}
               >

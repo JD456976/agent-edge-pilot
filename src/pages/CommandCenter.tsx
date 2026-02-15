@@ -1079,15 +1079,14 @@ export default function CommandCenter() {
     <div className="max-w-5xl mx-auto space-y-4">
       {/* Sticky Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm -mx-4 px-4 py-3 border-b border-transparent [&:not(:first-child)]:border-border">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <div>
-              <h1 className="text-xl font-bold">Command Center</h1>
-              <p className="text-sm text-muted-foreground">Today's Briefing · {today}</p>
-            </div>
-            <DailyStreakBadge eodStreak={habitStats.eodStreak} briefStreak={habitStats.briefStreak} />
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold">Command Center</h1>
+            <p className="text-sm text-muted-foreground">Today's Briefing · {today}</p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
+
+          {/* Desktop: full controls */}
+          <div className="hidden md:flex items-center gap-2 flex-wrap justify-end shrink-0">
             <AutoSaveIndicator status={saveStatus} />
             <NotificationBell alerts={alerts} />
             <PanelDensityToggle density={density} onToggle={toggleDensity} />
@@ -1116,6 +1115,31 @@ export default function CommandCenter() {
               <Plus className="h-3.5 w-3.5 mr-1" /> Quick Add
             </Button>
           </div>
+
+          {/* Mobile: minimal controls */}
+          <div className="flex md:hidden items-center gap-1.5 shrink-0">
+            <DailyStreakBadge eodStreak={habitStats.eodStreak} briefStreak={habitStats.briefStreak} />
+            <NotificationBell alerts={alerts} />
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setShowQuickAdd(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Add
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile: secondary row with key actions */}
+        <div className="flex md:hidden items-center gap-1.5 mt-2 overflow-x-auto pb-1 -mb-1">
+          <div data-tour="focus-mode">
+            <FocusModeSelector mode={focusMode} onModeChange={updateFocusMode} />
+          </div>
+          <PanelLayoutControls
+            editMode={editMode}
+            onToggleEdit={toggleEditMode}
+            onApplyPreset={applyPreset}
+            onReset={resetToDefault}
+          />
+          <Button size="sm" variant="ghost" className="h-7 text-xs shrink-0" onClick={() => setShowCSVImport(true)}>
+            <Upload className="h-3 w-3 mr-1" /> Import
+          </Button>
         </div>
       </div>
 
