@@ -12,6 +12,8 @@ import { FubSyncPreviewModal } from '@/components/FubSyncPreviewModal';
 import { FubImportReview } from '@/components/FubImportReview';
 import { ImportMatchingRules, ImportDryRunPanel } from '@/components/ImportSettings';
 import { toast } from '@/hooks/use-toast';
+import { callEdgeFunction, type EdgeFunctionError } from '@/lib/edgeClient';
+import { EdgeErrorDisplay, EdgeDebugDrawer } from '@/components/EdgeErrorDisplay';
 
 interface IntegrationState {
   status: 'disconnected' | 'connected' | 'invalid' | 'error';
@@ -33,12 +35,13 @@ export default function Settings() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<EdgeFunctionError | null>(null);
 
   // Staging state
   const [staging, setStaging] = useState(false);
   const [activeRunId, setActiveRunId] = useState<string | null>(() => searchParams.get('reviewRun'));
   const [pastRuns, setPastRuns] = useState<any[]>([]);
+  const [lastError, setLastError] = useState<EdgeFunctionError | null>(null);
 
   // Load integration status + past runs
   const loadIntegration = useCallback(async () => {
@@ -67,35 +70,35 @@ export default function Settings() {
   const handleSaveKey = async () => {
     if (!apiKeyInput.trim()) return;
     setSaving(true);
+    setLastError(null);
     try {
-      const res = await supabase.functions.invoke('fub-save-key', { body: { api_key: apiKeyInput.trim() } });
-      if (res.error) throw new Error(res.error.message);
-      if (res.data?.error) throw new Error(res.data.error);
+      await callEdgeFunction('fub-save-key', { api_key: apiKeyInput.trim() });
       setApiKeyInput('');
       await loadIntegration();
       await logAdminAction('integration_saved', { provider: 'follow_up_boss' });
       toast({ title: 'API key saved securely' });
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      if (err?.kind) { setLastError(err); } 
+      toast({ title: 'Error', description: err?.message || 'Failed to save key', variant: 'destructive' });
     } finally { setSaving(false); }
   };
 
   const handleValidate = async () => {
     setValidating(true);
+    setLastError(null);
     try {
-      const res = await supabase.functions.invoke('fub-validate');
-      if (res.error) throw new Error(res.error.message);
-      if (res.data?.error) throw new Error(res.data.error);
+      const data = await callEdgeFunction<{ valid: boolean; account?: { name: string } }>('fub-validate');
       await loadIntegration();
-      const action = res.data?.valid ? 'integration_validated_success' : 'integration_validated_failed';
+      const action = data.valid ? 'integration_validated_success' : 'integration_validated_failed';
       await logAdminAction(action, { provider: 'follow_up_boss' });
       toast({
-        title: res.data?.valid ? 'Connection valid!' : 'Invalid key',
-        description: res.data?.valid ? `Connected as ${res.data.account?.name || 'Unknown'}` : 'Please check your API key.',
-        variant: res.data?.valid ? 'default' : 'destructive',
+        title: data.valid ? 'Connection valid!' : 'Invalid key',
+        description: data.valid ? `Connected as ${data.account?.name || 'Unknown'}` : 'Please check your API key.',
+        variant: data.valid ? 'default' : 'destructive',
       });
     } catch (err: any) {
-      toast({ title: 'Validation failed', description: err.message, variant: 'destructive' });
+      if (err?.kind) { setLastError(err); }
+      toast({ title: 'Validation failed', description: err?.message || 'Unknown error', variant: 'destructive' });
     } finally { setValidating(false); }
   };
 
@@ -106,24 +109,23 @@ export default function Settings() {
     setPreviewData(null);
     try {
       await logAdminAction('sync_preview_opened', { provider: 'follow_up_boss' });
-      const res = await supabase.functions.invoke('fub-preview', { body: { limit: 20 } });
-      if (res.error) throw new Error(res.error.message);
-      if (res.data?.error) throw new Error(res.data.error);
-      setPreviewData(res.data);
-    } catch (err: any) { setPreviewError(err.message); }
-    finally { setPreviewLoading(false); }
+      const data = await callEdgeFunction('fub-preview', { limit: 20 });
+      setPreviewData(data);
+    } catch (err: any) {
+      setPreviewError(err?.kind ? err : { kind: 'unknown', message: err?.message || 'Unknown error', requestId: 'N/A' });
+    } finally { setPreviewLoading(false); }
   };
 
   const handleStageImport = async () => {
     setStaging(true);
+    setLastError(null);
     try {
-      const res = await supabase.functions.invoke('fub-stage', { body: { limit: 50 } });
-      if (res.error) throw new Error(res.error.message);
-      if (res.data?.error) throw new Error(res.data.error);
-      setActiveRunId(res.data.import_run_id);
-      toast({ title: 'Import staged!', description: `${res.data.counts.leads.total} leads, ${res.data.counts.deals.total} deals, ${res.data.counts.tasks.total} tasks staged for review.` });
+      const data = await callEdgeFunction<any>('fub-stage', { limit: 50 });
+      setActiveRunId(data.import_run_id);
+      toast({ title: 'Import staged!', description: `${data.counts.leads.total} leads, ${data.counts.deals.total} deals, ${data.counts.tasks.total} tasks staged for review.` });
     } catch (err: any) {
-      toast({ title: 'Staging failed', description: err.message, variant: 'destructive' });
+      if (err?.kind) { setLastError(err); }
+      toast({ title: 'Staging failed', description: err?.message || 'Unknown error', variant: 'destructive' });
     } finally { setStaging(false); }
   };
 
@@ -189,6 +191,13 @@ export default function Settings() {
         {integration.last4 && <p className="text-xs text-muted-foreground mb-3">Key ending in ••••{integration.last4}</p>}
         {integration.lastValidated && <p className="text-xs text-muted-foreground mb-3">Last validated: {new Date(integration.lastValidated).toLocaleString()}</p>}
 
+        {/* Last error */}
+        {lastError && (
+          <div className="mb-3">
+            <EdgeErrorDisplay error={lastError} functionName="fub" />
+          </div>
+        )}
+
         <div className="space-y-3">
           <div>
             <Label className="text-xs text-muted-foreground">API Key</Label>
@@ -221,6 +230,9 @@ export default function Settings() {
             Stage Import
           </Button>
         </div>
+
+        {/* Dev debug drawer */}
+        <EdgeDebugDrawer />
 
         {/* Past import runs */}
         {pastRuns.length > 0 && (

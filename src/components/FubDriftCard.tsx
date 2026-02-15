@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { FubDriftReviewModal } from '@/components/FubDriftReviewModal';
+import { callEdgeFunction, type EdgeFunctionError } from '@/lib/edgeClient';
+import { EdgeErrorDisplay } from '@/components/EdgeErrorDisplay';
 
 interface DeltaSummary {
   counts: { new: number; updated: number; conflict: number; total: number };
@@ -47,38 +49,30 @@ export function FubDriftCard({ hasIntegration, onScopedStageComplete }: FubDrift
     })();
   }, [hasIntegration]);
 
+  const [edgeError, setEdgeError] = useState<EdgeFunctionError | null>(null);
+
   const runDeltaCheck = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setEdgeError(null);
     setUsingCached(false);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      const res = await supabase.functions.invoke('fub-delta', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-
-      if (res.error) {
-        // Check if rate limited with cached data
-        if (res.data?.last_summary) {
-          setSummary(res.data.last_summary as DeltaSummary);
-          setLastCheck(res.data.last_check);
-          setLastSuccessfulCheck(res.data.last_successful_check);
-          setUsingCached(true);
-          setError('Could not refresh — rate limited. Showing last known state.');
-          return;
-        }
-        throw new Error(res.error.message || 'Delta check failed');
-      }
-
-      const data = res.data as DeltaSummary & { all_items?: any[] };
+      const data = await callEdgeFunction<DeltaSummary & { all_items?: any[] }>('fub-delta');
       setSummary({ counts: data.counts, severity: data.severity, drift_reason: data.drift_reason, top_items: data.top_items, checked_at: data.checked_at });
       setAllItems(data.all_items || []);
       setLastCheck(data.checked_at);
       setLastSuccessfulCheck(data.checked_at);
     } catch (e: any) {
-      setError(e.message || 'Delta check failed');
+      if (e?.kind === 'rate_limited') {
+        // Try to show cached data
+        setUsingCached(true);
+        setError('Could not refresh — rate limited. Showing last known state.');
+      } else if (e?.kind) {
+        setEdgeError(e);
+        setError(e.message);
+      } else {
+        setError(e?.message || 'Delta check failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -140,13 +134,20 @@ export function FubDriftCard({ hasIntegration, onScopedStageComplete }: FubDrift
           <p className="text-[11px] text-muted-foreground mb-2">{summary.drift_reason}</p>
         )}
 
-        {error && (
+        {edgeError && !usingCached && (
+          <div className="mb-2">
+            <EdgeErrorDisplay error={edgeError} functionName="fub-delta" />
+          </div>
+        )}
+
+        {error && !edgeError && (
           <div className="text-xs mb-2 space-y-0.5">
             <p className="text-destructive">{error}</p>
-            {usingCached && lastSuccessfulCheck && (
-              <p className="text-muted-foreground italic">Using last summary from {formatAbsolute(lastSuccessfulCheck)}</p>
-            )}
           </div>
+        )}
+
+        {usingCached && lastSuccessfulCheck && (
+          <p className="text-[11px] text-muted-foreground italic mb-2">Using last summary from {formatAbsolute(lastSuccessfulCheck)}</p>
         )}
 
         {!summary && !loading && !error && (

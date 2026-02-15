@@ -8,6 +8,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertTriangle, ArrowRight, Eye, ChevronDown, Shield, ShieldCheck, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { callEdgeFunction, type EdgeFunctionError } from '@/lib/edgeClient';
+import { EdgeErrorDisplay } from '@/components/EdgeErrorDisplay';
 
 interface DeltaChange {
   field: string;
@@ -59,6 +61,7 @@ export function FubDriftReviewModal({ items, summary, lastCheck, lastSuccessfulC
   const [watchingIds, setWatchingIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [staging, setStaging] = useState(false);
+  const [stageError, setStageError] = useState<EdgeFunctionError | null>(null);
   const [expandedDiffs, setExpandedDiffs] = useState<Set<string>>(new Set());
   const [showLimitPrompt, setShowLimitPrompt] = useState(false);
 
@@ -158,14 +161,11 @@ export function FubDriftReviewModal({ items, summary, lastCheck, lastSuccessfulC
   const doScopedStage = useCallback(async (mode: 'selected' | 'full') => {
     setStaging(true);
     setShowLimitPrompt(false);
+    setStageError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
       let reqBody: any;
       if (mode === 'selected') {
         const selected = getSelectedByType();
-        // Enforce limits
         selected.leads = selected.leads.slice(0, MAX_SCOPED_PER_TYPE);
         selected.deals = selected.deals.slice(0, MAX_SCOPED_PER_TYPE);
         selected.tasks = selected.tasks.slice(0, MAX_SCOPED_PER_TYPE);
@@ -174,17 +174,11 @@ export function FubDriftReviewModal({ items, summary, lastCheck, lastSuccessfulC
         reqBody = { limit: 50 };
       }
 
-      const res = await supabase.functions.invoke('fub-stage', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-        body: reqBody,
-      });
+      const data = await callEdgeFunction<any>('fub-stage', reqBody);
 
-      if (res.error) throw new Error(res.error.message);
-      if (res.data?.error) throw new Error(res.data.error);
-
-      const runId = res.data.import_run_id;
-      const notFound = res.data.not_found || [];
-      const staged = res.data.counts;
+      const runId = data.import_run_id;
+      const notFound = data.not_found || [];
+      const staged = data.counts;
 
       const totalStaged = (staged?.leads?.total || 0) + (staged?.deals?.total || 0) + (staged?.tasks?.total || 0);
 
@@ -197,7 +191,10 @@ export function FubDriftReviewModal({ items, summary, lastCheck, lastSuccessfulC
       onClose();
       onScopedStageComplete?.(runId);
     } catch (e: any) {
-      toast({ description: e.message || 'Staging failed.', duration: 3000 });
+      if (e?.kind) {
+        setStageError(e);
+      }
+      toast({ description: e?.message || 'Staging failed.', duration: 3000 });
     } finally {
       setStaging(false);
     }
@@ -418,6 +415,13 @@ export function FubDriftReviewModal({ items, summary, lastCheck, lastSuccessfulC
                 </Button>
               )}
             </div>
+
+            {/* Stage error display */}
+            {stageError && (
+              <div className="mb-2">
+                <EdgeErrorDisplay error={stageError} functionName="fub-stage" />
+              </div>
+            )}
 
             {/* Limit prompt */}
             {showLimitPrompt && (

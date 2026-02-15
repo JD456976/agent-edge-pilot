@@ -5,6 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Loader2 } from 'lucide-react';
+import { EdgeErrorDisplay } from '@/components/EdgeErrorDisplay';
+import { type EdgeFunctionError } from '@/lib/edgeClient';
 
 interface PreviewData {
   preview_leads: any[];
@@ -18,7 +20,7 @@ interface FubSyncPreviewModalProps {
   onClose: () => void;
   data: PreviewData | null;
   loading: boolean;
-  error: string | null;
+  error: EdgeFunctionError | null;
 }
 
 export function FubSyncPreviewModal({ open, onClose, data, loading, error }: FubSyncPreviewModalProps) {
@@ -42,11 +44,7 @@ export function FubSyncPreviewModal({ open, onClose, data, loading, error }: Fub
           </div>
         )}
 
-        {error && (
-          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
-            {error}
-          </div>
-        )}
+        {error && <EdgeErrorDisplay error={error} functionName="fub-preview" />}
 
         {data && !loading && (
           <>
