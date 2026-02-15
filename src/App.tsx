@@ -7,7 +7,10 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
+import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { AppLayout } from "@/components/AppLayout";
+import { WorkspaceOverlayShell } from "@/components/WorkspaceOverlayShell";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import Login from "@/pages/Login";
 import CommandCenter from "@/pages/CommandCenter";
 import { OnboardingModal } from "@/components/OnboardingModal";
@@ -65,7 +68,39 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <AppLayout>{children}</AppLayout>;
+  return (
+    <AppLayout>
+      {children}
+      <WorkspaceOverlays />
+    </AppLayout>
+  );
+}
+
+function WorkspaceOverlays() {
+  const { activeWorkspace, closeWorkspace } = useWorkspace();
+
+  const WORKSPACE_CONFIG: Record<string, { title: string; subtitle: string; Component: React.ComponentType }> = {
+    pipeline: { title: 'Pipeline', subtitle: 'Your deals by stage', Component: Pipeline },
+    tasks: { title: 'Tasks', subtitle: 'Your action items', Component: Tasks },
+    settings: { title: 'Settings', subtitle: 'Preferences and account', Component: Settings },
+    admin: { title: 'Admin Console', subtitle: 'Manage users, teams, data', Component: Admin },
+  };
+
+  return (
+    <>
+      {Object.entries(WORKSPACE_CONFIG).map(([key, { title, subtitle, Component }]) => (
+        <WorkspaceOverlayShell
+          key={key}
+          title={title}
+          subtitle={subtitle}
+          open={activeWorkspace === key}
+          onClose={closeWorkspace}
+        >
+          <Component />
+        </WorkspaceOverlayShell>
+      ))}
+    </>
+  );
 }
 
 function AppRoutes() {
@@ -74,10 +109,11 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={loading ? null : (user ? <Navigate to="/" replace /> : <Login />)} />
       <Route path="/" element={<ProtectedRoute><CommandCenter /></ProtectedRoute>} />
-      <Route path="/pipeline" element={<ProtectedRoute><Pipeline /></ProtectedRoute>} />
-      <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+      {/* Legacy routes redirect to Command Center with workspace param */}
+      <Route path="/pipeline" element={<Navigate to="/?workspace=pipeline" replace />} />
+      <Route path="/tasks" element={<Navigate to="/?workspace=tasks" replace />} />
+      <Route path="/settings" element={<Navigate to="/?workspace=settings" replace />} />
+      <Route path="/admin" element={<Navigate to="/?workspace=admin" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -92,7 +128,9 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <AppRoutes />
+              <WorkspaceProvider>
+                <AppRoutes />
+              </WorkspaceProvider>
             </BrowserRouter>
           </TooltipProvider>
         </DataProvider>

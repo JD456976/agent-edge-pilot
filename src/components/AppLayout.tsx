@@ -1,31 +1,47 @@
 import { ReactNode } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Target, ListChecks, Settings, ShieldCheck, Sun, Moon, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useWorkspace, type WorkspaceType } from '@/contexts/WorkspaceContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-const NAV_ITEMS = [
+type NavItem = { label: string; icon: React.ElementType } & (
+  | { path: string; workspace?: undefined }
+  | { workspace: WorkspaceType; path?: undefined }
+);
+
+const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Command Center', icon: LayoutDashboard },
-  { path: '/pipeline', label: 'Pipeline', icon: Target },
-  { path: '/tasks', label: 'Tasks', icon: ListChecks },
-  { path: '/settings', label: 'Settings', icon: Settings },
+  { workspace: 'pipeline', label: 'Pipeline', icon: Target },
+  { workspace: 'tasks', label: 'Tasks', icon: ListChecks },
+  { workspace: 'settings', label: 'Settings', icon: Settings },
 ];
 
-const ADMIN_ITEM = { path: '/admin', label: 'Admin', icon: ShieldCheck };
+const ADMIN_ITEM: NavItem = { workspace: 'admin', label: 'Admin', icon: ShieldCheck };
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { activeWorkspace, openWorkspace, closeWorkspace } = useWorkspace();
   const location = useLocation();
   const navigate = useNavigate();
 
   const items = user?.role === 'admin' ? [...NAV_ITEMS, ADMIN_ITEM] : NAV_ITEMS;
 
-  const isActive = (path: string) => {
-    if (path === '/') return location.pathname === '/';
-    return location.pathname.startsWith(path);
+  const isActive = (item: NavItem) => {
+    if (item.workspace) return activeWorkspace === item.workspace;
+    return location.pathname === '/' && !activeWorkspace;
+  };
+
+  const handleNavClick = (item: NavItem) => {
+    if (item.workspace) {
+      openWorkspace(item.workspace);
+    } else {
+      closeWorkspace();
+      if (location.pathname !== '/') navigate('/');
+    }
   };
 
   const handleLogout = async () => {
@@ -44,21 +60,24 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <span className="font-bold text-sm">Deal Pilot</span>
         </div>
         <nav className="flex-1 py-4 px-2 space-y-1">
-          {items.map(item => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                isActive(item.path)
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-              )}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          ))}
+          {items.map(item => {
+            const key = item.workspace ?? item.path ?? 'home';
+            return (
+              <button
+                key={key}
+                onClick={() => handleNavClick(item)}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left',
+                  isActive(item)
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </button>
+            );
+          })}
         </nav>
         <div className="p-3 border-t border-border space-y-2">
           <button onClick={toggleTheme} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors">
@@ -101,19 +120,22 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Mobile bottom tabs */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 border-t border-border bg-card z-30 safe-area-bottom">
         <div className="flex items-center justify-around h-16 px-2">
-          {items.map(item => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                'flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-colors min-w-0',
-                isActive(item.path) ? 'text-primary' : 'text-muted-foreground'
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              <span className="text-[10px] font-medium truncate">{item.label.split(' ')[0]}</span>
-            </Link>
-          ))}
+          {items.map(item => {
+            const key = item.workspace ?? item.path ?? 'home';
+            return (
+              <button
+                key={key}
+                onClick={() => handleNavClick(item)}
+                className={cn(
+                  'flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-colors min-w-0',
+                  isActive(item) ? 'text-primary' : 'text-muted-foreground'
+                )}
+              >
+                <item.icon className="h-5 w-5" />
+                <span className="text-[10px] font-medium truncate">{item.label.split(' ')[0]}</span>
+              </button>
+            );
+          })}
         </div>
       </nav>
     </div>
