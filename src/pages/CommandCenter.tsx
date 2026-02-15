@@ -1063,22 +1063,8 @@ export default function CommandCenter() {
         <SelfOptNudges nudges={selfOptAnalysis.nudges} />
       )}
 
-      {/* Daily Mode Cards */}
-      {currentMode === 'morning' && (
-        <MorningFocusCard
-          topRisk={topMoneyAtRisk}
-          topOpportunity={topOpportunity}
-          deals={deals}
-          leads={leads}
-          overdueTasks={overdueTasks}
-          onStartAction={() => {
-            if (topMoneyAtRisk && deals.find(d => d.id === topMoneyAtRisk.dealId)) {
-              handleMoneySelect(topMoneyAtRisk, deals.find(d => d.id === topMoneyAtRisk.dealId)!);
-            }
-          }}
-          onReviewAll={() => navigate('/?workspace=work')}
-        />
-      )}
+      {/* Daily Mode Cards — MorningFocusCard hidden when MorningBriefCard is visible to reduce duplication */}
+      {/* MorningBriefCard already covers morning priorities above */}
       {currentMode === 'midday' && (
         <MiddayStabilizationCard
           currentTotalRisk={totalMoneyAtRisk}
