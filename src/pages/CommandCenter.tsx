@@ -1080,9 +1080,9 @@ export default function CommandCenter() {
       {/* Sticky Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm -mx-4 px-4 py-3 border-b border-transparent [&:not(:first-child)]:border-border">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold">Command Center</h1>
-            <p className="text-sm text-muted-foreground">Today's Briefing · {today}</p>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl font-bold leading-tight">Command Center</h1>
+            <p className="text-sm text-muted-foreground truncate">{today}</p>
           </div>
 
           {/* Desktop: full controls */}
