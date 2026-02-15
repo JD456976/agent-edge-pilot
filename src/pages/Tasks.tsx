@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { EmptyState } from '@/components/EmptyState';
@@ -52,6 +52,16 @@ export default function Tasks() {
     setNewTitle('');
     setShowCreate(false);
   };
+
+  // ESC key to close create modal
+  useEffect(() => {
+    if (!showCreate) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowCreate(false);
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [showCreate]);
 
   if (!hasData) {
     return (
@@ -126,11 +136,15 @@ export default function Tasks() {
 
       {/* Create modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-background/80 backdrop-blur-sm" onClick={() => setShowCreate(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-background/80 backdrop-blur-sm"
+          onClick={() => setShowCreate(false)}
+          onKeyDown={(e) => { if (e.key === 'Escape') setShowCreate(false); }}
+        >
           <div className="w-full max-w-md bg-card border border-border rounded-t-2xl md:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold">New Task</h2>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowCreate(false)}><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowCreate(false)} aria-label="Close"><X className="h-4 w-4" /></Button>
             </div>
             <div className="space-y-4">
               <div className="space-y-2">

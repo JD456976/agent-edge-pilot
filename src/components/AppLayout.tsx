@@ -144,8 +144,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Global Command Palette (Cmd+K / Ctrl+K) */}
       <CommandPalette
         onOpenEntity={(entityId, entityType) => {
+          // Navigate to Command Center and close any workspace overlay
           if (location.pathname !== '/') navigate('/');
           closeWorkspace();
+          // The Command Center will handle entity display via its own state
         }}
         onCreateTask={() => setShowQuickAdd(true)}
         onLogTouch={() => setShowQuickAdd(true)}
