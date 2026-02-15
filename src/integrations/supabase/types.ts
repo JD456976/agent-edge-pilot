@@ -1142,6 +1142,174 @@ export type Database = {
         }
         Relationships: []
       }
+      self_opt_action_outcomes: {
+        Row: {
+          action_source: Database["public"]["Enums"]["action_source"]
+          action_type: Database["public"]["Enums"]["self_opt_action_type"]
+          channel: Database["public"]["Enums"]["self_opt_channel"]
+          created_at: string
+          entity_id: string
+          entity_type: string
+          executed: boolean
+          execution_result:
+            | Database["public"]["Enums"]["execution_result"]
+            | null
+          id: string
+          long_term_effect:
+            | Database["public"]["Enums"]["long_term_effect"]
+            | null
+          money_impact_bucket:
+            | Database["public"]["Enums"]["money_impact_bucket"]
+            | null
+          notes_key: Database["public"]["Enums"]["self_opt_notes_key"] | null
+          short_term_effect:
+            | Database["public"]["Enums"]["short_term_effect"]
+            | null
+          time_to_execute_bucket:
+            | Database["public"]["Enums"]["time_to_execute_bucket"]
+            | null
+          user_id: string
+        }
+        Insert: {
+          action_source: Database["public"]["Enums"]["action_source"]
+          action_type: Database["public"]["Enums"]["self_opt_action_type"]
+          channel?: Database["public"]["Enums"]["self_opt_channel"]
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          executed?: boolean
+          execution_result?:
+            | Database["public"]["Enums"]["execution_result"]
+            | null
+          id?: string
+          long_term_effect?:
+            | Database["public"]["Enums"]["long_term_effect"]
+            | null
+          money_impact_bucket?:
+            | Database["public"]["Enums"]["money_impact_bucket"]
+            | null
+          notes_key?: Database["public"]["Enums"]["self_opt_notes_key"] | null
+          short_term_effect?:
+            | Database["public"]["Enums"]["short_term_effect"]
+            | null
+          time_to_execute_bucket?:
+            | Database["public"]["Enums"]["time_to_execute_bucket"]
+            | null
+          user_id: string
+        }
+        Update: {
+          action_source?: Database["public"]["Enums"]["action_source"]
+          action_type?: Database["public"]["Enums"]["self_opt_action_type"]
+          channel?: Database["public"]["Enums"]["self_opt_channel"]
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          executed?: boolean
+          execution_result?:
+            | Database["public"]["Enums"]["execution_result"]
+            | null
+          id?: string
+          long_term_effect?:
+            | Database["public"]["Enums"]["long_term_effect"]
+            | null
+          money_impact_bucket?:
+            | Database["public"]["Enums"]["money_impact_bucket"]
+            | null
+          notes_key?: Database["public"]["Enums"]["self_opt_notes_key"] | null
+          short_term_effect?:
+            | Database["public"]["Enums"]["short_term_effect"]
+            | null
+          time_to_execute_bucket?:
+            | Database["public"]["Enums"]["time_to_execute_bucket"]
+            | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      self_opt_behavior_signals: {
+        Row: {
+          calls_count: number
+          date: string
+          emails_count: number
+          eod_completed: boolean
+          forecast_band: string | null
+          id: string
+          money_at_risk_band: string | null
+          opportunity_heat_band: string | null
+          overdue_tasks_count: number
+          stability_band: string | null
+          texts_count: number
+          touches_count: number
+          user_id: string
+        }
+        Insert: {
+          calls_count?: number
+          date: string
+          emails_count?: number
+          eod_completed?: boolean
+          forecast_band?: string | null
+          id?: string
+          money_at_risk_band?: string | null
+          opportunity_heat_band?: string | null
+          overdue_tasks_count?: number
+          stability_band?: string | null
+          texts_count?: number
+          touches_count?: number
+          user_id: string
+        }
+        Update: {
+          calls_count?: number
+          date?: string
+          emails_count?: number
+          eod_completed?: boolean
+          forecast_band?: string | null
+          id?: string
+          money_at_risk_band?: string | null
+          opportunity_heat_band?: string | null
+          overdue_tasks_count?: number
+          stability_band?: string | null
+          texts_count?: number
+          touches_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      self_opt_preferences: {
+        Row: {
+          allow_channel_optimization: boolean
+          allow_priority_reweighting: boolean
+          allow_time_of_day_optimization: boolean
+          coaching_tone: Database["public"]["Enums"]["coaching_tone"]
+          created_at: string
+          enabled: boolean
+          nudge_level: Database["public"]["Enums"]["nudge_level"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allow_channel_optimization?: boolean
+          allow_priority_reweighting?: boolean
+          allow_time_of_day_optimization?: boolean
+          coaching_tone?: Database["public"]["Enums"]["coaching_tone"]
+          created_at?: string
+          enabled?: boolean
+          nudge_level?: Database["public"]["Enums"]["nudge_level"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allow_channel_optimization?: boolean
+          allow_priority_reweighting?: boolean
+          allow_time_of_day_optimization?: boolean
+          coaching_tone?: Database["public"]["Enums"]["coaching_tone"]
+          created_at?: string
+          enabled?: boolean
+          nudge_level?: Database["public"]["Enums"]["nudge_level"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           assigned_to_user_id: string | null
@@ -1378,16 +1546,69 @@ export type Database = {
       }
     }
     Enums: {
+      action_source:
+        | "autopilot"
+        | "flight_plan"
+        | "eod_sweep"
+        | "prepared_actions"
+        | "opportunity_radar"
+        | "money_at_risk"
+        | "manual"
       alert_type: "speed" | "urgent" | "risk" | "opportunity"
       app_role: "admin" | "agent" | "reviewer" | "beta"
+      coaching_tone: "direct" | "friendly" | "professional"
       deal_stage: "offer" | "offer_accepted" | "pending" | "closed"
+      execution_result:
+        | "no_answer"
+        | "spoke"
+        | "scheduled"
+        | "sent"
+        | "completed"
+        | "skipped"
+        | "dismissed"
       lead_temperature: "cold" | "warm" | "hot"
+      long_term_effect:
+        | "lead_converted"
+        | "lead_lost"
+        | "deal_closed"
+        | "deal_cancelled"
+        | "none"
+      money_impact_bucket:
+        | "under_1k"
+        | "1k_3k"
+        | "3k_7k"
+        | "7k_15k"
+        | "15k_plus"
+      nudge_level: "minimal" | "balanced" | "proactive"
       participant_role:
         | "primary_agent"
         | "co_agent"
         | "referral_partner"
         | "showing_agent"
       risk_level: "green" | "yellow" | "red"
+      self_opt_action_type:
+        | "call"
+        | "text"
+        | "email"
+        | "schedule_task"
+        | "log_touch"
+        | "follow_up"
+        | "recovery_plan"
+      self_opt_channel: "call" | "text" | "email" | "none"
+      self_opt_notes_key:
+        | "worked_well"
+        | "wrong_time"
+        | "wrong_channel"
+        | "too_pushy"
+        | "too_long"
+        | "unclear_next_step"
+      short_term_effect:
+        | "none"
+        | "lead_engaged"
+        | "lead_replied"
+        | "risk_reduced"
+        | "task_cleared"
+        | "stability_improved"
       task_type:
         | "call"
         | "text"
@@ -1398,6 +1619,14 @@ export type Database = {
         | "open_house"
         | "thank_you"
       team_role: "leader" | "agent" | "isa" | "admin"
+      time_to_execute_bucket:
+        | "under_5m"
+        | "under_1h"
+        | "same_day"
+        | "next_day"
+        | "2_3_days"
+        | "4_7_days"
+        | "over_7_days"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1525,10 +1754,38 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      action_source: [
+        "autopilot",
+        "flight_plan",
+        "eod_sweep",
+        "prepared_actions",
+        "opportunity_radar",
+        "money_at_risk",
+        "manual",
+      ],
       alert_type: ["speed", "urgent", "risk", "opportunity"],
       app_role: ["admin", "agent", "reviewer", "beta"],
+      coaching_tone: ["direct", "friendly", "professional"],
       deal_stage: ["offer", "offer_accepted", "pending", "closed"],
+      execution_result: [
+        "no_answer",
+        "spoke",
+        "scheduled",
+        "sent",
+        "completed",
+        "skipped",
+        "dismissed",
+      ],
       lead_temperature: ["cold", "warm", "hot"],
+      long_term_effect: [
+        "lead_converted",
+        "lead_lost",
+        "deal_closed",
+        "deal_cancelled",
+        "none",
+      ],
+      money_impact_bucket: ["under_1k", "1k_3k", "3k_7k", "7k_15k", "15k_plus"],
+      nudge_level: ["minimal", "balanced", "proactive"],
       participant_role: [
         "primary_agent",
         "co_agent",
@@ -1536,6 +1793,32 @@ export const Constants = {
         "showing_agent",
       ],
       risk_level: ["green", "yellow", "red"],
+      self_opt_action_type: [
+        "call",
+        "text",
+        "email",
+        "schedule_task",
+        "log_touch",
+        "follow_up",
+        "recovery_plan",
+      ],
+      self_opt_channel: ["call", "text", "email", "none"],
+      self_opt_notes_key: [
+        "worked_well",
+        "wrong_time",
+        "wrong_channel",
+        "too_pushy",
+        "too_long",
+        "unclear_next_step",
+      ],
+      short_term_effect: [
+        "none",
+        "lead_engaged",
+        "lead_replied",
+        "risk_reduced",
+        "task_cleared",
+        "stability_improved",
+      ],
       task_type: [
         "call",
         "text",
@@ -1547,6 +1830,15 @@ export const Constants = {
         "thank_you",
       ],
       team_role: ["leader", "agent", "isa", "admin"],
+      time_to_execute_bucket: [
+        "under_5m",
+        "under_1h",
+        "same_day",
+        "next_day",
+        "2_3_days",
+        "4_7_days",
+        "over_7_days",
+      ],
     },
   },
 } as const
