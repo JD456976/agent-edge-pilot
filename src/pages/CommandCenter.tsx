@@ -1035,7 +1035,7 @@ export default function CommandCenter() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4 animate-fade-in">
+    <div className="max-w-5xl mx-auto space-y-4">
       {/* Sticky Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm -mx-4 px-4 py-3 border-b border-transparent [&:not(:first-child)]:border-border">
         <div className="flex items-start justify-between">
