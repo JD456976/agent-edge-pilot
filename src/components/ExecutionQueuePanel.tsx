@@ -91,7 +91,7 @@ export function ExecutionQueuePanel({ deals, leads, tasks, moneyResults, opportu
       <div className="rounded-lg border border-border bg-card p-5 space-y-3">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-primary" />
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Execution Queue</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Today's Priority Queue</p>
         </div>
         <p className="text-sm text-muted-foreground">All entities are active. No stagnation detected.</p>
       </div>
@@ -103,7 +103,7 @@ export function ExecutionQueuePanel({ deals, leads, tasks, moneyResults, opportu
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-primary" />
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Execution Queue</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Today's Priority Queue</p>
         </div>
         <span className="text-[10px] text-muted-foreground">{queueItems.length} items</span>
       </div>

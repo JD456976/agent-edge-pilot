@@ -3,6 +3,7 @@ import { ShieldCheck, AlertTriangle, Clock, FileWarning, Play } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { QuickActionBar } from '@/components/QuickActionBar';
 import type { Deal, Task } from '@/types';
 import type { MoneyModelResult } from '@/lib/moneyModel';
 
@@ -21,6 +22,7 @@ interface Props {
   tasks: Task[];
   moneyResults: MoneyModelResult[];
   totalMoneyAtRisk: number;
+  userId?: string;
   onAction?: (threat: Threat) => void;
 }
 
@@ -28,7 +30,7 @@ function formatCurrency(n: number) {
   return n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
 }
 
-export function IncomeProtectionShield({ deals, tasks, moneyResults, totalMoneyAtRisk, onAction }: Props) {
+export function IncomeProtectionShield({ deals, tasks, moneyResults, totalMoneyAtRisk, userId, onAction }: Props) {
   const threats = useMemo((): Threat[] => {
     const result: Threat[] = [];
     const now = new Date();
@@ -103,7 +105,7 @@ export function IncomeProtectionShield({ deals, tasks, moneyResults, totalMoneyA
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-primary" />
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Income Protection</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Income Shield</p>
         </div>
         <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', shieldStatus.className)}>{shieldStatus.label}</span>
       </div>
@@ -128,6 +130,11 @@ export function IncomeProtectionShield({ deals, tasks, moneyResults, totalMoneyA
                   <span className="text-xs font-medium text-urgent">{formatCurrency(threat.value)}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">{threat.reason}</p>
+                {userId && (
+                  <div className="mt-1">
+                    <QuickActionBar entityType="deal" entityId={threat.dealId} entityTitle={threat.title} userId={userId} compact />
+                  </div>
+                )}
               </div>
               <Button size="sm" variant="outline" className="text-xs shrink-0" onClick={() => onAction?.(threat)}>
                 <Play className="h-3 w-3 mr-1" /> {threat.action.split(' ').slice(0, 2).join(' ')}

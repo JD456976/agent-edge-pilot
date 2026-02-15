@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, Plus, Phone, Undo2 } from 'lucide-react';
+import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, Plus, Phone, Undo2, Upload } from 'lucide-react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { cn } from '@/lib/utils';
@@ -73,6 +73,7 @@ import { FocusModeSelector, isPanelVisibleInMode } from '@/components/FocusModeS
 import { useUserMaturity, type UserLevel } from '@/hooks/useUserMaturity';
 import { computeMinimalModeAudit, logAuditReport } from '@/lib/minimalModeAudit';
 import { PanelSearchFilter, matchesPanelFilter } from '@/components/PanelSearchFilter';
+import { CSVImportModal } from '@/components/CSVImportModal';
 import { useFocusMode } from '@/hooks/useFocusMode';
 import { useHabitTracking } from '@/hooks/useHabitTracking';
 import { useAgentLearning } from '@/hooks/useAgentLearning';
@@ -140,29 +141,29 @@ const PAIRED_PANELS: Set<PanelId> = new Set([
 const PANEL_LABELS: Record<PanelId, string> = {
   'autopilot': 'Autopilot',
   'prepared-actions': 'Prepared Actions',
-  'money-at-risk': 'Money at Risk',
-  'opportunity-heat': 'Opportunity Heat',
+  'money-at-risk': 'Income at Risk',
+  'opportunity-heat': 'Hot Lead Radar',
   'income-forecast': 'Income Forecast',
-  'stability-score': 'Stability Score',
+  'stability-score': 'Business Health',
   'end-of-day': 'End of Day Review',
-  'execution-queue': 'Execution Queue',
-  'income-volatility': 'Income Volatility',
-  'pipeline-fragility': 'Pipeline Fragility',
-  'lead-decay': 'Lead Decay',
-  'operational-load': 'Operational Load',
-  'deal-failure': 'Deal Failure Risk',
-  'ghosting-risk': 'Ghosting Risk',
-  'referral-conversion': 'Referral Conversion',
-  'listing-performance': 'Listing Performance',
-  'time-allocation': 'Time Allocation',
-  'opportunity-radar': 'Opportunity Radar',
-  'income-protection': 'Income Protection',
-  'market-conditions': 'Market Conditions',
-  'learning-transparency': 'Learning Transparency',
-  'network-benchmarks': 'Network Benchmarks',
+  'execution-queue': 'Today\'s Priority Queue',
+  'income-volatility': 'Income Consistency',
+  'pipeline-fragility': 'Deal Health',
+  'lead-decay': 'Lead Follow-Up Gaps',
+  'operational-load': 'Workload Check',
+  'deal-failure': 'At-Risk Deals',
+  'ghosting-risk': 'Going Silent',
+  'referral-conversion': 'Referral Tracker',
+  'listing-performance': 'Listing Tracker',
+  'time-allocation': 'Time Planner',
+  'opportunity-radar': 'Opportunity Finder',
+  'income-protection': 'Income Shield',
+  'market-conditions': 'Market Pulse',
+  'learning-transparency': 'How It Works',
+  'network-benchmarks': 'Peer Comparison',
   'weekly-review': 'Weekly Review',
-  'agent-profile': 'Agent Profile',
-  'income-patterns': 'Income Patterns',
+  'agent-profile': 'My Profile',
+  'income-patterns': 'Income Trends',
   'market-signals': 'Market Signals',
 };
 
@@ -192,6 +193,7 @@ export default function CommandCenter() {
   const [autonomyLevel] = useState(() => getAutonomyLevel());
   const [showWeeklyPlanner, setShowWeeklyPlanner] = useState(false);
   const [panelFilter, setPanelFilter] = useState('');
+  const [showCSVImport, setShowCSVImport] = useState(false);
 
   // Pinned panels
   const { pinnedPanels, togglePin, isPinned, sortWithPins } = usePinnedPanels();
@@ -944,6 +946,7 @@ export default function CommandCenter() {
             tasks={tasks}
             moneyResults={moneyResults}
             totalMoneyAtRisk={totalMoneyAtRisk}
+            userId={user?.id}
             onAction={(threat) => {
               const deal = deals.find(d => d.id === threat.dealId);
               const result = moneyResults.find(r => r.dealId === threat.dealId);
@@ -1062,6 +1065,12 @@ export default function CommandCenter() {
           onAction={() => setShowQuickAdd(true)}
         />
         {showQuickAdd && <QuickAddModal defaultType="deal" onClose={() => setShowQuickAdd(false)} />}
+        <CSVImportModal open={showCSVImport} onClose={() => setShowCSVImport(false)} />
+        <div className="mt-4 text-center">
+          <Button size="sm" variant="outline" onClick={() => setShowCSVImport(true)}>
+            <Upload className="h-3.5 w-3.5 mr-1" /> Import from CSV
+          </Button>
+        </div>
       </div>
     );
   }
@@ -1100,6 +1109,9 @@ export default function CommandCenter() {
             <div data-tour="focus-mode">
               <FocusModeSelector mode={focusMode} onModeChange={updateFocusMode} />
             </div>
+            <Button size="sm" variant="outline" onClick={() => setShowCSVImport(true)} aria-label="Import CSV">
+              <Upload className="h-3.5 w-3.5 mr-1" /> Import
+            </Button>
             <Button size="sm" variant="outline" onClick={() => setShowQuickAdd(true)} aria-label="Quick add deal or task">
               <Plus className="h-3.5 w-3.5 mr-1" /> Quick Add
             </Button>
@@ -1623,6 +1635,9 @@ export default function CommandCenter() {
 
       {/* Scroll to top */}
       <ScrollToTopFAB />
+
+      {/* CSV Import Modal */}
+      <CSVImportModal open={showCSVImport} onClose={() => setShowCSVImport(false)} />
     </div>
   );
 }

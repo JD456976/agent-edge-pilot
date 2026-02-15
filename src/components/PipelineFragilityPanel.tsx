@@ -107,7 +107,7 @@ export function PipelineFragilityPanel({ deals, moneyResults, forecast, onOpenOp
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-2 mb-1">
         <Layers className="h-4 w-4 text-muted-foreground" />
-        <h2 className="text-sm font-semibold">Pipeline Stability</h2>
+        <h2 className="text-sm font-semibold">Deal Health</h2>
         <Badge variant="outline" className={cn('text-[10px] ml-auto', LABEL_STYLE[fragility.label] || '')}>
           {fragility.label}
         </Badge>
