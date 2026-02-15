@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-export type WorkspaceType = 'pipeline' | 'tasks' | 'settings' | 'admin';
+export type WorkspaceType = 'work' | 'sync' | 'insights' | 'settings';
 
 interface WorkspaceState {
   activeWorkspace: WorkspaceType | null;
@@ -22,7 +22,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   // Sync from URL on mount / param change
   useEffect(() => {
-    const valid: WorkspaceType[] = ['pipeline', 'tasks', 'settings', 'admin'];
+    const valid: WorkspaceType[] = ['work', 'sync', 'insights', 'settings'];
     const param = searchParams.get('workspace') as WorkspaceType | null;
     if (param && valid.includes(param)) {
       setActiveWorkspace(param);

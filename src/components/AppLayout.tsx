@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Target, ListChecks, Settings, ShieldCheck, Sun, Moon, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useWorkspace, type WorkspaceType } from '@/contexts/WorkspaceContext';
@@ -13,13 +13,12 @@ type NavItem = { label: string; icon: React.ElementType } & (
 );
 
 const NAV_ITEMS: NavItem[] = [
-  { path: '/', label: 'Command Center', icon: LayoutDashboard },
-  { workspace: 'pipeline', label: 'Pipeline', icon: Target },
-  { workspace: 'tasks', label: 'Tasks', icon: ListChecks },
+  { path: '/', label: 'Home', icon: LayoutDashboard },
+  { workspace: 'work', label: 'Work', icon: Briefcase },
+  { workspace: 'sync', label: 'Sync', icon: RefreshCw },
+  { workspace: 'insights', label: 'Insights', icon: BarChart3 },
   { workspace: 'settings', label: 'Settings', icon: Settings },
 ];
-
-const ADMIN_ITEM: NavItem = { workspace: 'admin', label: 'Admin', icon: ShieldCheck };
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
@@ -28,7 +27,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const items = user?.role === 'admin' ? [...NAV_ITEMS, ADMIN_ITEM] : NAV_ITEMS;
+  const items = NAV_ITEMS;
 
   const isActive = (item: NavItem) => {
     if (item.workspace) return activeWorkspace === item.workspace;
@@ -55,7 +54,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <aside className="hidden md:fixed md:inset-y-0 md:left-0 md:flex md:w-56 md:flex-col border-r border-border bg-sidebar z-30">
         <div className="flex items-center gap-2 px-4 h-14 border-b border-border">
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <Target className="h-4 w-4 text-primary-foreground" />
+            <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
           </div>
           <span className="font-bold text-sm">Deal Pilot</span>
         </div>
@@ -97,7 +96,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <header className="md:hidden flex items-center justify-between px-4 h-14 border-b border-border bg-card sticky top-0 z-20">
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-              <Target className="h-3.5 w-3.5 text-primary-foreground" />
+              <LayoutDashboard className="h-3.5 w-3.5 text-primary-foreground" />
             </div>
             <span className="font-bold text-sm">Deal Pilot</span>
           </div>
