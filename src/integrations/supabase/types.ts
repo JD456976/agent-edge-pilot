@@ -253,6 +253,69 @@ export type Database = {
           },
         ]
       }
+      fub_conflict_resolutions: {
+        Row: {
+          accepted_fields: string[] | null
+          delta_check_at: string | null
+          entity_id: string | null
+          entity_type: string
+          fub_id: string | null
+          id: string
+          resolution: string
+          resolved_at: string
+          user_id: string
+        }
+        Insert: {
+          accepted_fields?: string[] | null
+          delta_check_at?: string | null
+          entity_id?: string | null
+          entity_type: string
+          fub_id?: string | null
+          id?: string
+          resolution: string
+          resolved_at?: string
+          user_id: string
+        }
+        Update: {
+          accepted_fields?: string[] | null
+          delta_check_at?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          fub_id?: string | null
+          id?: string
+          resolution?: string
+          resolved_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      fub_ignored_changes: {
+        Row: {
+          entity_type: string
+          expires_at: string
+          fub_id: string
+          id: string
+          ignored_at: string
+          user_id: string
+        }
+        Insert: {
+          entity_type: string
+          expires_at?: string
+          fub_id: string
+          id?: string
+          ignored_at?: string
+          user_id: string
+        }
+        Update: {
+          entity_type?: string
+          expires_at?: string
+          fub_id?: string
+          id?: string
+          ignored_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       fub_import_runs: {
         Row: {
           committed_at: string | null
@@ -447,6 +510,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      fub_sync_state: {
+        Row: {
+          last_commit_at: string | null
+          last_delta_check_at: string | null
+          last_delta_summary: Json | null
+          last_preview_at: string | null
+          last_seen_fub_updated_at: string | null
+          last_stage_at: string | null
+          last_validated_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_commit_at?: string | null
+          last_delta_check_at?: string | null
+          last_delta_summary?: Json | null
+          last_preview_at?: string | null
+          last_seen_fub_updated_at?: string | null
+          last_stage_at?: string | null
+          last_validated_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_commit_at?: string | null
+          last_delta_check_at?: string | null
+          last_delta_summary?: Json | null
+          last_preview_at?: string | null
+          last_seen_fub_updated_at?: string | null
+          last_stage_at?: string | null
+          last_validated_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      fub_watchlist: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          fub_id: string | null
+          id: string
+          label: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          fub_id?: string | null
+          id?: string
+          label?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          fub_id?: string | null
+          id?: string
+          label?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       import_dedup_rules: {
         Row: {

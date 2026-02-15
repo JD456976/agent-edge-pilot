@@ -201,6 +201,13 @@ Deno.serve(async (req) => {
       metadata: { import_run_id, committed, failures: failures.length },
     });
 
+    // Update sync state
+    await svc.from("fub_sync_state").upsert({
+      user_id: userId,
+      last_commit_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+
     return new Response(
       JSON.stringify({ success: true, committed, failures: failures.length > 0 ? failures : undefined }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
