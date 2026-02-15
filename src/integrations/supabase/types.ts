@@ -726,38 +726,61 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           email: string
           id: string
+          is_deleted: boolean
           is_protected: boolean
           name: string
           onboarding_completed: boolean
+          organization_id: string | null
+          status: string
           theme_preference: string
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           email?: string
           id?: string
+          is_deleted?: boolean
           is_protected?: boolean
           name?: string
           onboarding_completed?: boolean
+          organization_id?: string | null
+          status?: string
           theme_preference?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           email?: string
           id?: string
+          is_deleted?: boolean
           is_protected?: boolean
           name?: string
           onboarding_completed?: boolean
+          organization_id?: string | null
+          status?: string
           theme_preference?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tasks: {
         Row: {
@@ -892,6 +915,59 @@ export type Database = {
           },
         ]
       }
+      user_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invite_token: string
+          invited_by: string
+          name: string | null
+          organization_id: string | null
+          role: string
+          status: string
+          team_ids: string[] | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invite_token?: string
+          invited_by: string
+          name?: string | null
+          organization_id?: string | null
+          role?: string
+          status?: string
+          team_ids?: string[] | null
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invite_token?: string
+          invited_by?: string
+          name?: string | null
+          organization_id?: string | null
+          role?: string
+          status?: string
+          team_ids?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -926,6 +1002,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_last_admin_in_org: { Args: { p_user_id: string }; Returns: boolean }
       store_encrypted_api_key: {
         Args: { p_api_key: string; p_encryption_key: string; p_user_id: string }
         Returns: undefined

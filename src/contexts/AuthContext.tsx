@@ -39,6 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (profile) {
         const role = (roleData?.role as UserRole) || 'agent';
+        const profileStatus = (profile as any).status || 'active';
+        const isDeleted = (profile as any).is_deleted || false;
         setUser({
           id: authUserId,
           name: profile.name,
@@ -47,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           themePreference: (profile.theme_preference as 'dark' | 'light') || 'dark',
           createdAt: profile.created_at,
           lastLoginAt: new Date().toISOString(),
-          isActive: true,
+          isActive: profileStatus === 'active' && !isDeleted,
         });
         setOnboardingCompletedState((profile as any).onboarding_completed ?? false);
         setIsReviewer(role === 'reviewer');
