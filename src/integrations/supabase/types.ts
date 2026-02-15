@@ -96,6 +96,36 @@ export type Database = {
           },
         ]
       }
+      commission_defaults: {
+        Row: {
+          created_at: string
+          default_commission_rate: number | null
+          default_referral_fee: number | null
+          default_split: number | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_commission_rate?: number | null
+          default_referral_fee?: number | null
+          default_split?: number | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_commission_rate?: number | null
+          default_referral_fee?: number | null
+          default_split?: number | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       crm_integrations: {
         Row: {
           api_key_encrypted: string | null

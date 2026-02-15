@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, X, Calendar, DollarSign, User2, Target, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { CommissionCapture, getDefaultCommissionValues, loadUserDefaults, saveUserDefaults, computeGrossCommission, type CommissionValues } from '@/components/CommissionCapture';
 import type { TaskType } from '@/types';
 
 type QuickAddType = 'lead' | 'deal' | 'task';
@@ -21,6 +22,7 @@ export function QuickAddModal({ defaultType = 'lead', onClose }: QuickAddModalPr
   const { addTask, refreshData } = useData();
   const [type, setType] = useState<QuickAddType>(defaultType);
   const [saving, setSaving] = useState(false);
+  const [showCommissionWarning, setShowCommissionWarning] = useState(false);
 
   // Lead fields
   const [leadName, setLeadName] = useState('');
@@ -29,7 +31,7 @@ export function QuickAddModal({ defaultType = 'lead', onClose }: QuickAddModalPr
   // Deal fields
   const [dealTitle, setDealTitle] = useState('');
   const [dealPrice, setDealPrice] = useState('');
-  const [dealCommission, setDealCommission] = useState('');
+  const [commissionValues, setCommissionValues] = useState<CommissionValues>(getDefaultCommissionValues());
 
   // Task fields
   const [taskTitle, setTaskTitle] = useState('');
@@ -37,6 +39,14 @@ export function QuickAddModal({ defaultType = 'lead', onClose }: QuickAddModalPr
   const [taskDueDate, setTaskDueDate] = useState(
     new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
+
+  // Load user defaults
+  useEffect(() => {
+    if (!user?.id) return;
+    loadUserDefaults(user.id).then(defaults => {
+      setCommissionValues(prev => ({ ...prev, ...defaults }));
+    });
+  }, [user?.id]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -55,24 +65,31 @@ export function QuickAddModal({ defaultType = 'lead', onClose }: QuickAddModalPr
       } else if (type === 'deal') {
         if (!dealTitle.trim()) return;
         const price = parseFloat(dealPrice) || 0;
-        const commission = parseFloat(dealCommission) || 0;
+        const grossCommission = computeGrossCommission(price, commissionValues);
+
         const { data: deal } = await supabase.from('deals').insert({
           title: dealTitle.trim(),
           price,
-          commission_amount: commission,
+          commission_amount: grossCommission,
+          commission_rate: commissionValues.commissionType === 'percentage' ? commissionValues.commissionRate : null,
+          referral_fee_percent: commissionValues.referralFeePercent || 0,
           assigned_to_user_id: user.id,
           close_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         }).select().single();
 
-        // Add current user as primary agent
+        // Auto-create participant entry for current user
         if (deal) {
           await supabase.from('deal_participants').insert({
             deal_id: deal.id,
             user_id: user.id,
             role: 'primary_agent' as any,
-            split_percent: 100,
+            split_percent: commissionValues.splitPercent,
+            commission_override: commissionValues.overrideAmount ?? null,
           });
         }
+
+        // Save defaults for next time
+        await saveUserDefaults(user.id, commissionValues);
       } else if (type === 'task') {
         if (!taskTitle.trim()) return;
         await addTask({
@@ -90,6 +107,15 @@ export function QuickAddModal({ defaultType = 'lead', onClose }: QuickAddModalPr
     }
   };
 
+  const handleDealSave = () => {
+    const price = parseFloat(dealPrice) || 0;
+    const gross = computeGrossCommission(price, commissionValues);
+    if (gross <= 0 || commissionValues.splitPercent <= 0) {
+      setShowCommissionWarning(true);
+    }
+    handleSave();
+  };
+
   const tabs: { key: QuickAddType; label: string; icon: React.ElementType }[] = [
     { key: 'lead', label: 'Lead', icon: User2 },
     { key: 'deal', label: 'Deal', icon: Target },
@@ -98,7 +124,7 @@ export function QuickAddModal({ defaultType = 'lead', onClose }: QuickAddModalPr
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-background/80 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md bg-card border border-border rounded-t-2xl md:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-md bg-card border border-border rounded-t-2xl md:rounded-2xl p-6 animate-slide-up max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">Quick Add</h2>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}><X className="h-4 w-4" /></Button>
@@ -151,16 +177,18 @@ export function QuickAddModal({ defaultType = 'lead', onClose }: QuickAddModalPr
               <Label className="text-xs">Title *</Label>
               <Input value={dealTitle} onChange={e => setDealTitle(e.target.value)} placeholder="e.g. 123 Main St" autoFocus />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Price ($)</Label>
-                <Input type="number" value={dealPrice} onChange={e => setDealPrice(e.target.value)} placeholder="350000" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Commission ($)</Label>
-                <Input type="number" value={dealCommission} onChange={e => setDealCommission(e.target.value)} placeholder="10500" />
-              </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Price ($)</Label>
+              <Input type="number" value={dealPrice} onChange={e => setDealPrice(e.target.value)} placeholder="350000" />
             </div>
+
+            {/* Commission Capture */}
+            <CommissionCapture
+              price={parseFloat(dealPrice) || 0}
+              values={commissionValues}
+              onChange={setCommissionValues}
+              showWarning={showCommissionWarning}
+            />
           </div>
         )}
 
@@ -194,7 +222,11 @@ export function QuickAddModal({ defaultType = 'lead', onClose }: QuickAddModalPr
           </div>
         )}
 
-        <Button className="w-full mt-4" onClick={handleSave} disabled={saving}>
+        <Button
+          className="w-full mt-4"
+          onClick={type === 'deal' ? handleDealSave : handleSave}
+          disabled={saving}
+        >
           {saving ? 'Saving...' : `Add ${tabs.find(t => t.key === type)?.label}`}
         </Button>
       </div>
