@@ -391,6 +391,10 @@ export function AutopilotPanel({
               )}
             </div>
           </div>
+          {/* Snooze fatigue warning */}
+          {snoozedIds.has(nextAction.id) && (
+            <p className="text-[10px] text-warning/80 mt-1">This item has been snoozed before. Consider resolving or delegating it.</p>
+          )}
         </div>
       )}
 
