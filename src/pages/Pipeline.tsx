@@ -110,16 +110,43 @@ function ParticipantsList({ participants, deal }: { participants: DealParticipan
   );
 }
 
-function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, orgUsers }: {
+function AddMeBanner({ deal, userId, onAdd }: { deal: Deal; userId: string; onAdd: () => void }) {
+  const [adding, setAdding] = useState(false);
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-md bg-muted/50 border border-border mt-3">
+      <div className="flex-1">
+        <p className="text-xs font-medium">Personal commission not configured for you on this deal.</p>
+        <p className="text-[10px] text-muted-foreground">Add yourself to track your income from this deal.</p>
+      </div>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={adding}
+        onClick={async () => {
+          setAdding(true);
+          await onAdd();
+          setAdding(false);
+        }}
+      >
+        {adding ? 'Adding…' : 'Add me (100% split)'}
+      </Button>
+    </div>
+  );
+}
+
+function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAddMeAsParticipant, orgUsers }: {
   deal: Deal;
   tasks: { id: string; title: string; completedAt?: string }[];
   participants: DealParticipant[];
   onClose: () => void;
   onCommissionSave: (dealId: string, state: DealCommissionState, participantEdits: ParticipantEdit[]) => Promise<void>;
+  onAddMeAsParticipant: (dealId: string) => Promise<void>;
   orgUsers: { id: string; name: string }[];
 }) {
   const { user } = useAuth();
   const userComm = deal.userCommission ?? deal.commission;
+  const hasParticipant = participants.some(p => p.userId === user?.id);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-background/80 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full max-w-md bg-card border border-border rounded-t-2xl md:rounded-2xl p-6 animate-slide-up max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -143,6 +170,11 @@ function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, orgU
             </div>
           )}
         </div>
+
+        {/* Add Me Banner */}
+        {!hasParticipant && user?.id && (
+          <AddMeBanner deal={deal} userId={user.id} onAdd={() => onAddMeAsParticipant(deal.id)} />
+        )}
 
         {/* Commission Editor */}
         <DealCommissionEditor
@@ -286,6 +318,23 @@ export default function Pipeline() {
           participants={selectedParticipants}
           onClose={() => setSelectedDeal(null)}
           onCommissionSave={handleCommissionSave}
+          onAddMeAsParticipant={async (dealId: string) => {
+            if (!user?.id) return;
+            // Load user defaults for split/referral
+            const { data: defaults } = await supabase
+              .from('commission_defaults')
+              .select('*')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            const splitPct = defaults ? Number((defaults as any).default_split) || 100 : 100;
+            await addDealParticipant({
+              dealId,
+              userId: user.id,
+              role: 'primary_agent',
+              splitPercent: splitPct,
+            });
+            toast({ description: 'Added to this deal.' });
+          }}
           orgUsers={orgUsers}
         />
       )}

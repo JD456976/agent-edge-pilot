@@ -57,9 +57,15 @@ Deno.serve(async (req) => {
       throw new Error(`Unresolved conflicts: ${unresolvedLeads.length} leads, ${unresolvedDeals.length} deals, ${unresolvedTasks.length} tasks. Resolve before committing.`);
     }
 
-    const committed = { leads: 0, deals: 0, tasks: 0, participants: 0 };
+    const committed = { leads: 0, deals: 0, tasks: 0, participants: 0, defaults_applied: 0 };
     const failures: { type: string; title: string; error: string; retryable: boolean }[] = [];
     const importedAt = new Date().toISOString();
+
+    // Load user commission defaults for backfill
+    const { data: userDefaults } = await svc.from("commission_defaults")
+      .select("*").eq("user_id", userId).maybeSingle();
+    const defaultRate = userDefaults ? Number((userDefaults as any).default_commission_rate) || 0 : 0;
+    const defaultSplit = userDefaults ? Number((userDefaults as any).default_split) || 100 : 100;
 
     // --- COMMIT LEADS ---
     for (const sl of (stagedLeads || [])) {
@@ -109,12 +115,20 @@ Deno.serve(async (req) => {
 
       try {
         if (resolution === "create_new") {
+          const dealPrice = norm.price || 0;
+          // Safe backfill: apply commission defaults if deal has price and defaults exist
+          const applyDefaults = defaultRate > 0 && dealPrice > 0;
+          const commissionRate = applyDefaults ? defaultRate : null;
+          const commissionAmount = applyDefaults ? Math.round(dealPrice * (defaultRate / 100)) : 0;
+
           const { data: newDeal } = await svc.from("deals").insert({
             assigned_to_user_id: userId,
             title: norm.title || "Untitled Deal",
-            price: norm.price || 0,
+            price: dealPrice,
             stage: norm.stage || "offer",
             close_date: norm.closeDate || new Date(Date.now() + 30 * 86400000).toISOString(),
+            commission_amount: commissionAmount,
+            commission_rate: commissionRate,
             imported_from: "fub",
             import_run_id: import_run_id,
             imported_at: importedAt,
@@ -125,12 +139,17 @@ Deno.serve(async (req) => {
               deal_id: newDeal.id,
               user_id: userId,
               role: "primary_agent",
-              split_percent: 100,
+              split_percent: defaultSplit,
             });
             committed.participants++;
+
+            if (applyDefaults) {
+              committed.defaults_applied++;
+            }
           }
           committed.deals++;
         } else if (resolution === "match_existing" && sd.matched_deal_id) {
+          // Never overwrite existing deal commission fields or participants
           const updates: any = {};
           if (norm.price) updates.price = norm.price;
           if (norm.closeDate) updates.close_date = norm.closeDate;
@@ -199,6 +218,15 @@ Deno.serve(async (req) => {
       action: "import_committed",
       metadata: { import_run_id, committed, failures: failures.length },
     });
+
+    // Audit: commission defaults applied during import
+    if (committed.defaults_applied > 0) {
+      await svc.from("admin_audit_events").insert({
+        admin_user_id: userId,
+        action: "import_applied_commission_defaults",
+        metadata: { import_run_id, deals_affected: committed.defaults_applied, default_rate: defaultRate, default_split: defaultSplit },
+      });
+    }
 
     // Update sync state
     await svc.from("fub_sync_state").upsert({
