@@ -16,19 +16,19 @@ const TOUR_STEPS: TourStep[] = [
   {
     target: '[data-tour="sidebar-nav"]',
     title: 'Navigation',
-    description: 'Switch between Home, Work, Sync, Insights, and Settings from here.',
+    description: 'Home is your Command Center. Tasks has your action items. CRM connects Follow Up Boss. Reports shows trends.',
     position: 'right',
   },
   {
     target: '[data-tour="focus-mode"]',
     title: 'Focus Mode',
-    description: 'Filter your dashboard to Tactical, Strategic, or Minimal views to reduce noise.',
+    description: 'Switch between Minimal (essentials only), Tactical (actions + risk), or Strategic (forecasts + planning). You\'re starting in Minimal — try switching when you\'re ready for more.',
     position: 'bottom',
   },
   {
     target: '[data-tour="panel-area"]',
-    title: 'Your Command Center',
-    description: 'Drag and reorder panels to customize your dashboard. Use the edit button to rearrange.',
+    title: 'Your Panels',
+    description: 'Each panel has a ❓ icon that explains what it does. Tap it anytime. You can also drag panels to reorder them.',
     position: 'top',
   },
 ];

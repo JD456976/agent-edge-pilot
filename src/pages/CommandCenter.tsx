@@ -99,6 +99,7 @@ import { AnimatedCounter } from '@/components/AnimatedCounter';
 import { NotificationBell } from '@/components/NotificationBell';
 import { ScrollToTopFAB } from '@/components/ScrollToTopFAB';
 import { useFavoriteEntities, FavoritesStrip } from '@/components/FavoriteEntities';
+import { GettingStartedChecklist } from '@/components/GettingStartedChecklist';
 import { PanelDensityToggle, usePanelDensity } from '@/components/PanelDensityToggle';
 import { AutoSaveIndicator, useAutoSaveIndicator } from '@/components/AutoSaveIndicator';
 import { ConfettiOverlay, useConfetti } from '@/components/ConfettiOverlay';
@@ -1010,25 +1011,27 @@ export default function CommandCenter() {
           <h1 className="text-xl font-bold">Command Center</h1>
           <p className="text-sm text-muted-foreground">{today}</p>
         </div>
-        <div className="rounded-lg border border-border bg-card p-3 mb-6 flex items-center gap-2 text-sm">
-          <Info className="h-4 w-4 text-primary shrink-0" />
-          <span className="text-muted-foreground">Not connected to Follow Up Boss yet. Using demo or manual data.</span>
-        </div>
-        <div className="flex flex-col items-center justify-center py-12 px-4 text-center animate-fade-in">
-          <div className="mb-4 rounded-2xl bg-muted p-4">
-            <Zap className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-semibold mb-1">No data yet</h3>
-          <p className="text-sm text-muted-foreground max-w-xs mb-4">
-            Connect Follow Up Boss in the Sync workspace to import your deals and leads, or load demo data to explore.
-          </p>
-          <div className="flex gap-2">
-            <Button size="sm" onClick={seedDemoData}>Load Demo Data</Button>
-            <Button size="sm" variant="outline" onClick={() => setShowQuickAdd(true)}>
-              <Plus className="h-3.5 w-3.5 mr-1" /> Add Manually
-            </Button>
-          </div>
-        </div>
+
+        {/* Getting Started Checklist */}
+        <GettingStartedChecklist
+          hasCrmConnected={hasFubIntegration}
+          hasDeals={false}
+          hasLeads={false}
+          hasTasks={false}
+          hasIncomeTarget={!!(strategicSettings as any)?.annualIncomeTarget}
+          onConnectCrm={() => navigate('/?workspace=sync')}
+          onAddDeal={() => setShowQuickAdd(true)}
+          onSetIncomeTarget={() => navigate('/?workspace=settings')}
+          onLoadDemo={seedDemoData}
+        />
+
+        <EmptyState
+          type="deals"
+          title="Your command center is ready"
+          description="Connect your CRM to import deals and leads, add them manually, or load demo data to explore all features."
+          actionLabel="Add Your First Deal"
+          onAction={() => setShowQuickAdd(true)}
+        />
         {showQuickAdd && <QuickAddModal defaultType="deal" onClose={() => setShowQuickAdd(false)} />}
       </div>
     );
@@ -1074,6 +1077,19 @@ export default function CommandCenter() {
           </div>
         </div>
       </div>
+
+      {/* Getting Started Checklist (shows until dismissed or all complete) */}
+      <GettingStartedChecklist
+        hasCrmConnected={hasFubIntegration}
+        hasDeals={deals.length > 0}
+        hasLeads={leads.length > 0}
+        hasTasks={tasks.length > 0}
+        hasIncomeTarget={!!(strategicSettings as any)?.annualIncomeTarget}
+        onConnectCrm={() => navigate('/?workspace=sync')}
+        onAddDeal={() => setShowQuickAdd(true)}
+        onSetIncomeTarget={() => navigate('/?workspace=settings')}
+        onLoadDemo={seedDemoData}
+      />
 
       {/* Favorites Strip */}
       <FavoritesStrip favorites={favorites} onSelect={(id, type) => handleOpenExecution(id, type)} />
@@ -1272,7 +1288,7 @@ export default function CommandCenter() {
                 <SortablePanel key={panelId} id={panelId} editMode={editMode} fullWidth={isFullWidth} label={PANEL_LABELS[panelId]} isCollapsed={isCollapsed(panelId)} onToggleCollapse={() => toggleCollapse(panelId)}>
                   <PanelErrorBoundary>
                     <div className="relative group/pin">
-                      <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover/pin:opacity-100 transition-opacity">
+                      <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover/pin:opacity-100 transition-opacity">
                         <PanelHelpTooltip panelId={panelId} />
                         {editMode && (
                           <PanelPinButton panelId={panelId} isPinned={isPinned(panelId)} onToggle={togglePin} />
