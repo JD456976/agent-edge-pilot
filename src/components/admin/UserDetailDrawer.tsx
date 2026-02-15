@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Loader2, ShieldCheck, Crown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { UserRole } from '@/types';
 
@@ -43,18 +44,30 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
   const [allTeams, setAllTeams] = useState<{ id: string; name: string }[]>([]);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
 
+  // Pro access fields
+  const [hasProGrant, setHasProGrant] = useState(false);
+  const [proExpiresAt, setProExpiresAt] = useState('');
+  const [originalProGrant, setOriginalProGrant] = useState(false);
+
   useEffect(() => {
     loadDetail();
   }, [userId]);
 
   const loadDetail = async () => {
     setLoading(true);
-    const [{ data: profile }, { data: roleData }, { data: memberRows }, { data: teams }] = await Promise.all([
+    const [{ data: profile }, { data: roleData }, { data: memberRows }, { data: teams }, { data: entitlement }] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', userId).single(),
       supabase.from('user_roles').select('role').eq('user_id', userId).single(),
       supabase.from('team_members').select('team_id, role').eq('user_id', userId),
       supabase.from('teams').select('id, name'),
+      supabase.from('user_entitlements').select('*').eq('user_id', userId).eq('source', 'admin_grant').maybeSingle(),
     ]);
+
+    // Pro grant state
+    const granted = !!entitlement?.is_pro;
+    setHasProGrant(granted);
+    setOriginalProGrant(granted);
+    setProExpiresAt(entitlement?.expires_at ? entitlement.expires_at.slice(0, 10) : '');
 
     if (teams) setAllTeams(teams.map(t => ({ id: t.id, name: t.name })));
 
@@ -128,6 +141,26 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
           await supabase.from('team_members').delete().eq('team_id', tid).eq('user_id', userId);
         }
         await logAdminAction('team_membership_changed', { userId, removed: toRemove });
+      }
+
+      // Pro access grant/revoke
+      if (hasProGrant !== originalProGrant || (hasProGrant && proExpiresAt)) {
+        if (hasProGrant) {
+          await supabase.from('user_entitlements').upsert({
+            user_id: userId,
+            is_pro: true,
+            is_trial: false,
+            source: 'admin_grant',
+            expires_at: proExpiresAt ? new Date(proExpiresAt + 'T23:59:59Z').toISOString() : null,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+          await logAdminAction('pro_access_granted', { userId, expires_at: proExpiresAt || 'never' });
+        } else {
+          await supabase.from('user_entitlements')
+            .update({ is_pro: false, source: 'admin_revoked', updated_at: new Date().toISOString() })
+            .eq('user_id', userId);
+          await logAdminAction('pro_access_revoked', { userId });
+        }
       }
 
       toast({ title: 'User updated' });
@@ -225,6 +258,34 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
                 </div>
               </div>
             )}
+
+            {/* Pro Access Grant */}
+            <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+              <div className="flex items-center gap-2">
+                <Crown className="h-4 w-4 text-primary" />
+                <Label className="text-xs font-semibold">Pro Access</Label>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Grant free Pro access</span>
+                <Switch
+                  checked={hasProGrant}
+                  onCheckedChange={setHasProGrant}
+                  disabled={isReviewer}
+                />
+              </div>
+              {hasProGrant && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Expires (optional, leave blank for indefinite)</Label>
+                  <Input
+                    type="date"
+                    value={proExpiresAt}
+                    onChange={e => setProExpiresAt(e.target.value)}
+                    disabled={isReviewer}
+                    min={new Date().toISOString().slice(0, 10)}
+                  />
+                </div>
+              )}
+            </div>
 
             {/* Created date */}
             <div>
