@@ -281,6 +281,7 @@ export default function CommandCenter() {
           participants={dealParticipants}
           userId={user?.id || ''}
           onSelect={handleMoneySelect}
+          onAddCommissionToDeals={() => navigate('/pipeline')}
         />
       </PanelErrorBoundary>
 
