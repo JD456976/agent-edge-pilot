@@ -16,6 +16,10 @@ import { FubSyncPreviewModal } from '@/components/FubSyncPreviewModal';
 import { EdgeErrorDisplay, EdgeDebugDrawer } from '@/components/EdgeErrorDisplay';
 import { callEdgeFunction, type EdgeFunctionError } from '@/lib/edgeClient';
 import { toast } from '@/hooks/use-toast';
+import { LeadRoutingPanel } from '@/components/LeadRoutingPanel';
+import { FubAppointmentsPanel } from '@/components/FubAppointmentsPanel';
+import { SmartNumberInsightsPanel } from '@/components/SmartNumberInsightsPanel';
+import { WebhookConfigPanel } from '@/components/WebhookConfigPanel';
 
 interface IntegrationState {
   status: 'disconnected' | 'connected' | 'invalid' | 'error';
@@ -200,6 +204,18 @@ export default function Sync() {
         </div>
       )}
 
+      {/* Appointments & Smart Numbers */}
+      {integration.status === 'connected' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <PanelErrorBoundary>
+            <FubAppointmentsPanel hasIntegration={integration.status === 'connected'} />
+          </PanelErrorBoundary>
+          <PanelErrorBoundary>
+            <SmartNumberInsightsPanel hasIntegration={integration.status === 'connected'} />
+          </PanelErrorBoundary>
+        </div>
+      )}
+
       {/* Import History */}
       {pastRuns.length > 0 && (
         <section className="rounded-lg border border-border bg-card p-4">
@@ -219,8 +235,18 @@ export default function Sync() {
         </section>
       )}
 
+      {/* Lead Routing */}
+      <PanelErrorBoundary>
+        <LeadRoutingPanel />
+      </PanelErrorBoundary>
+
       {/* Import Matching Rules */}
       <ImportMatchingRules />
+
+      {/* Webhook Configuration */}
+      <PanelErrorBoundary>
+        <WebhookConfigPanel hasIntegration={integration.status === 'connected'} />
+      </PanelErrorBoundary>
 
       {/* Import Health (admin view) */}
       <PanelErrorBoundary>

@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { IncomeForecastPanelV2 } from '@/components/IncomeForecastPanelV2';
+import { LeadSourceROIPanel } from '@/components/LeadSourceROIPanel';
 import { StabilityScorePanelV2 } from '@/components/StabilityScorePanelV2';
 import { IncomeVolatilityPanel } from '@/components/IncomeVolatilityPanel';
 import { PipelineFragilityPanel } from '@/components/PipelineFragilityPanel';
@@ -21,11 +22,11 @@ import { useSessionMemory } from '@/hooks/useSessionMemory';
 import { useScoringPreferences } from '@/hooks/useScoringPreferences';
 import { getMomentum } from '@/lib/dailyIntelligence';
 import { supabase } from '@/integrations/supabase/client';
-import { useEffect } from 'react';
+// useEffect already imported above
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-const TABS = ['Forecast', 'Stability', 'Review', 'Benchmarks'] as const;
+const TABS = ['Forecast', 'Stability', 'Review', 'Benchmarks', 'Sources'] as const;
 
 export default function Insights() {
   const { user } = useAuth();
@@ -219,6 +220,12 @@ export default function Insights() {
               dealCloseRate: deals.length > 0 ? deals.filter(d => d.stage === 'closed').length / deals.length : undefined,
             }}
           />
+        </PanelErrorBoundary>
+      )}
+
+      {tab === 'Sources' && (
+        <PanelErrorBoundary>
+          <LeadSourceROIPanel leads={leads} deals={deals} />
         </PanelErrorBoundary>
       )}
     </div>
