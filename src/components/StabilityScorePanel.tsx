@@ -101,7 +101,7 @@ export function StabilityScorePanel({ inputs, onCreateTask }: Props) {
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-2 mb-1">
         <Activity className="h-4 w-4 text-muted-foreground" />
-        <h2 className="text-sm font-semibold">Stability Score</h2>
+        <h2 className="text-sm font-semibold">Business Health</h2>
       </div>
 
       {!hasData ? (

@@ -236,7 +236,7 @@ export function OpportunityHeatPanel({ leads, tasks, userId, onStartAction, lead
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-2 mb-1">
         <TrendingUp className="h-4 w-4 text-opportunity" />
-        <h2 className="text-sm font-semibold">Opportunities Heating Up</h2>
+        <h2 className="text-sm font-semibold">Hot Lead Radar</h2>
         <PanelHelpTooltip text="Leads showing the strongest buying or selling signals. Scored by engagement, temperature, and recency of contact." />
         {results.length > 0 && (
           <span className="text-xs text-muted-foreground ml-auto">
@@ -244,7 +244,7 @@ export function OpportunityHeatPanel({ leads, tasks, userId, onStartAction, lead
           </span>
         )}
       </div>
-      <p className="text-xs text-muted-foreground mb-3">Leads showing strong buying or selling signals.</p>
+      <p className="text-xs text-muted-foreground mb-3">Your hottest leads ready for action.</p>
 
       {/* CTA for missing typical price */}
       {hasMissingPrice && (

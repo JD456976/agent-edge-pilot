@@ -154,7 +154,7 @@ export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddC
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-2 mb-1">
         <Shield className="h-4 w-4 text-urgent" />
-        <h2 className="text-sm font-semibold">Money at Risk</h2>
+        <h2 className="text-sm font-semibold">Income at Risk</h2>
         <PanelHelpTooltip text="Your commission dollars that could be lost if deals stall. Based on inactivity, missed milestones, and closing timelines." />
         {showDevTools && (
           <button
