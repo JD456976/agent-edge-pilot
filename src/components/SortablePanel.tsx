@@ -43,13 +43,16 @@ export const SortablePanel = memo(function SortablePanel({ id, children, editMod
         <button
           {...attributes}
           {...listeners}
-          className="absolute -left-1 top-3 z-10 p-1.5 rounded-md bg-muted/80 border border-border shadow-sm cursor-grab active:cursor-grabbing opacity-0 group-hover/sortable:opacity-100 transition-opacity hover:bg-accent md:opacity-60"
+          className="absolute -left-1 top-3 z-10 p-1.5 rounded-md bg-muted/80 border border-border shadow-sm cursor-grab active:cursor-grabbing opacity-100 md:opacity-60 group-hover/sortable:opacity-100 transition-opacity hover:bg-accent touch-none"
           aria-label="Drag to reorder"
         >
           <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
       )}
-      {children}
+      {/* pointer-events: auto ensures card content is interactive even if parent has constraints */}
+      <div className="pointer-events-auto">
+        {children}
+      </div>
     </div>
   );
 });

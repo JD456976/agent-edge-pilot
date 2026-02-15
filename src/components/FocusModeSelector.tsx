@@ -38,7 +38,7 @@ export function FocusModeSelector({ mode, onModeChange }: Props) {
 }
 
 // Panel visibility rules per focus mode
-import type { PanelId } from '@/hooks/usePanelLayout';
+import type { PanelId } from '@/hooks/useCommandCenterLayout';
 
 const TACTICAL_PANELS: Set<PanelId> = new Set([
   'autopilot', 'prepared-actions', 'execution-queue',

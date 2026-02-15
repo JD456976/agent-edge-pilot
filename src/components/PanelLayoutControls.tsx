@@ -1,7 +1,7 @@
 import { useState, memo } from 'react';
 import { LayoutGrid, RotateCcw, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PRESETS, type PresetKey } from '@/hooks/usePanelLayout';
+import { PRESETS, type PresetKey } from '@/hooks/useCommandCenterLayout';
 import {
   DropdownMenu,
   DropdownMenuContent,
