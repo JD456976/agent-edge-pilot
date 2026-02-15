@@ -1,4 +1,5 @@
 import { ReactNode, useState, useEffect, useRef } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +33,46 @@ const NAV_ITEMS: NavItem[] = [
   { workspace: 'insights', label: 'Insights', icon: BarChart3 },
   { workspace: 'settings', label: 'Settings', icon: Settings },
 ];
+
+/** Collapsible sidebar utility section */
+function CollapsibleUtilities({ toggleTheme, theme, handleLogout }: { toggleTheme: () => void; theme: string; handleLogout: () => void }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="border-t border-border">
+      <button
+        onClick={() => setOpen(p => !p)}
+        className="flex items-center justify-between w-full px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        aria-label={open ? 'Collapse utilities' : 'Expand utilities'}
+      >
+        <span>Utilities</span>
+        <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', !open && '-rotate-90')} />
+      </button>
+      {open && (
+        <div className="px-2 pb-3 space-y-1 animate-fade-in">
+          <SkinSelector />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={toggleTheme} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors" aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">Toggle theme</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors" aria-label="Sign out of your account">
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">Sign out of your account</TooltipContent>
+          </Tooltip>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
@@ -124,27 +165,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
         <SyncStatusIndicator />
-        <div className="p-3 border-t border-border space-y-1">
-          <SkinSelector />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button onClick={toggleTheme} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors" aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
-                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">Toggle theme</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground w-full transition-colors" aria-label="Sign out of your account">
-                <LogOut className="h-4 w-4" />
-                Sign Out
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">Sign out of your account</TooltipContent>
-          </Tooltip>
-        </div>
+        <CollapsibleUtilities toggleTheme={toggleTheme} theme={theme} handleLogout={handleLogout} />
       </aside>
 
       {/* Main content area */}

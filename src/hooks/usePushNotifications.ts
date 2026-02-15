@@ -36,7 +36,7 @@ export function usePushNotifications() {
   return { supported, permission, requestPermission, sendNotification };
 }
 
-/** Check overdue tasks and send notifications */
+/** Check overdue tasks and send a single batched notification */
 export function checkOverdueTasks(
   tasks: { id: string; title: string; dueAt: string; completedAt?: string }[],
   sendNotification: (title: string, options?: NotificationOptions) => void,
@@ -50,11 +50,15 @@ export function checkOverdueTasks(
   );
 
   if (overdue.length > 0) {
-    if (overdue.length === 1) {
-      sendNotification('Overdue Task', { body: overdue[0].title, tag: `overdue-${overdue[0].id}` });
-    } else {
-      sendNotification('Overdue Tasks', { body: `${overdue.length} tasks need attention`, tag: 'overdue-batch' });
-    }
+    // Always batch into a single digest notification
+    const topItems = overdue.slice(0, 3).map(t => t.title);
+    const body = overdue.length <= 3
+      ? topItems.join('\n')
+      : `${topItems.join('\n')}\n+${overdue.length - 3} more`;
+    sendNotification(
+      `${overdue.length} Overdue Task${overdue.length > 1 ? 's' : ''}`,
+      { body, tag: 'overdue-digest' }
+    );
     overdue.forEach(t => lastCheckedRef.current.add(t.id));
   }
 }

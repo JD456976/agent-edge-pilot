@@ -186,6 +186,11 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  /* Smooth theme transition for all themed elements */
+  .dark, :root, [data-skin] {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
   }
 
   /* Premium scrollbar styling */
