@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, Plus, Phone, Undo2, Upload } from 'lucide-react';
+import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, EyeOff, Plus, Phone, Undo2, Upload, Settings2 } from 'lucide-react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,7 @@ import { useSessionMemory } from '@/hooks/useSessionMemory';
 import { useImportHighlight } from '@/hooks/useImportHighlight';
 import { useSessionMode, useSessionStartRisk } from '@/hooks/useSessionMode';
 import { useEndOfDaySummary } from '@/hooks/useEndOfDaySummary';
-import { useCommandCenterLayout, type PanelId, type PresetKey } from '@/hooks/useCommandCenterLayout';
+import { useCommandCenterLayout, PANEL_LABELS, type PanelId, type PresetKey } from '@/hooks/useCommandCenterLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/EmptyState';
@@ -65,7 +65,7 @@ import { MarketConditionsPanel } from '@/components/MarketConditionsPanel';
 import { MarketSignalsPanel } from '@/components/MarketSignalsPanel';
 import { SortablePanel } from '@/components/SortablePanel';
 import { SelfOptNudges } from '@/components/SelfOptNudges';
-import { PanelLayoutControls } from '@/components/PanelLayoutControls';
+import { PanelCustomizer } from '@/components/PanelCustomizer';
 import { MorningBriefCard } from '@/components/MorningBriefCard';
 import { WhatThisMeansPanel } from '@/components/WhatThisMeansPanel';
 import { IncomeControlMeter } from '@/components/IncomeControlMeter';
@@ -138,34 +138,7 @@ const PAIRED_PANELS: Set<PanelId> = new Set([
   'market-signals',
 ]);
 
-const PANEL_LABELS: Record<PanelId, string> = {
-  'autopilot': 'Autopilot',
-  'prepared-actions': 'Prepared Actions',
-  'money-at-risk': 'Income at Risk',
-  'opportunity-heat': 'Hot Lead Radar',
-  'income-forecast': 'Income Forecast',
-  'stability-score': 'Business Health',
-  'end-of-day': 'End of Day Review',
-  'execution-queue': 'Today\'s Priority Queue',
-  'income-volatility': 'Income Consistency',
-  'pipeline-fragility': 'Deal Health',
-  'lead-decay': 'Lead Follow-Up Gaps',
-  'operational-load': 'Workload Check',
-  'deal-failure': 'At-Risk Deals',
-  'ghosting-risk': 'Going Silent',
-  'referral-conversion': 'Referral Tracker',
-  'listing-performance': 'Listing Tracker',
-  'time-allocation': 'Time Planner',
-  'opportunity-radar': 'Opportunity Finder',
-  'income-protection': 'Income Shield',
-  'market-conditions': 'Market Pulse',
-  'learning-transparency': 'How It Works',
-  'network-benchmarks': 'Peer Comparison',
-  'weekly-review': 'Weekly Review',
-  'agent-profile': 'My Profile',
-  'income-patterns': 'Income Trends',
-  'market-signals': 'Market Signals',
-};
+// PANEL_LABELS is now imported from useCommandCenterLayout
 
 export default function CommandCenter() {
   const { user } = useAuth();
@@ -243,9 +216,12 @@ export default function CommandCenter() {
 
   // Panel layout — single source of truth
   const {
-    panelOrder, editMode, isDragging, setIsDragging,
-    toggleEditMode, reorder, applyPreset, resetToDefault,
+    panelOrder, hiddenPanels, editMode, isDragging, setIsDragging,
+    toggleEditMode, reorder, togglePanelVisibility, isPanelHidden,
+    applyPreset, resetToDefault, showAllPanels, visibleCount, totalCount,
   } = useCommandCenterLayout(user?.id);
+  const [showCustomizer, setShowCustomizer] = useState(false);
+  const [showHiddenPanels, setShowHiddenPanels] = useState(false);
 
   // Minimal Mode Audit (dev only)
   useEffect(() => {
@@ -1099,12 +1075,10 @@ export default function CommandCenter() {
               momentum={momentum}
             />
             <PanelSearchFilter onFilterChange={setPanelFilter} />
-            <PanelLayoutControls
-              editMode={editMode}
-              onToggleEdit={toggleEditMode}
-              onApplyPreset={applyPreset}
-              onReset={resetToDefault}
-            />
+            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5" onClick={() => setShowCustomizer(true)}>
+              <Settings2 className="h-3 w-3" />
+              Customize ({visibleCount}/{totalCount})
+            </Button>
             <div data-tour="focus-mode">
               <FocusModeSelector mode={focusMode} onModeChange={updateFocusMode} />
             </div>
@@ -1130,12 +1104,10 @@ export default function CommandCenter() {
           <div data-tour="focus-mode">
             <FocusModeSelector mode={focusMode} onModeChange={updateFocusMode} />
           </div>
-          <PanelLayoutControls
-            editMode={editMode}
-            onToggleEdit={toggleEditMode}
-            onApplyPreset={applyPreset}
-            onReset={resetToDefault}
-          />
+          <Button size="sm" variant="ghost" className="h-9 min-w-[44px] text-xs shrink-0 gap-1" onClick={() => setShowCustomizer(true)}>
+            <Settings2 className="h-3.5 w-3.5" />
+            Panels ({visibleCount})
+          </Button>
           <Button size="sm" variant="ghost" className="h-9 min-w-[44px] text-xs shrink-0" onClick={() => setShowCSVImport(true)}>
             <Upload className="h-3.5 w-3.5 mr-1" /> Import
           </Button>
@@ -1360,6 +1332,7 @@ export default function CommandCenter() {
         <SortableContext items={sortWithPins(panelOrder)} strategy={verticalListSortingStrategy}>
           <div className={cn('grid grid-cols-1 md:grid-cols-2', density === 'compact' ? 'gap-2' : 'gap-4')}>
             {sortWithPins(panelOrder).map(panelId => {
+              if (isPanelHidden(panelId) && !showHiddenPanels) return null;
               if (!isPanelVisibleInMode(panelId, focusMode, maturity.level, fullViewOverride)) return null;
               if (!matchesPanelFilter(panelId, panelFilter)) return null;
               const content = renderPanel(panelId);
@@ -1387,6 +1360,17 @@ export default function CommandCenter() {
         </SortableContext>
       </DndContext>
       </div>
+
+      {/* Hidden panels toggle */}
+      {hiddenPanels.size > 0 && (
+        <button
+          onClick={() => setShowHiddenPanels(prev => !prev)}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+        >
+          {showHiddenPanels ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+          {showHiddenPanels ? 'Hide' : 'Show'} {hiddenPanels.size} hidden panel{hiddenPanels.size !== 1 ? 's' : ''}
+        </button>
+      )}
 
       {/* Cohort Playbooks */}
       {cohortPlaybooks.length > 0 && (
@@ -1661,6 +1645,21 @@ export default function CommandCenter() {
 
       {/* CSV Import Modal */}
       <CSVImportModal open={showCSVImport} onClose={() => setShowCSVImport(false)} />
+
+      {/* Panel Customizer */}
+      <PanelCustomizer
+        open={showCustomizer}
+        onClose={() => setShowCustomizer(false)}
+        panelOrder={panelOrder}
+        hiddenPanels={hiddenPanels}
+        onReorder={reorder}
+        onToggleVisibility={togglePanelVisibility}
+        onApplyPreset={applyPreset}
+        onReset={resetToDefault}
+        onShowAll={showAllPanels}
+        visibleCount={visibleCount}
+        totalCount={totalCount}
+      />
     </div>
   );
 }
