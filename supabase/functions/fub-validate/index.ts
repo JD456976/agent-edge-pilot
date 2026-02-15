@@ -75,6 +75,13 @@ Deno.serve(async (req) => {
       .update({ status: "connected", last_validated_at: now, updated_at: now })
       .eq("user_id", userId);
 
+    // Update sync state
+    await serviceClient.from("fub_sync_state").upsert({
+      user_id: userId,
+      last_validated_at: now,
+      updated_at: now,
+    }, { onConflict: "user_id" });
+
     return new Response(
       JSON.stringify({
         valid: true,

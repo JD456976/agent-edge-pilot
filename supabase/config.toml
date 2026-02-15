@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.fub-undo]
 verify_jwt = false
+
+[functions.fub-delta]
+verify_jwt = false

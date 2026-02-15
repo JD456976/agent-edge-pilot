@@ -15,6 +15,9 @@ import { RecommendedFirstAction } from '@/components/RecommendedFirstAction';
 import { ControlStatusBar } from '@/components/ControlStatusBar';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { QuickAddModal } from '@/components/QuickAddModal';
+import { FubDriftCard } from '@/components/FubDriftCard';
+import { FubWatchlistPanel } from '@/components/FubWatchlistPanel';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { RiskLevel, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
@@ -43,6 +46,7 @@ export default function CommandCenter() {
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<DetailItem | null>(null);
   const [snoozedIds, setSnoozedIds] = useState<Set<string>>(new Set());
+  const [hasFubIntegration, setHasFubIntegration] = useState(false);
   const [snoozeCounts, setSnoozeCounts] = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem(SNOOZE_STORAGE_KEY) || '{}'); } catch { return {}; }
   });
@@ -71,6 +75,19 @@ export default function CommandCenter() {
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 600);
     return () => clearTimeout(t);
+  }, []);
+
+  // Check FUB integration status
+  useEffect(() => {
+    (async () => {
+      const { data: { user: u } } = await supabase.auth.getUser();
+      if (!u) return;
+      const { data } = await (supabase.from('crm_integrations' as any)
+        .select('status')
+        .eq('user_id', u.id)
+        .maybeSingle() as any);
+      setHasFubIntegration(data?.status === 'connected');
+    })();
   }, []);
 
   const panels = useMemo(() => buildCommandCenterPanels(leads, deals, tasks, alerts), [leads, deals, tasks, alerts]);
@@ -392,6 +409,18 @@ export default function CommandCenter() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* FUB Drift Detection + Watchlist */}
+      {hasFubIntegration && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <PanelErrorBoundary>
+            <FubDriftCard hasIntegration={hasFubIntegration} />
+          </PanelErrorBoundary>
+          <PanelErrorBoundary>
+            <FubWatchlistPanel hasIntegration={hasFubIntegration} />
+          </PanelErrorBoundary>
         </div>
       )}
 

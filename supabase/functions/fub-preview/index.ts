@@ -106,6 +106,14 @@ Deno.serve(async (req) => {
       person: t.person?.name || "",
     }));
 
+    // Update sync state
+    const serviceClient = createClient(supabaseUrl, serviceKey);
+    await serviceClient.from("fub_sync_state").upsert({
+      user_id: userId,
+      last_preview_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+
     return new Response(
       JSON.stringify({
         preview_leads,

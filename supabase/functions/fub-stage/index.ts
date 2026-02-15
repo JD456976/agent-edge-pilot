@@ -346,6 +346,13 @@ Deno.serve(async (req) => {
       },
     });
 
+    // Update sync state
+    await svc.from("fub_sync_state").upsert({
+      user_id: userId,
+      last_stage_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+
     return new Response(
       JSON.stringify({
         import_run_id: run.id,
