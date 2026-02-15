@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, AlertTriangle, CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { RefreshCw, CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +8,7 @@ import { FubDriftReviewModal } from '@/components/FubDriftReviewModal';
 interface DeltaSummary {
   counts: { new: number; updated: number; conflict: number; total: number };
   severity: 'quiet' | 'moderate' | 'attention_needed';
+  drift_reason?: string;
   top_items: any[];
   all_items?: any[];
   checked_at: string;
@@ -24,20 +25,23 @@ export function FubDriftCard({ hasIntegration }: FubDriftCardProps) {
   const [error, setError] = useState<string | null>(null);
   const [showReview, setShowReview] = useState(false);
   const [lastCheck, setLastCheck] = useState<string | null>(null);
+  const [lastSuccessfulCheck, setLastSuccessfulCheck] = useState<string | null>(null);
+  const [usingCached, setUsingCached] = useState(false);
 
-  // Load cached summary from sync state on mount
   useEffect(() => {
     if (!hasIntegration) return;
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data } = await (supabase.from('fub_sync_state' as any)
-        .select('last_delta_summary, last_delta_check_at')
+        .select('last_delta_summary, last_delta_check_at, last_successful_check_at, drift_reason')
         .eq('user_id', user.id)
         .maybeSingle() as any);
       if (data?.last_delta_summary) {
-        setSummary(data.last_delta_summary as any);
+        const s = data.last_delta_summary as any;
+        setSummary({ ...s, drift_reason: s.drift_reason || data.drift_reason });
         setLastCheck(data.last_delta_check_at as string);
+        setLastSuccessfulCheck(data.last_successful_check_at as string);
       }
     })();
   }, [hasIntegration]);
@@ -45,6 +49,7 @@ export function FubDriftCard({ hasIntegration }: FubDriftCardProps) {
   const runDeltaCheck = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setUsingCached(false);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
@@ -53,17 +58,26 @@ export function FubDriftCard({ hasIntegration }: FubDriftCardProps) {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
-      if (res.error) throw new Error(res.error.message || 'Delta check failed');
+      if (res.error) {
+        // Check if rate limited with cached data
+        if (res.data?.last_summary) {
+          setSummary(res.data.last_summary as DeltaSummary);
+          setLastCheck(res.data.last_check);
+          setLastSuccessfulCheck(res.data.last_successful_check);
+          setUsingCached(true);
+          setError('Could not refresh — rate limited. Showing last known state.');
+          return;
+        }
+        throw new Error(res.error.message || 'Delta check failed');
+      }
+
       const data = res.data as DeltaSummary & { all_items?: any[] };
-      setSummary({ counts: data.counts, severity: data.severity, top_items: data.top_items, checked_at: data.checked_at });
+      setSummary({ counts: data.counts, severity: data.severity, drift_reason: data.drift_reason, top_items: data.top_items, checked_at: data.checked_at });
       setAllItems(data.all_items || []);
       setLastCheck(data.checked_at);
+      setLastSuccessfulCheck(data.checked_at);
     } catch (e: any) {
-      if (e.message?.includes('rate_limited')) {
-        setError('Could not refresh — rate limited. Showing last known state.');
-      } else {
-        setError(e.message || 'Delta check failed');
-      }
+      setError(e.message || 'Delta check failed');
     } finally {
       setLoading(false);
     }
@@ -79,7 +93,7 @@ export function FubDriftCard({ hasIntegration }: FubDriftCardProps) {
 
   const sev = summary ? severityConfig[summary.severity] : null;
 
-  const formatTime = (iso: string) => {
+  const formatRelative = (iso: string) => {
     const d = new Date(iso);
     const now = new Date();
     const diffMin = Math.floor((now.getTime() - d.getTime()) / 60000);
@@ -87,7 +101,11 @@ export function FubDriftCard({ hasIntegration }: FubDriftCardProps) {
     if (diffMin < 60) return `${diffMin}m ago`;
     const diffHr = Math.floor(diffMin / 60);
     if (diffHr < 24) return `${diffHr}h ago`;
-    return d.toLocaleDateString();
+    return `${Math.floor(diffHr / 24)}d ago`;
+  };
+
+  const formatAbsolute = (iso: string) => {
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   };
 
   return (
@@ -116,8 +134,18 @@ export function FubDriftCard({ hasIntegration }: FubDriftCardProps) {
           </Button>
         </div>
 
+        {/* Severity reason */}
+        {summary?.drift_reason && summary.severity !== 'quiet' && (
+          <p className="text-[11px] text-muted-foreground mb-2">{summary.drift_reason}</p>
+        )}
+
         {error && (
-          <p className="text-xs text-destructive mb-2">{error}</p>
+          <div className="text-xs mb-2 space-y-0.5">
+            <p className="text-destructive">{error}</p>
+            {usingCached && lastSuccessfulCheck && (
+              <p className="text-muted-foreground italic">Using last summary from {formatAbsolute(lastSuccessfulCheck)}</p>
+            )}
+          </div>
         )}
 
         {!summary && !loading && !error && (
@@ -177,9 +205,15 @@ export function FubDriftCard({ hasIntegration }: FubDriftCardProps) {
               </>
             )}
 
-            {lastCheck && (
-              <p className="text-[10px] text-muted-foreground">Last checked: {formatTime(lastCheck)}</p>
-            )}
+            {/* Timestamp transparency */}
+            <div className="space-y-0.5">
+              {lastCheck && (
+                <p className="text-[10px] text-muted-foreground">Last checked: {formatRelative(lastCheck)}</p>
+              )}
+              {lastSuccessfulCheck && lastSuccessfulCheck !== lastCheck && (
+                <p className="text-[10px] text-muted-foreground">Last successful: {formatAbsolute(lastSuccessfulCheck)}</p>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -187,6 +221,9 @@ export function FubDriftCard({ hasIntegration }: FubDriftCardProps) {
       {showReview && (
         <FubDriftReviewModal
           items={allItems}
+          summary={summary}
+          lastCheck={lastCheck}
+          lastSuccessfulCheck={lastSuccessfulCheck}
           onClose={() => setShowReview(false)}
           onRefresh={runDeltaCheck}
         />
