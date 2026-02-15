@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/EmptyState';
 import { SkeletonCard } from '@/components/SkeletonCard';
 import { ActionDetailDrawer } from '@/components/ActionDetailDrawer';
-import { RecommendedFirstAction } from '@/components/RecommendedFirstAction';
+import { AutopilotCard } from '@/components/AutopilotCard';
 import { ControlStatusBar } from '@/components/ControlStatusBar';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { QuickAddModal } from '@/components/QuickAddModal';
@@ -21,9 +21,13 @@ import { FubWatchlistPanel } from '@/components/FubWatchlistPanel';
 import { MoneyAtRiskPanel } from '@/components/MoneyAtRiskPanel';
 import { MoneyRiskDrawer } from '@/components/MoneyRiskDrawer';
 import { OpportunityHeatPanel } from '@/components/OpportunityHeatPanel';
+import { IncomeForecastPanel } from '@/components/IncomeForecastPanel';
+import { StabilityScorePanel } from '@/components/StabilityScorePanel';
 import { MorningFocusCard, MiddayStabilizationCard, EodSafetyCard } from '@/components/DailyModeCards';
 import { LogTouchModal } from '@/components/LogTouchModal';
 import { computeOpportunityBatch, type OpportunityHeatResult, type UserCommissionDefaults } from '@/lib/leadMoneyModel';
+import { computeForecastBatch } from '@/lib/forecastModel';
+import { computeStabilityScore, type StabilityInputs } from '@/lib/stabilityModel';
 import { useScoringPreferences } from '@/hooks/useScoringPreferences';
 import { useRankChangeTracker, type RankChange } from '@/hooks/useRankChangeTracker';
 import { supabase } from '@/integrations/supabase/client';
@@ -177,6 +181,52 @@ export default function CommandCenter() {
   // Rank change tracker
   const { dealChanges, leadChanges } = useRankChangeTracker(moneyResults, opportunityResults);
 
+  // ── Income Forecast ────────────────────────────────────────────────
+  const forecast = useMemo(() => {
+    if (!user?.id) return null;
+    return computeForecastBatch(deals, dealParticipants, user.id);
+  }, [deals, dealParticipants, user?.id]);
+
+  // ── Stability Score ────────────────────────────────────────────────
+  const now = useMemo(() => new Date(), []);
+  const overdueTasks = useMemo(() => tasks.filter(t => !t.completedAt && new Date(t.dueAt) < now), [tasks, now]);
+  const dueSoonTasks = useMemo(() => {
+    const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+    return tasks.filter(t => !t.completedAt && new Date(t.dueAt) >= now && new Date(t.dueAt) <= in48h);
+  }, [tasks, now]);
+
+  const todayStart = useMemo(() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0); return d;
+  }, []);
+
+  const untouchedHotLeads = useMemo(() => {
+    return leads.filter(l => (l.leadTemperature === 'hot' || l.engagementScore >= 80) && (!l.lastTouchedAt || new Date(l.lastTouchedAt) < todayStart));
+  }, [leads, todayStart]);
+
+  const totalMoneyAtRisk = useMemo(() => moneyResults.reduce((s, r) => s + r.personalCommissionAtRisk, 0), [moneyResults]);
+
+  // Momentum (moved before stabilityInputs which depends on it)
+  const momentum = useMemo(() => getMomentum(tasks, deals, previousSnapshot), [tasks, deals, previousSnapshot]);
+
+  const stabilityInputs = useMemo((): StabilityInputs => {
+    const forecast30 = forecast?.next30 ?? 0;
+    const topDealExpected = forecast?.topContributors
+      .filter(c => c.windows.w30)
+      .sort((a, b) => b.expectedPersonalCommission - a.expectedPersonalCommission)[0]?.expectedPersonalCommission ?? 0;
+
+    return {
+      overdueTasksCount: overdueTasks.length,
+      dueSoonCount: dueSoonTasks.length,
+      missedTouchesCount: untouchedHotLeads.length,
+      forecast30,
+      topDealExpected,
+      moneyAtRiskTotal: totalMoneyAtRisk,
+      momentum: momentum as 'Improving' | 'Stable' | 'Declining',
+    };
+  }, [overdueTasks, dueSoonTasks, untouchedHotLeads, forecast, totalMoneyAtRisk, momentum]);
+
+  const stabilityResult = useMemo(() => computeStabilityScore(stabilityInputs), [stabilityInputs]);
+
   const handleMoneySelect = useCallback((result: MoneyModelResult, deal: Deal) => {
     setMoneyDrawerResult(result);
     setMoneyDrawerDeal(deal);
@@ -212,34 +262,46 @@ export default function CommandCenter() {
     setMoneyDrawerDeal(null);
   }, [addTask, user?.id]);
 
+  // Autopilot task creation
+  const handleAutopilotCreateTask = useCallback(async (title: string, dealId?: string, leadId?: string) => {
+    await addTask({
+      title,
+      type: 'follow_up',
+      dueAt: new Date().toISOString(),
+      relatedDealId: dealId,
+      relatedLeadId: leadId,
+      assignedToUserId: user?.id || '',
+    });
+    toast({ description: `Task created: ${title}`, duration: 3000 });
+  }, [addTask, user?.id]);
+
+  // Forecast task creation
+  const handleForecastCreateTask = useCallback(async (title: string, dealId: string) => {
+    await addTask({
+      title,
+      type: 'follow_up',
+      dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      relatedDealId: dealId,
+      assignedToUserId: user?.id || '',
+    });
+    toast({ description: `Task created: ${title}`, duration: 3000 });
+  }, [addTask, user?.id]);
+
   const briefing = useMemo(() => getDailyBriefing(panels, tasks, deals, leads), [panels, tasks, deals, leads]);
   const missedYesterday = useMemo(() => getMissedYesterdayCount(tasks, deals, previousSnapshot), [tasks, deals, previousSnapshot]);
-  const momentum = useMemo(() => getMomentum(tasks, deals, previousSnapshot), [tasks, deals, previousSnapshot]);
+  // momentum already declared above (before stabilityInputs)
   const pipelineWatch = useMemo(() => getPipelineWatch(leads, deals, previousSnapshot), [leads, deals, previousSnapshot]);
   const controlStatus = useMemo(() => getControlStatus(tasks, deals, previousSnapshot), [tasks, deals, previousSnapshot]);
   const progressItems = useMemo(() => getProgressSnapshot(tasks, deals, leads, previousSnapshot), [tasks, deals, leads, previousSnapshot]);
   const stressReduction = useMemo(() => shouldShowStressReduction(tasks, deals, previousSnapshot), [tasks, deals, previousSnapshot]);
 
   // Daily mode computed values
-  const totalMoneyAtRisk = useMemo(() => moneyResults.reduce((s, r) => s + r.personalCommissionAtRisk, 0), [moneyResults]);
   const sessionStartRisk = useSessionStartRisk(totalMoneyAtRisk, hasData);
-
-  const now = useMemo(() => new Date(), []);
-  const overdueTasks = useMemo(() => tasks.filter(t => !t.completedAt && new Date(t.dueAt) < now), [tasks, now]);
-
-  const todayStart = useMemo(() => {
-    const d = new Date(); d.setHours(0, 0, 0, 0); return d;
-  }, []);
 
   // EOD: deals at risk without touches today
   const untouchedRiskDeals = useMemo(() => {
     return deals.filter(d => d.stage !== 'closed' && (d.riskLevel === 'red' || d.riskLevel === 'yellow') && (!d.lastTouchedAt || new Date(d.lastTouchedAt) < todayStart));
   }, [deals, todayStart]);
-
-  // EOD: hot leads without touches today
-  const untouchedHotLeads = useMemo(() => {
-    return leads.filter(l => (l.leadTemperature === 'hot' || l.engagementScore >= 80) && (!l.lastTouchedAt || new Date(l.lastTouchedAt) < todayStart));
-  }, [leads, todayStart]);
 
   // Midday: risks reduced since session start
   const risksReducedToday = useMemo(() => {
@@ -402,7 +464,6 @@ export default function CommandCenter() {
           leads={leads}
           overdueTasks={overdueTasks}
           onStartAction={() => {
-            // Scroll to recommended first action
             if (topMoneyAtRisk && deals.find(d => d.id === topMoneyAtRisk.dealId)) {
               handleMoneySelect(topMoneyAtRisk, deals.find(d => d.id === topMoneyAtRisk.dealId)!);
             }
@@ -428,8 +489,8 @@ export default function CommandCenter() {
         />
       )}
 
-      {/* Recommended First Action */}
-      <RecommendedFirstAction
+      {/* Autopilot (replaces Recommended First Action) */}
+      <AutopilotCard
         panels={panels}
         onComplete={(taskId) => {
           completeTask(taskId);
@@ -446,6 +507,11 @@ export default function CommandCenter() {
         topOpportunity={topOpportunity}
         leads={leads}
         onOpportunityAction={handleOpportunityAction}
+        stabilityResult={stabilityResult}
+        overdueTasksCount={overdueTasks.length}
+        dueSoonCount={dueSoonTasks.length}
+        onStabilityAction={() => navigate('/tasks')}
+        onCreateTask={handleAutopilotCreateTask}
       />
 
       {/* Money At Risk + Opportunities */}
@@ -470,6 +536,24 @@ export default function CommandCenter() {
             onStartAction={handleOpportunityAction}
             leadChanges={leadChanges}
             oppWeights={oppWeights}
+          />
+        </PanelErrorBoundary>
+      </div>
+
+      {/* Income Forecast + Stability Score */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <PanelErrorBoundary>
+          <IncomeForecastPanel
+            deals={deals}
+            participants={dealParticipants}
+            userId={user?.id || ''}
+            onCreateTask={handleForecastCreateTask}
+          />
+        </PanelErrorBoundary>
+        <PanelErrorBoundary>
+          <StabilityScorePanel
+            inputs={stabilityInputs}
+            onCreateTask={(title) => handleAutopilotCreateTask(title)}
           />
         </PanelErrorBoundary>
       </div>
@@ -567,8 +651,6 @@ export default function CommandCenter() {
           )}
         </div>
         </PanelErrorBoundary>
-
-        {/* Opportunities moved to dedicated panel above */}
 
         {/* Speed Alerts */}
         <PanelErrorBoundary>
