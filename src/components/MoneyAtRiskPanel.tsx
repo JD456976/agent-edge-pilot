@@ -8,7 +8,8 @@ import { BulkBackfillModal } from '@/components/BulkBackfillModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Deal, DealParticipant } from '@/types';
-import { computeMoneyModelBatch, type MoneyModelResult } from '@/lib/moneyModel';
+import { computeMoneyModelBatch, type MoneyModelResult, type RiskScoringWeights } from '@/lib/moneyModel';
+import type { RankChange } from '@/hooks/useRankChangeTracker';
 
 interface Props {
   deals: Deal[];
@@ -17,6 +18,8 @@ interface Props {
   userId: string;
   onSelect: (result: MoneyModelResult, deal: Deal) => void;
   onAddCommissionToDeals?: () => void;
+  dealChanges?: Map<string, RankChange>;
+  riskWeights?: RiskScoringWeights;
 }
 
 function formatCurrency(n: number) {
@@ -46,7 +49,7 @@ function confidenceBadge(confidence: string): string {
 
 type EmptyReason = 'no_deals' | 'no_defaults' | 'no_price' | 'no_participant';
 
-export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddCommissionToDeals, refreshData }: Props) {
+export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddCommissionToDeals, refreshData, dealChanges, riskWeights }: Props) {
   const [showDefaultsModal, setShowDefaultsModal] = useState(false);
   const [showDebugDrawer, setShowDebugDrawer] = useState(false);
   const [showBackfillModal, setShowBackfillModal] = useState(false);
@@ -69,7 +72,7 @@ export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddC
   }, [userId]);
 
   const results = useMemo(() => {
-    const all = computeMoneyModelBatch(activeDeals, participants, userId);
+    const all = computeMoneyModelBatch(activeDeals, participants, userId, new Date(), riskWeights);
     return all
       .filter(r => r.personalCommissionAtRisk > 0)
       .sort((a, b) => {
@@ -88,7 +91,7 @@ export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddC
   const dealMap = useMemo(() => new Map(activeDeals.map(d => [d.id, d])), [activeDeals]);
 
   // Determine empty state reason
-  const allResults = useMemo(() => computeMoneyModelBatch(activeDeals, participants, userId), [activeDeals, participants, userId]);
+  const allResults = useMemo(() => computeMoneyModelBatch(activeDeals, participants, userId, new Date(), riskWeights), [activeDeals, participants, userId, riskWeights]);
 
   const emptyReason = useMemo((): EmptyReason | null => {
     if (activeDeals.length === 0) return 'no_deals';
@@ -243,6 +246,9 @@ export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddC
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="text-sm font-medium leading-tight truncate">{deal.title}</p>
+                        {dealChanges?.get(result.dealId) && (
+                          <span className="text-[10px] px-1 py-0 rounded bg-primary/10 text-primary">Changed</span>
+                        )}
                         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${risk.className}`}>
                           {risk.label}
                         </Badge>

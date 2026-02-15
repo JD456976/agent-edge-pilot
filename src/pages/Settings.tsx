@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { FubSyncPreviewModal } from '@/components/FubSyncPreviewModal';
 import { FubImportReview } from '@/components/FubImportReview';
 import { ImportMatchingRules, ImportDryRunPanel } from '@/components/ImportSettings';
+import { ScoringCalibrationPanel } from '@/components/ScoringCalibrationPanel';
 import { toast } from '@/hooks/use-toast';
 import { callEdgeFunction, type EdgeFunctionError } from '@/lib/edgeClient';
 import { EdgeErrorDisplay, EdgeDebugDrawer } from '@/components/EdgeErrorDisplay';
@@ -284,6 +285,9 @@ export default function Settings() {
 
       {/* Import Matching Rules */}
       <ImportMatchingRules />
+
+      {/* Scoring Calibration */}
+      <ScoringCalibrationPanel />
 
       {/* Sign out */}
       <Button variant="outline" className="w-full" onClick={handleLogout}>

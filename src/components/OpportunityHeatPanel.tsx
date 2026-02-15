@@ -11,13 +11,17 @@ import {
   computeOpportunityBatch,
   type OpportunityHeatResult,
   type UserCommissionDefaults,
+  type OpportunityScoringWeights,
 } from '@/lib/leadMoneyModel';
+import type { RankChange } from '@/hooks/useRankChangeTracker';
 
 interface Props {
   leads: Lead[];
   tasks: Task[];
   userId: string;
   onStartAction?: (lead: Lead, result: OpportunityHeatResult) => void;
+  leadChanges?: Map<string, RankChange>;
+  oppWeights?: OpportunityScoringWeights;
 }
 
 function formatCurrency(n: number) {
@@ -157,7 +161,7 @@ function OpportunityDrawer({ result, lead, onClose, onStartAction }: {
 
 // ── Main Panel ──────────────────────────────────────────────────────
 
-export function OpportunityHeatPanel({ leads, tasks, userId, onStartAction }: Props) {
+export function OpportunityHeatPanel({ leads, tasks, userId, onStartAction, leadChanges, oppWeights }: Props) {
   const [showDefaultsModal, setShowDefaultsModal] = useState(false);
   const [drawerResult, setDrawerResult] = useState<OpportunityHeatResult | null>(null);
   const [drawerLead, setDrawerLead] = useState<Lead | null>(null);
@@ -186,8 +190,8 @@ export function OpportunityHeatPanel({ leads, tasks, userId, onStartAction }: Pr
 
   const results = useMemo(() => {
     if (!defaultsLoaded) return [];
-    return computeOpportunityBatch(leads, tasks, userDefaults).slice(0, 5);
-  }, [leads, tasks, userDefaults, defaultsLoaded]);
+    return computeOpportunityBatch(leads, tasks, userDefaults, new Date(), oppWeights).slice(0, 5);
+  }, [leads, tasks, userDefaults, defaultsLoaded, oppWeights]);
 
   const leadMap = useMemo(() => new Map(leads.map(l => [l.id, l])), [leads]);
 
@@ -242,6 +246,9 @@ export function OpportunityHeatPanel({ leads, tasks, userId, onStartAction }: Pr
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="text-sm font-medium leading-tight truncate">{lead.name}</p>
+                    {leadChanges?.get(result.leadId) && (
+                      <span className="text-[10px] px-1 py-0 rounded bg-primary/10 text-primary">Changed</span>
+                    )}
                     <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${heat.className}`}>
                       {heat.label}
                     </Badge>
