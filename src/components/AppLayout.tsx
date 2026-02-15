@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect, useRef } from 'react';
+import { ReactNode, useState, useEffect, useRef, useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush } from 'lucide-react';
@@ -80,7 +80,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const { activeWorkspace, openWorkspace, closeWorkspace } = useWorkspace();
   const { requestOpenEntity } = useEntityNavigation();
-  const { tasks } = useData();
+  const { tasks, deals, alerts } = useData();
+
+  // Compute urgency dots for sidebar
+  const urgentCounts = useMemo(() => {
+    const overdue = tasks.filter(t => !t.completedAt && new Date(t.dueAt) < new Date()).length;
+    const riskDeals = deals.filter(d => d.stage !== 'closed' && d.riskLevel === 'red').length;
+    return {
+      work: overdue,
+      sync: 0, // could track pending sync items
+      insights: riskDeals,
+      settings: 0,
+    } as Record<string, number>;
+  }, [tasks, deals]);
   const location = useLocation();
   const navigate = useNavigate();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -156,7 +168,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
                         : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                     )}
                   >
-                    <item.icon className="h-4 w-4" />
+                    <div className="relative">
+                      <item.icon className="h-4 w-4" />
+                      {item.workspace && urgentCounts[item.workspace] > 0 && (
+                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-urgent" />
+                      )}
+                    </div>
                     {item.label}
                   </button>
                 </TooltipTrigger>
