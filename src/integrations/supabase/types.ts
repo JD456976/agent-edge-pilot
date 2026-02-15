@@ -1378,6 +1378,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           command_center_layout: Json | null
           created_at: string
           deleted_at: string | null
@@ -1387,6 +1388,10 @@ export type Database = {
           is_deleted: boolean
           is_protected: boolean
           name: string
+          notify_daily_brief: boolean
+          notify_opportunities: boolean
+          notify_overdue_tasks: boolean
+          notify_risk_alerts: boolean
           onboarding_completed: boolean
           organization_id: string | null
           status: string
@@ -1395,6 +1400,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          avatar_url?: string | null
           command_center_layout?: Json | null
           created_at?: string
           deleted_at?: string | null
@@ -1404,6 +1410,10 @@ export type Database = {
           is_deleted?: boolean
           is_protected?: boolean
           name?: string
+          notify_daily_brief?: boolean
+          notify_opportunities?: boolean
+          notify_overdue_tasks?: boolean
+          notify_risk_alerts?: boolean
           onboarding_completed?: boolean
           organization_id?: string | null
           status?: string
@@ -1412,6 +1422,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          avatar_url?: string | null
           command_center_layout?: Json | null
           created_at?: string
           deleted_at?: string | null
@@ -1421,6 +1432,10 @@ export type Database = {
           is_deleted?: boolean
           is_protected?: boolean
           name?: string
+          notify_daily_brief?: boolean
+          notify_opportunities?: boolean
+          notify_overdue_tasks?: boolean
+          notify_risk_alerts?: boolean
           onboarding_completed?: boolean
           organization_id?: string | null
           status?: string

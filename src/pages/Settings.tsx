@@ -1,12 +1,13 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar, Volume2, Trash2, AlertTriangle, Shield, FileText, HelpCircle, ExternalLink } from 'lucide-react';
+import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar, Volume2, Trash2, AlertTriangle, Shield, FileText, HelpCircle, ExternalLink, Camera, Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { getNoisePrefs, setNoisePrefs, type DriftFrequency, type WeeklyReviewDefault, type StableHideAfter } from '@/lib/noiseGovernor';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { ScoringCalibrationPanel } from '@/components/ScoringCalibrationPanel';
 import { NetworkSettingsSection } from '@/components/NetworkSettingsSection';
 import { MarketSettingsSection } from '@/components/MarketSettingsSection';
@@ -24,6 +25,177 @@ import { supabase } from '@/integrations/supabase/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 
+
+function ProfileSection() {
+  const { user } = useAuth();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState(user?.name || '');
+  const [editingName, setEditingName] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Load avatar on mount
+  useState(() => {
+    (async () => {
+      const { data: { user: u } } = await supabase.auth.getUser();
+      if (!u) return;
+      const { data: profile } = await supabase.from('profiles').select('avatar_url').eq('user_id', u.id).single();
+      if ((profile as any)?.avatar_url) setAvatarUrl((profile as any).avatar_url);
+    })();
+  });
+
+  const handleAvatarUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Please select an image under 5MB.', variant: 'destructive' });
+      return;
+    }
+    setUploading(true);
+    try {
+      const { data: { user: u } } = await supabase.auth.getUser();
+      if (!u) throw new Error('Not authenticated');
+      const ext = file.name.split('.').pop();
+      const path = `${u.id}/avatar.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+      const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
+      await supabase.from('profiles').update({ avatar_url: urlWithCacheBust } as any).eq('user_id', u.id);
+      setAvatarUrl(urlWithCacheBust);
+      toast({ description: 'Avatar updated!' });
+    } catch (err: any) {
+      toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
+    }
+    setUploading(false);
+  }, []);
+
+  const handleNameSave = useCallback(async () => {
+    if (!displayName.trim()) return;
+    const { data: { user: u } } = await supabase.auth.getUser();
+    if (!u) return;
+    await supabase.from('profiles').update({ name: displayName.trim() } as any).eq('user_id', u.id);
+    setEditingName(false);
+    toast({ description: 'Name updated!' });
+  }, [displayName]);
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-4 mb-4">
+      <h2 className="text-sm font-semibold mb-4 flex items-center gap-2"><User className="h-4 w-4" /> Profile</h2>
+      <div className="flex items-start gap-4">
+        {/* Avatar */}
+        <div className="relative group shrink-0">
+          <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center overflow-hidden ring-2 ring-border">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+            ) : (
+              <User className="h-6 w-6 text-muted-foreground" />
+            )}
+          </div>
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="absolute inset-0 rounded-full bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+            aria-label="Change avatar"
+          >
+            {uploading ? (
+              <span className="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            ) : (
+              <Camera className="h-4 w-4 text-foreground" />
+            )}
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+        </div>
+        {/* Info */}
+        <div className="flex-1 space-y-2">
+          <div>
+            <Label className="text-xs text-muted-foreground">Name</Label>
+            {editingName ? (
+              <div className="flex gap-2 mt-0.5">
+                <input
+                  value={displayName}
+                  onChange={e => setDisplayName(e.target.value)}
+                  className="flex-1 text-sm font-medium bg-muted/60 border border-border rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                  autoFocus
+                  onKeyDown={e => e.key === 'Enter' && handleNameSave()}
+                />
+                <Button size="sm" variant="ghost" onClick={handleNameSave} className="text-xs">Save</Button>
+              </div>
+            ) : (
+              <p className="text-sm font-medium cursor-pointer hover:text-primary transition-colors" onClick={() => setEditingName(true)}>
+                {user?.name} <span className="text-[10px] text-muted-foreground ml-1">(edit)</span>
+              </p>
+            )}
+          </div>
+          <div><Label className="text-xs text-muted-foreground">Email</Label><p className="text-sm font-medium">{user?.email}</p></div>
+          <div><Label className="text-xs text-muted-foreground">Role</Label><p className="text-sm font-medium capitalize">{user?.role}</p></div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function NotificationPreferencesSection() {
+  const [prefs, setPrefs] = useState({
+    overdueTasks: true,
+    riskAlerts: true,
+    opportunities: true,
+    dailyBrief: true,
+  });
+  const [loaded, setLoaded] = useState(false);
+
+  useState(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('profiles').select('notify_overdue_tasks, notify_risk_alerts, notify_opportunities, notify_daily_brief').eq('user_id', user.id).single();
+      if (data) {
+        setPrefs({
+          overdueTasks: (data as any).notify_overdue_tasks ?? true,
+          riskAlerts: (data as any).notify_risk_alerts ?? true,
+          opportunities: (data as any).notify_opportunities ?? true,
+          dailyBrief: (data as any).notify_daily_brief ?? true,
+        });
+      }
+      setLoaded(true);
+    })();
+  });
+
+  const updatePref = useCallback(async (key: string, dbKey: string, value: boolean) => {
+    setPrefs(p => ({ ...p, [key]: value }));
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from('profiles').update({ [dbKey]: value } as any).eq('user_id', user.id);
+  }, []);
+
+  const NOTIF_OPTIONS = [
+    { key: 'overdueTasks', dbKey: 'notify_overdue_tasks', label: 'Overdue task reminders', desc: 'Get notified when tasks pass their due date' },
+    { key: 'riskAlerts', dbKey: 'notify_risk_alerts', label: 'Risk alerts', desc: 'Alerts when deals enter high-risk status' },
+    { key: 'opportunities', dbKey: 'notify_opportunities', label: 'Opportunity signals', desc: 'Notifications for hot lead activity' },
+    { key: 'dailyBrief', dbKey: 'notify_daily_brief', label: 'Daily brief reminder', desc: 'Morning reminder to check your Command Center' },
+  ] as const;
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-4 mb-4">
+      <h2 className="text-sm font-semibold mb-1 flex items-center gap-2"><Bell className="h-4 w-4" /> Notifications</h2>
+      <p className="text-xs text-muted-foreground mb-3">Choose which push notifications you receive.</p>
+      <div className="space-y-3">
+        {NOTIF_OPTIONS.map(opt => (
+          <div key={opt.key} className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">{opt.label}</p>
+              <p className="text-xs text-muted-foreground">{opt.desc}</p>
+            </div>
+            <Switch
+              checked={prefs[opt.key as keyof typeof prefs]}
+              onCheckedChange={v => updatePref(opt.key, opt.dbKey, v)}
+            />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 const TABS = ['Preferences', 'Admin'] as const;
 
@@ -121,16 +293,11 @@ export default function Settings() {
       </section>
 
       {/* Profile */}
-      <section className="rounded-lg border border-border bg-card p-4 mb-4">
-        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><User className="h-4 w-4" /> Profile</h2>
-        <div className="space-y-3">
-          <div><Label className="text-xs text-muted-foreground">Name</Label><p className="text-sm font-medium">{user?.name}</p></div>
-          <div><Label className="text-xs text-muted-foreground">Email</Label><p className="text-sm font-medium">{user?.email}</p></div>
-          <div><Label className="text-xs text-muted-foreground">Role</Label><p className="text-sm font-medium capitalize">{user?.role}</p></div>
-        </div>
-      </section>
+      <ProfileSection />
 
-      {/* Strategic Targets */}
+      {/* Notification Preferences */}
+      <NotificationPreferencesSection />
+
       <IncomeTargetSettings
         settings={strategicSettings}
         onUpdate={updateStrategicSettings}
