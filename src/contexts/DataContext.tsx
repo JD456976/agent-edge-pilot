@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { supabase } from '@/integrations/supabase/client';
 import type { Lead, Deal, Task, Alert, DealParticipant } from '@/types';
 import { generateDemoData } from '@/data/demo';
+import { generateSeedPack, type SeedPackId } from '@/data/seedPacks';
 import { resolvePersonalCommission } from '@/lib/commissionResolver';
 
 interface DataContextType {
@@ -11,8 +12,11 @@ interface DataContextType {
   alerts: Alert[];
   dealParticipants: DealParticipant[];
   hasData: boolean;
+  hasSeededData: boolean;
   loading: boolean;
   seedDemoData: () => Promise<void>;
+  seedPacks: (packIds: SeedPackId[]) => Promise<void>;
+  clearSeededData: () => Promise<void>;
   wipeData: () => Promise<void>;
   completeTask: (id: string) => Promise<void>;
   uncompleteTask: (id: string) => Promise<void>;
@@ -194,10 +198,58 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     await supabase.from('tasks').insert(demo.tasks);
     await supabase.from('alerts').insert(demo.alerts);
 
-    // Log admin action
     await supabase.from('admin_audit_events' as any).insert({
       admin_user_id: user.id,
       action: 'seed_demo_data',
+      metadata: {},
+    });
+
+    await loadData();
+  };
+
+  const seedPacks = async (packIds: SeedPackId[]) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { batchId, data: packData } = generateSeedPack(packIds, user.id);
+
+    if (packData.leads.length > 0) await supabase.from('leads').insert(packData.leads);
+    if (packData.deals.length > 0) await supabase.from('deals').insert(packData.deals);
+    if (packData.dealParticipants.length > 0) await supabase.from('deal_participants').insert(packData.dealParticipants);
+    if (packData.tasks.length > 0) await supabase.from('tasks').insert(packData.tasks);
+    if (packData.alerts.length > 0) await supabase.from('alerts').insert(packData.alerts);
+    if (packData.activityEvents.length > 0) await supabase.from('activity_events').insert(packData.activityEvents);
+
+    await supabase.from('admin_audit_events' as any).insert({
+      admin_user_id: user.id,
+      action: 'seed_packs',
+      metadata: { packs: packIds, batchId },
+    });
+
+    await loadData();
+  };
+
+  const clearSeededData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Delete seeded deal_participants first (FK)
+    const { data: seededDeals } = await (supabase.from('deals').select('id') as any).eq('seeded', true);
+    const seededDealIds = (seededDeals || []).map(d => d.id);
+    if (seededDealIds.length > 0) {
+      await supabase.from('deal_participants').delete().in('deal_id', seededDealIds);
+    }
+
+    // Delete seeded alerts referencing seeded leads/deals
+    await (supabase.from('alerts').delete() as any).eq('seeded', true);
+    await (supabase.from('tasks').delete() as any).eq('seeded', true);
+    await (supabase.from('deals').delete() as any).eq('seeded', true);
+    await (supabase.from('leads').delete() as any).eq('seeded', true);
+    await supabase.from('activity_events').delete().eq('user_id', user.id);
+
+    await supabase.from('admin_audit_events' as any).insert({
+      admin_user_id: user.id,
+      action: 'clear_seeded_data',
       metadata: {},
     });
 
@@ -222,7 +274,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     await supabase.from('deals').delete().eq('assigned_to_user_id', user.id);
     await supabase.from('leads').delete().eq('assigned_to_user_id', user.id);
 
-    // Log admin action
     await supabase.from('admin_audit_events' as any).insert({
       admin_user_id: user.id,
       action: 'wipe_data',
@@ -274,11 +325,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const hasData = leads.length > 0 || deals.length > 0 || tasks.length > 0;
+  const hasSeededData = deals.some((d: any) => d.seeded) || leads.some((l: any) => l.seeded) || tasks.some((t: any) => t.seeded);
 
   return (
     <DataContext.Provider value={{
-      leads, deals, tasks, alerts, dealParticipants, hasData, loading,
-      seedDemoData, wipeData, completeTask, uncompleteTask, addTask,
+      leads, deals, tasks, alerts, dealParticipants, hasData, hasSeededData, loading,
+      seedDemoData, seedPacks, clearSeededData, wipeData, completeTask, uncompleteTask, addTask,
       refreshData: loadData, updateDealParticipant, addDealParticipant, deleteDealParticipant,
     }}>
       {children}
