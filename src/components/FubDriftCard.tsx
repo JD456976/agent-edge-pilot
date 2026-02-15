@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { RefreshCw, CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,8 @@ import { FubDriftReviewModal } from '@/components/FubDriftReviewModal';
 import { callEdgeFunction, type EdgeFunctionError } from '@/lib/edgeClient';
 import { EdgeErrorDisplay } from '@/components/EdgeErrorDisplay';
 import { normalizeDriftSummary, type NormalizedDriftSummary } from '@/lib/normalizeDriftSummary';
+import { checkDriftSuppression, simpleHash, type DriftSuppression } from '@/lib/noiseGovernor';
+import { NoiseSuppressionHint } from '@/components/NoiseSuppressionHint';
 
 interface FubDriftCardProps {
   hasIntegration: boolean;
@@ -68,6 +70,13 @@ export function FubDriftCard({ hasIntegration, onScopedStageComplete }: FubDrift
     }
   }, []);
 
+  // Noise governor: check drift suppression
+  const suppression: DriftSuppression = useMemo(() => {
+    if (!summary) return { suppressed: false, reason: null, lastShownAt: null };
+    const hash = simpleHash(JSON.stringify(summary.counts) + (summary.drift_reason ?? ''));
+    return checkDriftSuppression(summary.severity, hash);
+  }, [summary]);
+
   if (!hasIntegration) return null;
 
   const severityConfig = {
@@ -114,7 +123,15 @@ export function FubDriftCard({ hasIntegration, onScopedStageComplete }: FubDrift
           </Button>
         </div>
 
-        {summary?.drift_reason && summary.severity !== 'quiet' && (
+        {/* Suppressed state */}
+        {summary && suppression.suppressed && (
+          <div className="mb-2 space-y-1">
+            <p className="text-[11px] text-muted-foreground italic">Checked recently — no new actionable changes</p>
+            <NoiseSuppressionHint reason={suppression.reason!} lastShownAt={suppression.lastShownAt} />
+          </div>
+        )}
+
+        {summary?.drift_reason && summary.severity !== 'quiet' && !suppression.suppressed && (
           <p className="text-[11px] text-muted-foreground mb-2">{summary.drift_reason}</p>
         )}
 
@@ -140,7 +157,7 @@ export function FubDriftCard({ hasIntegration, onScopedStageComplete }: FubDrift
           </p>
         )}
 
-        {summary && (
+        {summary && !suppression.suppressed && (
           <div className="space-y-2">
             {summary.severity === 'quiet' && counts.total === 0 ? (
               <div className="flex items-center gap-2 py-1">
