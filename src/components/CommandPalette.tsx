@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Phone, Mail, MessageSquare, ListTodo, User, Briefcase, Zap, StickyNote } from 'lucide-react';
+import { Search, Phone, Mail, MessageSquare, ListTodo, User, Briefcase, Zap, StickyNote, Clock } from 'lucide-react';
 import {
   CommandDialog,
   CommandEmpty,
@@ -19,8 +19,26 @@ interface Props {
   onLogTouch: () => void;
 }
 
+const RECENT_STORAGE_KEY = 'dp-cmd-recent';
+const MAX_RECENT = 5;
+
+function getRecentSearches(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_STORAGE_KEY) || '[]');
+  } catch { return []; }
+}
+
+function addRecentSearch(term: string) {
+  if (!term.trim()) return;
+  const recent = getRecentSearches().filter(s => s !== term);
+  recent.unshift(term);
+  localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
+}
+
 export function CommandPalette({ onOpenEntity, onCreateTask, onLogTouch }: Props) {
   const [open, setOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
+  const [recentSearches, setRecentSearches] = useState<string[]>(getRecentSearches);
   const { leads, deals, tasks } = useData();
   const { user } = useAuth();
 
@@ -43,7 +61,10 @@ export function CommandPalette({ onOpenEntity, onCreateTask, onLogTouch }: Props
   }, [tasks]);
 
   const handleSelect = useCallback((action: string) => {
+    if (searchValue.trim()) addRecentSearch(searchValue.trim());
     setOpen(false);
+    setSearchValue('');
+    setRecentSearches(getRecentSearches());
     if (action === 'create-task') {
       onCreateTask();
     } else if (action === 'log-touch') {
@@ -56,10 +77,21 @@ export function CommandPalette({ onOpenEntity, onCreateTask, onLogTouch }: Props
   }, [onOpenEntity, onCreateTask, onLogTouch]);
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Search deals, leads, or type a command..." />
+    <CommandDialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setSearchValue(''); }}>
+      <CommandInput placeholder="Search deals, leads, or type a command..." value={searchValue} onValueChange={setSearchValue} />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
+
+        {recentSearches.length > 0 && !searchValue && (
+          <CommandGroup heading="Recent Searches">
+            {recentSearches.map((term, i) => (
+              <CommandItem key={`recent-${i}`} onSelect={() => setSearchValue(term)}>
+                <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                <span>{term}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
 
         <CommandGroup heading="Quick Actions">
           <CommandItem onSelect={() => handleSelect('create-task')}>

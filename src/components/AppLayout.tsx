@@ -6,6 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useWorkspace, type WorkspaceType } from '@/contexts/WorkspaceContext';
 import { useEntityNavigation } from '@/contexts/EntityNavigationContext';
 import { useData } from '@/contexts/DataContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -13,6 +14,10 @@ import { CommandPalette } from '@/components/CommandPalette';
 import { SkinSelector } from '@/components/SkinSelector';
 import { QuickAddModal } from '@/components/QuickAddModal';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog';
+import { GuidedTour } from '@/components/GuidedTour';
+import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
+import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { usePushNotifications, checkOverdueTasks } from '@/hooks/usePushNotifications';
 
 type NavItem = { label: string; icon: React.ElementType } & (
@@ -37,6 +42,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const isMobile = useIsMobile();
+  useSwipeNavigation(isMobile);
   const { permission, requestPermission, sendNotification } = usePushNotifications();
   const lastCheckedRef = useRef<Set<string>>(new Set());
 
@@ -85,7 +92,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background">
       <OfflineBanner />
       {/* Desktop sidebar */}
-      <aside className="hidden md:fixed md:inset-y-0 md:left-0 md:flex md:w-56 md:flex-col border-r border-border bg-sidebar z-30">
+      <aside className="hidden md:fixed md:inset-y-0 md:left-0 md:flex md:w-56 md:flex-col border-r border-border bg-sidebar z-30" data-tour="sidebar-nav">
         <div className="flex items-center gap-2.5 px-4 h-14 border-b border-border">
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shadow-sm shadow-primary/20">
             <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
@@ -116,6 +123,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
+        <SyncStatusIndicator />
         <div className="p-3 border-t border-border space-y-1">
           <SkinSelector />
           <Tooltip>
@@ -203,6 +211,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {showQuickAdd && (
         <QuickAddModal defaultType="task" onClose={() => setShowQuickAdd(false)} />
       )}
+
+      {/* Keyboard Shortcuts Dialog (? key) */}
+      <KeyboardShortcutsDialog />
+
+      {/* First-session guided tour */}
+      <GuidedTour />
     </div>
   );
 }

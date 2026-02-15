@@ -926,7 +926,7 @@ export default function CommandCenter() {
           </div>
           <h3 className="text-lg font-semibold mb-1">No data yet</h3>
           <p className="text-sm text-muted-foreground max-w-xs mb-4">
-            Load demo data to explore, or add your first deal manually.
+            Connect Follow Up Boss in the Sync workspace to import your deals and leads, or load demo data to explore.
           </p>
           <div className="flex gap-2">
             <Button size="sm" onClick={seedDemoData}>Load Demo Data</Button>
@@ -955,7 +955,9 @@ export default function CommandCenter() {
             onApplyPreset={applyPreset}
             onReset={resetToDefault}
           />
-          <FocusModeSelector mode={focusMode} onModeChange={updateFocusMode} />
+          <div data-tour="focus-mode">
+            <FocusModeSelector mode={focusMode} onModeChange={updateFocusMode} />
+          </div>
           <Button size="sm" variant="outline" onClick={() => setShowQuickAdd(true)}>
             <Plus className="h-3.5 w-3.5 mr-1" /> Quick Add
           </Button>
@@ -1137,6 +1139,7 @@ export default function CommandCenter() {
       </PanelErrorBoundary>
 
       {/* ── Sortable Panels ────────────────────────────────────── */}
+      <div data-tour="panel-area">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -1163,6 +1166,7 @@ export default function CommandCenter() {
           </div>
         </SortableContext>
       </DndContext>
+      </div>
 
       {/* Cohort Playbooks */}
       {cohortPlaybooks.length > 0 && (
