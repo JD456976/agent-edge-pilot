@@ -102,7 +102,9 @@ export function LogTouchModal({ open, onClose, entityType, entityId, entityTitle
             entity_id: entityId,
             action: 'create',
             fields: { fub_person_id: parseInt(fubId), body: note || `${touchType} logged via Deal Pilot`, subject: `Deal Pilot: ${touchType}` },
-          }).catch(() => {}); // silent
+          }).catch((err) => {
+            if (import.meta.env.DEV) console.warn('FUB push failed (non-blocking):', err);
+          });
         }
       }
 
@@ -179,9 +181,11 @@ export function LogTouchModal({ open, onClose, entityType, entityId, entityTitle
             <Textarea
               placeholder="Quick note (optional)"
               value={note}
-              onChange={e => setNote(e.target.value)}
+              onChange={e => setNote(e.target.value.slice(0, 500))}
+              maxLength={500}
               className="min-h-[60px] text-sm resize-none"
             />
+            <span className="text-[10px] text-muted-foreground text-right block">{note.length}/500</span>
           </div>
 
           {/* Follow-up toggle */}

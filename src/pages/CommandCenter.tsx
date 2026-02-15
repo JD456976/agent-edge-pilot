@@ -166,7 +166,7 @@ const PANEL_LABELS: Record<PanelId, string> = {
 
 export default function CommandCenter() {
   const { user } = useAuth();
-  const { leads, deals, tasks, alerts, dealParticipants, hasData, seedDemoData, completeTask, uncompleteTask, addTask, refreshData } = useData();
+  const { leads, deals, tasks, alerts, dealParticipants, hasData, loading: dataLoading, seedDemoData, completeTask, uncompleteTask, addTask, refreshData } = useData();
   const [moneyDrawerResult, setMoneyDrawerResult] = useState<MoneyModelResult | null>(null);
   const [moneyDrawerDeal, setMoneyDrawerDeal] = useState<Deal | null>(null);
   const navigate = useNavigate();
@@ -297,9 +297,11 @@ export default function CommandCenter() {
   const showImportBadge = useImportHighlight();
 
   useEffect(() => {
+    // Wait for DataContext to finish loading, or fallback after 600ms
+    if (!dataLoading) { setLoading(false); return; }
     const t = setTimeout(() => setLoading(false), 600);
     return () => clearTimeout(t);
-  }, []);
+  }, [dataLoading]);
 
   // Check FUB integration status
   useEffect(() => {

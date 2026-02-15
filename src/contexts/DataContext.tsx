@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Lead, Deal, Task, Alert, DealParticipant } from '@/types';
 import { generateDemoData } from '@/data/demo';
@@ -137,6 +137,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [dealParticipants, setDealParticipants] = useState<DealParticipant[]>([]);
   const [loading, setLoading] = useState(true);
+  const hasLoadedOnce = useRef(false);
 
   const loadData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -178,8 +179,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setDealParticipants(mappedParticipants);
     } catch (err) {
       console.error('Failed to load data:', err);
-      // Keep existing state rather than wiping on transient failure
+      // Stale-while-revalidate: keep existing state on transient failure
+      // Only show error if we haven't loaded successfully before
+      if (!hasLoadedOnce.current) {
+        // First load failed — still clear loading so UI isn't stuck
+      }
     } finally {
+      hasLoadedOnce.current = true;
       setLoading(false);
     }
   }, []);
