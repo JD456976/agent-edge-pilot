@@ -14,10 +14,10 @@ import { useWorkspace } from "@/contexts/WorkspaceContext";
 import Login from "@/pages/Login";
 import CommandCenter from "@/pages/CommandCenter";
 import { OnboardingModal } from "@/components/OnboardingModal";
-import Pipeline from "@/pages/Pipeline";
-import Tasks from "@/pages/Tasks";
+import Work from "@/pages/Work";
+import Sync from "@/pages/Sync";
+import Insights from "@/pages/Insights";
 import Settings from "@/pages/Settings";
-import Admin from "@/pages/Admin";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,10 +80,10 @@ function WorkspaceOverlays() {
   const { activeWorkspace, closeWorkspace } = useWorkspace();
 
   const WORKSPACE_CONFIG: Record<string, { title: string; subtitle: string; Component: React.ComponentType }> = {
-    pipeline: { title: 'Pipeline', subtitle: 'Your deals by stage', Component: Pipeline },
-    tasks: { title: 'Tasks', subtitle: 'Your action items', Component: Tasks },
+    work: { title: 'Work', subtitle: 'Pipeline and tasks', Component: Work },
+    sync: { title: 'Sync', subtitle: 'CRM integrations and imports', Component: Sync },
+    insights: { title: 'Insights', subtitle: 'Forecast, stability, and review', Component: Insights },
     settings: { title: 'Settings', subtitle: 'Preferences and account', Component: Settings },
-    admin: { title: 'Admin Console', subtitle: 'Manage users, teams, data', Component: Admin },
   };
 
   return (
@@ -110,10 +110,10 @@ function AppRoutes() {
       <Route path="/login" element={loading ? null : (user ? <Navigate to="/" replace /> : <Login />)} />
       <Route path="/" element={<ProtectedRoute><CommandCenter /></ProtectedRoute>} />
       {/* Legacy routes redirect to Command Center with workspace param */}
-      <Route path="/pipeline" element={<Navigate to="/?workspace=pipeline" replace />} />
-      <Route path="/tasks" element={<Navigate to="/?workspace=tasks" replace />} />
+      <Route path="/pipeline" element={<Navigate to="/?workspace=work" replace />} />
+      <Route path="/tasks" element={<Navigate to="/?workspace=work" replace />} />
       <Route path="/settings" element={<Navigate to="/?workspace=settings" replace />} />
-      <Route path="/admin" element={<Navigate to="/?workspace=admin" replace />} />
+      <Route path="/admin" element={<Navigate to="/?workspace=settings" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

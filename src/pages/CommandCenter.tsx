@@ -600,7 +600,7 @@ export default function CommandCenter() {
               handleMoneySelect(topMoneyAtRisk, deals.find(d => d.id === topMoneyAtRisk.dealId)!);
             }
           }}
-          onReviewAll={() => navigate('/tasks')}
+          onReviewAll={() => navigate('/?workspace=work')}
         />
       )}
       {currentMode === 'midday' && (
@@ -714,7 +714,7 @@ export default function CommandCenter() {
             participants={dealParticipants}
             userId={user?.id || ''}
             onSelect={handleMoneySelect}
-            onAddCommissionToDeals={() => navigate('/pipeline')}
+            onAddCommissionToDeals={() => navigate('/?workspace=work')}
             refreshData={refreshData}
             dealChanges={dealChanges}
             riskWeights={riskWeights}
@@ -1110,7 +1110,7 @@ export default function CommandCenter() {
           <PanelErrorBoundary>
             <FubDriftCard
               hasIntegration={hasFubIntegration}
-              onScopedStageComplete={(runId) => navigate(`/settings?reviewRun=${runId}`)}
+              onScopedStageComplete={(runId) => navigate(`/?workspace=sync`)}
             />
           </PanelErrorBoundary>
           <PanelErrorBoundary>
@@ -1189,7 +1189,7 @@ export default function CommandCenter() {
           setQuickAddPrefill({ title: prefillTitle, leadId: relatedLeadId, dealId: relatedDealId });
           setShowQuickAdd(true);
         }}
-        onNavigateToTasks={() => navigate('/tasks')}
+        onNavigateToTasks={() => navigate('/?workspace=work')}
       />
     </div>
   );
