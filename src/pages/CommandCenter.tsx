@@ -36,6 +36,12 @@ import { DealFailurePanel, hasCriticalFailureRisk } from '@/components/DealFailu
 import { GhostingRiskPanel, hasHighGhostingRisk } from '@/components/GhostingRiskPanel';
 import { ReferralConversionPanel } from '@/components/ReferralConversionPanel';
 import { ListingPerformancePanel } from '@/components/ListingPerformancePanel';
+import { DailyFlightPlan } from '@/components/DailyFlightPlan';
+import { TimeAllocationEngine } from '@/components/TimeAllocationEngine';
+import { OpportunityRadarPanel } from '@/components/OpportunityRadarPanel';
+import { IncomeProtectionShield } from '@/components/IncomeProtectionShield';
+import { AdaptiveStrategyMode } from '@/components/AdaptiveStrategyMode';
+import { WeeklyCommandReview } from '@/components/WeeklyCommandReview';
 import { computeOpportunityBatch, type OpportunityHeatResult, type UserCommissionDefaults } from '@/lib/leadMoneyModel';
 import { computeForecastBatch } from '@/lib/forecastModel';
 import { computeStabilityScore, type StabilityInputs } from '@/lib/stabilityModel';
@@ -533,6 +539,45 @@ export default function CommandCenter() {
         />
       )}
 
+      {/* Daily Flight Plan */}
+      <PanelErrorBoundary>
+        <DailyFlightPlan
+          deals={deals}
+          leads={leads}
+          tasks={tasks}
+          moneyResults={moneyResults}
+          opportunityResults={opportunityResults}
+          stabilityResult={stabilityResult}
+          totalMoneyAtRisk={totalMoneyAtRisk}
+          sessionMode={currentMode === 'midday' ? 'midday' : currentMode}
+          onStartAction={(step) => {
+            if (step.entityType === 'deal' && step.entityId) {
+              const deal = deals.find(d => d.id === step.entityId);
+              const result = moneyResults.find(r => r.dealId === step.entityId);
+              if (deal && result) handleMoneySelect(result, deal);
+            } else if (step.entityType === 'lead' && step.entityId) {
+              const lead = leads.find(l => l.id === step.entityId);
+              const opp = opportunityResults.find(r => r.leadId === step.entityId);
+              if (lead && opp) handleOpportunityAction(lead, opp);
+            } else if (step.entityType === 'task' && step.entityId) {
+              completeTask(step.entityId);
+              showPostActionToast('complete');
+            }
+          }}
+        />
+      </PanelErrorBoundary>
+
+      {/* Adaptive Strategy Mode */}
+      <PanelErrorBoundary>
+        <AdaptiveStrategyMode
+          deals={deals}
+          moneyResults={moneyResults}
+          opportunityResults={opportunityResults}
+          stabilityScore={stabilityResult.score}
+          totalMoneyAtRisk={totalMoneyAtRisk}
+        />
+      </PanelErrorBoundary>
+
       {/* Autopilot v2 */}
       <AutopilotPanel
         panels={panels}
@@ -710,6 +755,66 @@ export default function CommandCenter() {
           />
         </PanelErrorBoundary>
       </div>
+
+      {/* Time Allocation + Opportunity Radar */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <PanelErrorBoundary>
+          <TimeAllocationEngine
+            deals={deals}
+            tasks={tasks}
+            moneyResults={moneyResults}
+            opportunityResults={opportunityResults}
+            stabilityScore={stabilityResult.score}
+            totalMoneyAtRisk={totalMoneyAtRisk}
+          />
+        </PanelErrorBoundary>
+        <PanelErrorBoundary>
+          <OpportunityRadarPanel
+            leads={leads}
+            deals={deals}
+            tasks={tasks}
+            opportunityResults={opportunityResults}
+            onAction={(item) => {
+              if (item.entityType === 'lead') {
+                const lead = leads.find(l => l.id === item.entityId);
+                const opp = opportunityResults.find(r => r.leadId === item.entityId);
+                if (lead && opp) handleOpportunityAction(lead, opp);
+              } else if (item.entityType === 'deal') {
+                const deal = deals.find(d => d.id === item.entityId);
+                const result = moneyResults.find(r => r.dealId === item.entityId);
+                if (deal && result) handleMoneySelect(result, deal);
+              }
+            }}
+          />
+        </PanelErrorBoundary>
+      </div>
+
+      {/* Income Protection Shield */}
+      <PanelErrorBoundary>
+        <IncomeProtectionShield
+          deals={deals}
+          tasks={tasks}
+          moneyResults={moneyResults}
+          totalMoneyAtRisk={totalMoneyAtRisk}
+          onAction={(threat) => {
+            const deal = deals.find(d => d.id === threat.dealId);
+            const result = moneyResults.find(r => r.dealId === threat.dealId);
+            if (deal && result) handleMoneySelect(result, deal);
+          }}
+        />
+      </PanelErrorBoundary>
+
+      {/* Weekly Command Review */}
+      <PanelErrorBoundary>
+        <WeeklyCommandReview
+          deals={deals}
+          leads={leads}
+          tasks={tasks}
+          moneyResults={moneyResults}
+          stabilityScore={stabilityResult.score}
+          totalMoneyAtRisk={totalMoneyAtRisk}
+        />
+      </PanelErrorBoundary>
 
       {/* 4-Panel Grid + Pipeline Watch */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
