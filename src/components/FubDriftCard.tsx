@@ -6,15 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { FubDriftReviewModal } from '@/components/FubDriftReviewModal';
 import { callEdgeFunction, type EdgeFunctionError } from '@/lib/edgeClient';
 import { EdgeErrorDisplay } from '@/components/EdgeErrorDisplay';
-
-interface DeltaSummary {
-  counts: { new: number; updated: number; conflict: number; total: number };
-  severity: 'quiet' | 'moderate' | 'attention_needed';
-  drift_reason?: string;
-  top_items: any[];
-  all_items?: any[];
-  checked_at: string;
-}
+import { normalizeDriftSummary, type NormalizedDriftSummary } from '@/lib/normalizeDriftSummary';
 
 interface FubDriftCardProps {
   hasIntegration: boolean;
@@ -22,14 +14,14 @@ interface FubDriftCardProps {
 }
 
 export function FubDriftCard({ hasIntegration, onScopedStageComplete }: FubDriftCardProps) {
-  const [summary, setSummary] = useState<DeltaSummary | null>(null);
-  const [allItems, setAllItems] = useState<any[]>([]);
+  const [summary, setSummary] = useState<NormalizedDriftSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showReview, setShowReview] = useState(false);
   const [lastCheck, setLastCheck] = useState<string | null>(null);
   const [lastSuccessfulCheck, setLastSuccessfulCheck] = useState<string | null>(null);
   const [usingCached, setUsingCached] = useState(false);
+  const [edgeError, setEdgeError] = useState<EdgeFunctionError | null>(null);
 
   useEffect(() => {
     if (!hasIntegration) return;
@@ -41,15 +33,14 @@ export function FubDriftCard({ hasIntegration, onScopedStageComplete }: FubDrift
         .eq('user_id', user.id)
         .maybeSingle() as any);
       if (data?.last_delta_summary) {
-        const s = data.last_delta_summary as any;
-        setSummary({ ...s, drift_reason: s.drift_reason || data.drift_reason });
+        const raw = data.last_delta_summary as any;
+        const normalized = normalizeDriftSummary({ ...raw, drift_reason: raw.drift_reason || data.drift_reason });
+        setSummary(normalized);
         setLastCheck(data.last_delta_check_at as string);
         setLastSuccessfulCheck(data.last_successful_check_at as string);
       }
     })();
   }, [hasIntegration]);
-
-  const [edgeError, setEdgeError] = useState<EdgeFunctionError | null>(null);
 
   const runDeltaCheck = useCallback(async () => {
     setLoading(true);
@@ -57,14 +48,13 @@ export function FubDriftCard({ hasIntegration, onScopedStageComplete }: FubDrift
     setEdgeError(null);
     setUsingCached(false);
     try {
-      const data = await callEdgeFunction<DeltaSummary & { all_items?: any[] }>('fub-delta');
-      setSummary({ counts: data.counts, severity: data.severity, drift_reason: data.drift_reason, top_items: data.top_items, checked_at: data.checked_at });
-      setAllItems(data.all_items || []);
-      setLastCheck(data.checked_at);
-      setLastSuccessfulCheck(data.checked_at);
+      const data = await callEdgeFunction<any>('fub-delta');
+      const normalized = normalizeDriftSummary(data);
+      setSummary(normalized);
+      setLastCheck(normalized.checked_at);
+      setLastSuccessfulCheck(normalized.checked_at);
     } catch (e: any) {
       if (e?.kind === 'rate_limited') {
-        // Try to show cached data
         setUsingCached(true);
         setError('Could not refresh — rate limited. Showing last known state.');
       } else if (e?.kind) {
@@ -87,6 +77,7 @@ export function FubDriftCard({ hasIntegration, onScopedStageComplete }: FubDrift
   };
 
   const sev = summary ? severityConfig[summary.severity] : null;
+  const counts = summary?.counts ?? { new: 0, updated: 0, conflicts: 0, total: 0 };
 
   const formatRelative = (iso: string) => {
     const d = new Date(iso);
@@ -117,19 +108,12 @@ export function FubDriftCard({ hasIntegration, onScopedStageComplete }: FubDrift
               </div>
             )}
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={runDeltaCheck}
-            disabled={loading}
-            className="h-7 px-2 text-xs"
-          >
+          <Button size="sm" variant="ghost" onClick={runDeltaCheck} disabled={loading} className="h-7 px-2 text-xs">
             {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
             <span className="ml-1">Check</span>
           </Button>
         </div>
 
-        {/* Severity reason */}
         {summary?.drift_reason && summary.severity !== 'quiet' && (
           <p className="text-[11px] text-muted-foreground mb-2">{summary.drift_reason}</p>
         )}
@@ -151,12 +135,14 @@ export function FubDriftCard({ hasIntegration, onScopedStageComplete }: FubDrift
         )}
 
         {!summary && !loading && !error && (
-          <p className="text-xs text-muted-foreground">No drift check run yet. Click Check to scan for changes.</p>
+          <p className="text-xs text-muted-foreground">
+            {lastSuccessfulCheck ? 'No changes detected' : 'No drift check run yet. Click Check to scan for changes.'}
+          </p>
         )}
 
         {summary && (
           <div className="space-y-2">
-            {summary.severity === 'quiet' && summary.counts.total === 0 ? (
+            {summary.severity === 'quiet' && counts.total === 0 ? (
               <div className="flex items-center gap-2 py-1">
                 <CheckCircle className="h-3.5 w-3.5 text-opportunity" />
                 <span className="text-xs text-muted-foreground">No meaningful changes since last check</span>
@@ -164,18 +150,14 @@ export function FubDriftCard({ hasIntegration, onScopedStageComplete }: FubDrift
             ) : (
               <>
                 <div className="flex flex-wrap gap-2 text-xs">
-                  {summary.counts.new > 0 && (
-                    <span className="text-muted-foreground">{summary.counts.new} new</span>
-                  )}
-                  {summary.counts.updated > 0 && (
-                    <span className="text-muted-foreground">{summary.counts.updated} updated</span>
-                  )}
-                  {summary.counts.conflict > 0 && (
-                    <span className="text-urgent">{summary.counts.conflict} potential conflict{summary.counts.conflict !== 1 ? 's' : ''}</span>
+                  {counts.new > 0 && <span className="text-muted-foreground">{counts.new} new</span>}
+                  {counts.updated > 0 && <span className="text-muted-foreground">{counts.updated} updated</span>}
+                  {counts.conflicts > 0 && (
+                    <span className="text-urgent">{counts.conflicts} potential conflict{counts.conflicts !== 1 ? 's' : ''}</span>
                   )}
                 </div>
 
-                {summary.top_items && summary.top_items.length > 0 && (
+                {summary.top_items.length > 0 && (
                   <div className="space-y-1">
                     {summary.top_items.slice(0, 2).map((item: any, i: number) => (
                       <div key={i} className="flex items-center gap-2 text-xs">
@@ -195,34 +177,33 @@ export function FubDriftCard({ hasIntegration, onScopedStageComplete }: FubDrift
                   size="sm"
                   variant="outline"
                   className="w-full text-xs h-7 mt-1"
-                  onClick={() => {
-                    if (allItems.length === 0 && summary.top_items) {
-                      setAllItems(summary.top_items);
-                    }
-                    setShowReview(true);
-                  }}
+                  onClick={() => setShowReview(true)}
                 >
                   Review changes <ArrowRight className="h-3 w-3 ml-1" />
                 </Button>
               </>
             )}
 
-            {/* Timestamp transparency */}
             <div className="space-y-0.5">
-              {lastCheck && (
-                <p className="text-[10px] text-muted-foreground">Last checked: {formatRelative(lastCheck)}</p>
-              )}
+              {lastCheck && <p className="text-[10px] text-muted-foreground">Last checked: {formatRelative(lastCheck)}</p>}
               {lastSuccessfulCheck && lastSuccessfulCheck !== lastCheck && (
                 <p className="text-[10px] text-muted-foreground">Last successful: {formatAbsolute(lastSuccessfulCheck)}</p>
               )}
             </div>
+
+            {/* Dev-only debug */}
+            {import.meta.env.DEV && summary && (
+              <p className="text-[9px] text-muted-foreground/50 font-mono">
+                Schema: {Object.keys(summary).join(', ')}
+              </p>
+            )}
           </div>
         )}
       </div>
 
       {showReview && (
         <FubDriftReviewModal
-          items={allItems}
+          items={summary?.all_items ?? summary?.top_items ?? []}
           summary={summary}
           lastCheck={lastCheck}
           lastSuccessfulCheck={lastSuccessfulCheck}
