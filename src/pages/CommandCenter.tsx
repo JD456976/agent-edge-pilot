@@ -1,5 +1,8 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, Plus, Phone } from 'lucide-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { buildCommandCenterPanels } from '@/lib/intelligenceEngine';
@@ -8,6 +11,7 @@ import { useSessionMemory } from '@/hooks/useSessionMemory';
 import { useImportHighlight } from '@/hooks/useImportHighlight';
 import { useSessionMode, useSessionStartRisk } from '@/hooks/useSessionMode';
 import { useEndOfDaySummary } from '@/hooks/useEndOfDaySummary';
+import { usePanelLayout, type PanelId, type PresetKey } from '@/hooks/usePanelLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/EmptyState';
@@ -48,6 +52,8 @@ import { LearningTransparencyPanel } from '@/components/LearningTransparencyPane
 import { NetworkBenchmarksPanel } from '@/components/NetworkBenchmarksPanel';
 import { CohortPlaybooksPanel } from '@/components/CohortPlaybooksPanel';
 import { MarketConditionsPanel } from '@/components/MarketConditionsPanel';
+import { SortablePanel } from '@/components/SortablePanel';
+import { PanelLayoutControls } from '@/components/PanelLayoutControls';
 import { useAgentLearning } from '@/hooks/useAgentLearning';
 import { useNetworkTelemetry } from '@/hooks/useNetworkTelemetry';
 import { useMarketConditions } from '@/hooks/useMarketConditions';
@@ -81,6 +87,17 @@ type DetailItem =
   | { kind: 'opportunity'; data: CommandCenterOpportunity }
   | { kind: 'speedAlert'; data: CommandCenterSpeedAlert };
 
+// Panels that render as pairs in a 2-col grid
+const PAIRED_PANELS: Set<PanelId> = new Set([
+  'money-at-risk', 'opportunity-heat',
+  'income-forecast', 'stability-score',
+  'income-volatility', 'pipeline-fragility',
+  'lead-decay', 'operational-load',
+  'deal-failure', 'ghosting-risk',
+  'referral-conversion', 'listing-performance',
+  'time-allocation', 'opportunity-radar',
+]);
+
 export default function CommandCenter() {
   const { user } = useAuth();
   const { leads, deals, tasks, alerts, dealParticipants, hasData, seedDemoData, completeTask, addTask, refreshData } = useData();
@@ -102,6 +119,27 @@ export default function CommandCenter() {
     try { return JSON.parse(localStorage.getItem(SNOOZE_STORAGE_KEY) || '{}'); } catch { return {}; }
   });
   const [stressReductionDismissed, setStressReductionDismissed] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+
+  // Panel layout
+  const { panelOrder, updateOrder, applyPreset, resetToDefault } = usePanelLayout(user?.id);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor),
+  );
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = panelOrder.indexOf(active.id as PanelId);
+      const newIndex = panelOrder.indexOf(over.id as PanelId);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        updateOrder(arrayMove(panelOrder, oldIndex, newIndex));
+      }
+    }
+  }, [panelOrder, updateOrder]);
 
   // Daily Operating Mode
   const { currentMode } = useSessionMode();
@@ -390,24 +428,6 @@ export default function CommandCenter() {
     toast({ description: `Follow-up created: ${title}`, duration: 3000 });
   }, [addTask, user?.id]);
 
-      {/* Action Composer / Execution Drawer */}
-      <ActionComposerDrawer
-        open={!!executionEntity}
-        onClose={() => setExecutionEntity(null)}
-        entity={executionEntity?.entity || null}
-        entityType={executionEntity?.entityType || 'deal'}
-        moneyResult={executionEntity?.moneyResult}
-        oppResult={executionEntity?.oppResult}
-        tasks={tasks}
-        onCreateFollowUp={handleExecutionFollowUp}
-        onLogTouch={(entityType, entityId, entityTitle) => {
-          setExecutionEntity(null);
-          setTouchTarget({ entityType, entityId, entityTitle });
-          setShowLogTouch(true);
-        }}
-      />
-
-
   const handleForecastCreateTask = useCallback(async (title: string, dealId: string) => {
     await addTask({
       title,
@@ -421,7 +441,6 @@ export default function CommandCenter() {
 
   const briefing = useMemo(() => getDailyBriefing(panels, tasks, deals, leads), [panels, tasks, deals, leads]);
   const missedYesterday = useMemo(() => getMissedYesterdayCount(tasks, deals, previousSnapshot), [tasks, deals, previousSnapshot]);
-  // momentum already declared above (before stabilityInputs)
   const pipelineWatch = useMemo(() => getPipelineWatch(leads, deals, previousSnapshot), [leads, deals, previousSnapshot]);
   const controlStatus = useMemo(() => getControlStatus(tasks, deals, previousSnapshot), [tasks, deals, previousSnapshot]);
   const progressItems = useMemo(() => getProgressSnapshot(tasks, deals, leads, previousSnapshot), [tasks, deals, leads, previousSnapshot]);
@@ -471,6 +490,280 @@ export default function CommandCenter() {
   }, [currentMode, moneyResults, opportunityResults, risksReducedToday, untouchedRiskDeals, overdueTasks]);
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  // ── Panel render map ──────────────────────────────────────────────
+  const renderPanel = useCallback((panelId: PanelId): React.ReactNode => {
+    switch (panelId) {
+      case 'autopilot':
+        return (
+          <AutopilotPanel
+            panels={panels}
+            onComplete={(taskId) => {
+              completeTask(taskId);
+              showPostActionToast('complete', {
+                isOverdue: tasks.find(t => t.id === taskId && !t.completedAt && new Date(t.dueAt) < new Date()) !== undefined,
+                isRiskDeal: deals.some(d => d.stage !== 'closed' && (d.riskLevel === 'red' || d.riskLevel === 'yellow') && tasks.find(t => t.id === taskId)?.relatedDealId === d.id),
+              });
+            }}
+            snoozedIds={snoozedIds}
+            onSnooze={handleSnooze}
+            topMoneyAtRisk={topMoneyAtRisk}
+            deals={deals}
+            onMoneyAction={handleMoneySelect}
+            topOpportunity={topOpportunity}
+            leads={leads}
+            onOpportunityAction={handleOpportunityAction}
+            stabilityResult={stabilityResult}
+            stabilityScore={stabilityResult.score}
+            overdueTasksCount={overdueTasks.length}
+            dueSoonCount={dueSoonTasks.length}
+            totalMoneyAtRisk={totalMoneyAtRisk}
+            onStabilityAction={() => {}}
+            onCreateTask={handleAutopilotCreateTask}
+            burnoutCritical={burnoutCritical}
+            predictiveSignals={predictiveSignals}
+            onOpenExecution={handleOpenExecution}
+          />
+        );
+      case 'execution-queue':
+        return (
+          <ExecutionQueuePanel
+            deals={deals}
+            leads={leads}
+            tasks={tasks}
+            moneyResults={moneyResults}
+            opportunityResults={opportunityResults}
+            onStartAction={handleOpenExecution}
+          />
+        );
+      case 'money-at-risk':
+        return (
+          <MoneyAtRiskPanel
+            deals={deals}
+            participants={dealParticipants}
+            userId={user?.id || ''}
+            onSelect={handleMoneySelect}
+            onAddCommissionToDeals={() => navigate('/?workspace=work')}
+            refreshData={refreshData}
+            dealChanges={dealChanges}
+            riskWeights={riskWeights}
+          />
+        );
+      case 'opportunity-heat':
+        return (
+          <OpportunityHeatPanel
+            leads={leads}
+            tasks={tasks}
+            userId={user?.id || ''}
+            onStartAction={handleOpportunityAction}
+            leadChanges={leadChanges}
+            oppWeights={oppWeights}
+          />
+        );
+      case 'income-forecast':
+        return (
+          <IncomeForecastPanelV2
+            deals={deals}
+            participants={dealParticipants}
+            userId={user?.id || ''}
+            moneyResults={moneyResults}
+            typicalDealValue={userDefaults?.typicalPriceMid ? Math.round((userDefaults.typicalPriceMid * (userDefaults.typicalCommissionRate ?? 3) / 100) * (userDefaults.typicalSplitPct ?? 100) / 100) : 8000}
+            onCreateTask={handleForecastCreateTask}
+            onOpenMoneyAtRisk={() => {
+              if (topMoneyAtRisk && deals.find(d => d.id === topMoneyAtRisk.dealId)) {
+                handleMoneySelect(topMoneyAtRisk, deals.find(d => d.id === topMoneyAtRisk.dealId)!);
+              }
+            }}
+          />
+        );
+      case 'stability-score':
+        return (
+          <StabilityScorePanelV2
+            inputs={stabilityInputs}
+            onCreateTask={(title) => handleAutopilotCreateTask(title)}
+          />
+        );
+      case 'income-volatility':
+        return (
+          <IncomeVolatilityPanel
+            deals={deals}
+            participants={dealParticipants}
+            userId={user?.id || ''}
+            forecast={forecast}
+            typicalMonthlyIncome={userDefaults?.typicalPriceMid ? Math.round((userDefaults.typicalPriceMid * (userDefaults.typicalCommissionRate ?? 3) / 100) * (userDefaults.typicalSplitPct ?? 100) / 100) : 8000}
+            onOpenOpportunities={() => {
+              if (topOpportunity && leads.find(l => l.id === topOpportunity.leadId)) {
+                handleOpportunityAction(leads.find(l => l.id === topOpportunity.leadId)!, topOpportunity);
+              }
+            }}
+          />
+        );
+      case 'pipeline-fragility':
+        return (
+          <PipelineFragilityPanel
+            deals={deals}
+            moneyResults={moneyResults}
+            forecast={forecast}
+            onOpenOpportunities={() => {
+              if (topOpportunity && leads.find(l => l.id === topOpportunity.leadId)) {
+                handleOpportunityAction(leads.find(l => l.id === topOpportunity.leadId)!, topOpportunity);
+              }
+            }}
+          />
+        );
+      case 'lead-decay':
+        return (
+          <LeadDecayPanel
+            leads={leads}
+            tasks={tasks}
+            opportunityResults={opportunityResults}
+            onLogTouch={(entityType, entityId, entityTitle) => {
+              setTouchTarget({ entityType, entityId, entityTitle });
+              setShowLogTouch(true);
+            }}
+            onCreateTask={(title, leadId) => handleAutopilotCreateTask(title, undefined, leadId)}
+          />
+        );
+      case 'operational-load':
+        return (
+          <OperationalLoadPanel
+            tasks={tasks}
+            deals={deals}
+            leads={leads}
+            stabilityResult={stabilityResult}
+            stabilityScore={stabilityResult.score}
+            totalMoneyAtRisk={totalMoneyAtRisk}
+          />
+        );
+      case 'deal-failure':
+        return (
+          <DealFailurePanel
+            deals={deals}
+            tasks={tasks}
+            moneyResults={moneyResults}
+            onCreateTask={(title, dealId) => handleAutopilotCreateTask(title, dealId)}
+          />
+        );
+      case 'ghosting-risk':
+        return (
+          <GhostingRiskPanel
+            leads={leads}
+            tasks={tasks}
+            deals={deals}
+            onLogTouch={(entityType, entityId, entityTitle) => {
+              setTouchTarget({ entityType, entityId, entityTitle });
+              setShowLogTouch(true);
+            }}
+            onCreateTask={(title, leadId) => handleAutopilotCreateTask(title, undefined, leadId)}
+          />
+        );
+      case 'referral-conversion':
+        return (
+          <ReferralConversionPanel
+            leads={leads}
+            tasks={tasks}
+            opportunityResults={opportunityResults}
+            userDefaults={userDefaults}
+          />
+        );
+      case 'listing-performance':
+        return (
+          <ListingPerformancePanel
+            deals={deals}
+            tasks={tasks}
+          />
+        );
+      case 'time-allocation':
+        return (
+          <TimeAllocationEngine
+            deals={deals}
+            tasks={tasks}
+            moneyResults={moneyResults}
+            opportunityResults={opportunityResults}
+            stabilityScore={stabilityResult.score}
+            totalMoneyAtRisk={totalMoneyAtRisk}
+          />
+        );
+      case 'opportunity-radar':
+        return (
+          <OpportunityRadarPanel
+            leads={leads}
+            deals={deals}
+            tasks={tasks}
+            opportunityResults={opportunityResults}
+            onAction={(item) => {
+              if (item.entityType === 'lead') {
+                const lead = leads.find(l => l.id === item.entityId);
+                const opp = opportunityResults.find(r => r.leadId === item.entityId);
+                if (lead && opp) handleOpportunityAction(lead, opp);
+              } else if (item.entityType === 'deal') {
+                const deal = deals.find(d => d.id === item.entityId);
+                const result = moneyResults.find(r => r.dealId === item.entityId);
+                if (deal && result) handleMoneySelect(result, deal);
+              }
+            }}
+          />
+        );
+      case 'income-protection':
+        return (
+          <IncomeProtectionShield
+            deals={deals}
+            tasks={tasks}
+            moneyResults={moneyResults}
+            totalMoneyAtRisk={totalMoneyAtRisk}
+            onAction={(threat) => {
+              const deal = deals.find(d => d.id === threat.dealId);
+              const result = moneyResults.find(r => r.dealId === threat.dealId);
+              if (deal && result) handleMoneySelect(result, deal);
+            }}
+          />
+        );
+      case 'market-conditions':
+        return (
+          <MarketConditionsPanel
+            conditions={marketConditions}
+            deals={deals}
+            leads={leads}
+            moneyResults={moneyResults}
+          />
+        );
+      case 'learning-transparency':
+        return (
+          <LearningTransparencyPanel
+            snapshot={learningSnapshot}
+            onReset={resetLearning}
+          />
+        );
+      case 'network-benchmarks':
+        return (
+          <NetworkBenchmarksPanel
+            agentMetrics={{
+              followUpCompletionRate: tasks.length > 0
+                ? tasks.filter(t => t.completedAt).length / tasks.length
+                : undefined,
+              dealCloseRate: deals.length > 0
+                ? deals.filter(d => d.stage === 'closed').length / deals.length
+                : undefined,
+            }}
+          />
+        );
+      case 'weekly-review':
+        return (
+          <WeeklyCommandReview
+            deals={deals}
+            leads={leads}
+            tasks={tasks}
+            moneyResults={moneyResults}
+            stabilityScore={stabilityResult.score}
+            totalMoneyAtRisk={totalMoneyAtRisk}
+          />
+        );
+      case 'end-of-day':
+        return null; // EOD is handled separately in mode cards
+      default:
+        return null;
+    }
+  }, [panels, snoozedIds, handleSnooze, topMoneyAtRisk, deals, leads, tasks, handleMoneySelect, topOpportunity, handleOpportunityAction, stabilityResult, stabilityInputs, overdueTasks, dueSoonTasks, totalMoneyAtRisk, handleAutopilotCreateTask, burnoutCritical, predictiveSignals, handleOpenExecution, moneyResults, opportunityResults, dealParticipants, user?.id, refreshData, dealChanges, leadChanges, riskWeights, oppWeights, forecast, userDefaults, marketConditions, learningSnapshot, resetLearning, completeTask, showPostActionToast, navigate, handleForecastCreateTask]);
 
   if (loading) {
     return (
@@ -525,9 +818,17 @@ export default function CommandCenter() {
           <h1 className="text-xl font-bold">Command Center</h1>
           <p className="text-sm text-muted-foreground">Today's Briefing · {today}</p>
         </div>
-        <Button size="sm" variant="outline" onClick={() => setShowQuickAdd(true)}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Quick Add
-        </Button>
+        <div className="flex items-center gap-2">
+          <PanelLayoutControls
+            editMode={editMode}
+            onToggleEdit={() => setEditMode(e => !e)}
+            onApplyPreset={applyPreset}
+            onReset={resetToDefault}
+          />
+          <Button size="sm" variant="outline" onClick={() => setShowQuickAdd(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Quick Add
+          </Button>
+        </div>
       </div>
 
       {/* Daily Intelligence Briefing */}
@@ -664,262 +965,29 @@ export default function CommandCenter() {
         />
       </PanelErrorBoundary>
 
-      {/* Autopilot v2 */}
-      <AutopilotPanel
-        panels={panels}
-        onComplete={(taskId) => {
-          completeTask(taskId);
-          showPostActionToast('complete', {
-            isOverdue: tasks.find(t => t.id === taskId && !t.completedAt && new Date(t.dueAt) < new Date()) !== undefined,
-            isRiskDeal: deals.some(d => d.stage !== 'closed' && (d.riskLevel === 'red' || d.riskLevel === 'yellow') && tasks.find(t => t.id === taskId)?.relatedDealId === d.id),
-          });
-        }}
-        snoozedIds={snoozedIds}
-        onSnooze={handleSnooze}
-        topMoneyAtRisk={topMoneyAtRisk}
-        deals={deals}
-        onMoneyAction={handleMoneySelect}
-        topOpportunity={topOpportunity}
-        leads={leads}
-        onOpportunityAction={handleOpportunityAction}
-        stabilityResult={stabilityResult}
-        stabilityScore={stabilityResult.score}
-        overdueTasksCount={overdueTasks.length}
-        dueSoonCount={dueSoonTasks.length}
-        totalMoneyAtRisk={totalMoneyAtRisk}
-        onStabilityAction={() => {}}
-        onCreateTask={handleAutopilotCreateTask}
-        burnoutCritical={burnoutCritical}
-        predictiveSignals={predictiveSignals}
-        onOpenExecution={handleOpenExecution}
-      />
-
-      {/* Execution Queue */}
-      <PanelErrorBoundary>
-        <ExecutionQueuePanel
-          deals={deals}
-          leads={leads}
-          tasks={tasks}
-          moneyResults={moneyResults}
-          opportunityResults={opportunityResults}
-          onStartAction={handleOpenExecution}
-        />
-      </PanelErrorBoundary>
-
-      {/* Money At Risk + Opportunities */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <PanelErrorBoundary>
-          <MoneyAtRiskPanel
-            deals={deals}
-            participants={dealParticipants}
-            userId={user?.id || ''}
-            onSelect={handleMoneySelect}
-            onAddCommissionToDeals={() => navigate('/?workspace=work')}
-            refreshData={refreshData}
-            dealChanges={dealChanges}
-            riskWeights={riskWeights}
-          />
-        </PanelErrorBoundary>
-        <PanelErrorBoundary>
-          <OpportunityHeatPanel
-            leads={leads}
-            tasks={tasks}
-            userId={user?.id || ''}
-            onStartAction={handleOpportunityAction}
-            leadChanges={leadChanges}
-            oppWeights={oppWeights}
-          />
-        </PanelErrorBoundary>
-      </div>
-
-      {/* Income Forecast + Stability Score */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <PanelErrorBoundary>
-          <IncomeForecastPanelV2
-            deals={deals}
-            participants={dealParticipants}
-            userId={user?.id || ''}
-            moneyResults={moneyResults}
-            typicalDealValue={userDefaults?.typicalPriceMid ? Math.round((userDefaults.typicalPriceMid * (userDefaults.typicalCommissionRate ?? 3) / 100) * (userDefaults.typicalSplitPct ?? 100) / 100) : 8000}
-            onCreateTask={handleForecastCreateTask}
-            onOpenMoneyAtRisk={() => {
-              if (topMoneyAtRisk && deals.find(d => d.id === topMoneyAtRisk.dealId)) {
-                handleMoneySelect(topMoneyAtRisk, deals.find(d => d.id === topMoneyAtRisk.dealId)!);
-              }
-            }}
-          />
-        </PanelErrorBoundary>
-        <PanelErrorBoundary>
-          <StabilityScorePanelV2
-            inputs={stabilityInputs}
-            onCreateTask={(title) => handleAutopilotCreateTask(title)}
-          />
-        </PanelErrorBoundary>
-      </div>
-
-      {/* Income Volatility + Pipeline Fragility */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <PanelErrorBoundary>
-          <IncomeVolatilityPanel
-            deals={deals}
-            participants={dealParticipants}
-            userId={user?.id || ''}
-            forecast={forecast}
-            typicalMonthlyIncome={userDefaults?.typicalPriceMid ? Math.round((userDefaults.typicalPriceMid * (userDefaults.typicalCommissionRate ?? 3) / 100) * (userDefaults.typicalSplitPct ?? 100) / 100) : 8000}
-            onOpenOpportunities={() => {
-              if (topOpportunity && leads.find(l => l.id === topOpportunity.leadId)) {
-                handleOpportunityAction(leads.find(l => l.id === topOpportunity.leadId)!, topOpportunity);
-              }
-            }}
-          />
-        </PanelErrorBoundary>
-        <PanelErrorBoundary>
-          <PipelineFragilityPanel
-            deals={deals}
-            moneyResults={moneyResults}
-            forecast={forecast}
-            onOpenOpportunities={() => {
-              if (topOpportunity && leads.find(l => l.id === topOpportunity.leadId)) {
-                handleOpportunityAction(leads.find(l => l.id === topOpportunity.leadId)!, topOpportunity);
-              }
-            }}
-          />
-        </PanelErrorBoundary>
-      </div>
-
-      {/* Lead Decay + Operational Load */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <PanelErrorBoundary>
-          <LeadDecayPanel
-            leads={leads}
-            tasks={tasks}
-            opportunityResults={opportunityResults}
-            onLogTouch={(entityType, entityId, entityTitle) => {
-              setTouchTarget({ entityType, entityId, entityTitle });
-              setShowLogTouch(true);
-            }}
-            onCreateTask={(title, leadId) => handleAutopilotCreateTask(title, undefined, leadId)}
-          />
-        </PanelErrorBoundary>
-        <PanelErrorBoundary>
-          <OperationalLoadPanel
-            tasks={tasks}
-            deals={deals}
-            leads={leads}
-            stabilityResult={stabilityResult}
-            stabilityScore={stabilityResult.score}
-            totalMoneyAtRisk={totalMoneyAtRisk}
-          />
-        </PanelErrorBoundary>
-      </div>
-
-      {/* Predictive Intelligence: Deal Failure + Ghosting Risk */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <PanelErrorBoundary>
-          <DealFailurePanel
-            deals={deals}
-            tasks={tasks}
-            moneyResults={moneyResults}
-            onCreateTask={(title, dealId) => handleAutopilotCreateTask(title, dealId)}
-          />
-        </PanelErrorBoundary>
-        <PanelErrorBoundary>
-          <GhostingRiskPanel
-            leads={leads}
-            tasks={tasks}
-            deals={deals}
-            onLogTouch={(entityType, entityId, entityTitle) => {
-              setTouchTarget({ entityType, entityId, entityTitle });
-              setShowLogTouch(true);
-            }}
-            onCreateTask={(title, leadId) => handleAutopilotCreateTask(title, undefined, leadId)}
-          />
-        </PanelErrorBoundary>
-      </div>
-
-      {/* Referral Conversion + Listing Performance */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <PanelErrorBoundary>
-          <ReferralConversionPanel
-            leads={leads}
-            tasks={tasks}
-            opportunityResults={opportunityResults}
-            userDefaults={userDefaults}
-          />
-        </PanelErrorBoundary>
-        <PanelErrorBoundary>
-          <ListingPerformancePanel
-            deals={deals}
-            tasks={tasks}
-          />
-        </PanelErrorBoundary>
-      </div>
-
-      {/* Time Allocation + Opportunity Radar */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <PanelErrorBoundary>
-          <TimeAllocationEngine
-            deals={deals}
-            tasks={tasks}
-            moneyResults={moneyResults}
-            opportunityResults={opportunityResults}
-            stabilityScore={stabilityResult.score}
-            totalMoneyAtRisk={totalMoneyAtRisk}
-          />
-        </PanelErrorBoundary>
-        <PanelErrorBoundary>
-          <OpportunityRadarPanel
-            leads={leads}
-            deals={deals}
-            tasks={tasks}
-            opportunityResults={opportunityResults}
-            onAction={(item) => {
-              if (item.entityType === 'lead') {
-                const lead = leads.find(l => l.id === item.entityId);
-                const opp = opportunityResults.find(r => r.leadId === item.entityId);
-                if (lead && opp) handleOpportunityAction(lead, opp);
-              } else if (item.entityType === 'deal') {
-                const deal = deals.find(d => d.id === item.entityId);
-                const result = moneyResults.find(r => r.dealId === item.entityId);
-                if (deal && result) handleMoneySelect(result, deal);
-              }
-            }}
-          />
-        </PanelErrorBoundary>
-      </div>
-
-      {/* Income Protection Shield */}
-      <PanelErrorBoundary>
-        <IncomeProtectionShield
-          deals={deals}
-          tasks={tasks}
-          moneyResults={moneyResults}
-          totalMoneyAtRisk={totalMoneyAtRisk}
-          onAction={(threat) => {
-            const deal = deals.find(d => d.id === threat.dealId);
-            const result = moneyResults.find(r => r.dealId === threat.dealId);
-            if (deal && result) handleMoneySelect(result, deal);
-          }}
-        />
-      </PanelErrorBoundary>
-
-      {/* Market Awareness Panel */}
-      <PanelErrorBoundary>
-        <MarketConditionsPanel
-          conditions={marketConditions}
-          deals={deals}
-          leads={leads}
-          moneyResults={moneyResults}
-        />
-      </PanelErrorBoundary>
-
-      {/* Learning Transparency Panel */}
-      <PanelErrorBoundary>
-        <LearningTransparencyPanel
-          snapshot={learningSnapshot}
-          onReset={resetLearning}
-        />
-      </PanelErrorBoundary>
+      {/* ── Sortable Panels ────────────────────────────────────── */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={panelOrder} strategy={verticalListSortingStrategy}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {panelOrder.map(panelId => {
+              const content = renderPanel(panelId);
+              if (!content) return null;
+              const isFullWidth = !PAIRED_PANELS.has(panelId);
+              return (
+                <SortablePanel key={panelId} id={panelId} editMode={editMode} fullWidth={isFullWidth}>
+                  <PanelErrorBoundary>
+                    {content}
+                  </PanelErrorBoundary>
+                </SortablePanel>
+              );
+            })}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       {/* Cohort Playbooks */}
       {cohortPlaybooks.length > 0 && (
@@ -931,32 +999,6 @@ export default function CommandCenter() {
           />
         </PanelErrorBoundary>
       )}
-
-      {/* Network Benchmarks */}
-      <PanelErrorBoundary>
-        <NetworkBenchmarksPanel
-          agentMetrics={{
-            followUpCompletionRate: tasks.length > 0
-              ? tasks.filter(t => t.completedAt).length / tasks.length
-              : undefined,
-            dealCloseRate: deals.length > 0
-              ? deals.filter(d => d.stage === 'closed').length / deals.length
-              : undefined,
-          }}
-        />
-      </PanelErrorBoundary>
-
-      {/* Weekly Command Review */}
-      <PanelErrorBoundary>
-        <WeeklyCommandReview
-          deals={deals}
-          leads={leads}
-          tasks={tasks}
-          moneyResults={moneyResults}
-          stabilityScore={stabilityResult.score}
-          totalMoneyAtRisk={totalMoneyAtRisk}
-        />
-      </PanelErrorBoundary>
 
       {/* 4-Panel Grid + Pipeline Watch */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1190,6 +1232,23 @@ export default function CommandCenter() {
           setShowQuickAdd(true);
         }}
         onNavigateToTasks={() => navigate('/?workspace=work')}
+      />
+
+      {/* Action Composer / Execution Drawer */}
+      <ActionComposerDrawer
+        open={!!executionEntity}
+        onClose={() => setExecutionEntity(null)}
+        entity={executionEntity?.entity || null}
+        entityType={executionEntity?.entityType || 'deal'}
+        moneyResult={executionEntity?.moneyResult}
+        oppResult={executionEntity?.oppResult}
+        tasks={tasks}
+        onCreateFollowUp={handleExecutionFollowUp}
+        onLogTouch={(entityType, entityId, entityTitle) => {
+          setExecutionEntity(null);
+          setTouchTarget({ entityType, entityId, entityTitle });
+          setShowLogTouch(true);
+        }}
       />
     </div>
   );
