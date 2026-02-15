@@ -196,7 +196,7 @@ export default function Settings() {
         {/* Last error */}
         {lastError && (
           <div className="mb-3">
-            <EdgeErrorDisplay error={lastError} functionName="fub" />
+            <EdgeErrorDisplay error={lastError} functionName={lastError.details?.functionName || "fub-validate"} />
           </div>
         )}
 
