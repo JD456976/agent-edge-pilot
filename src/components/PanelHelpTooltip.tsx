@@ -46,7 +46,7 @@ export function PanelHelpTooltip({ panelId, text: inlineText }: Props) {
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className="text-muted-foreground/40 hover:text-muted-foreground transition-colors p-0.5 rounded-sm"
+          className="text-muted-foreground/50 hover:text-muted-foreground transition-colors p-0.5 rounded-sm"
           aria-label="What is this panel?"
         >
           <HelpCircle className="h-3.5 w-3.5" />

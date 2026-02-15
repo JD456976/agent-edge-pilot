@@ -37,9 +37,9 @@ type NavItem = { label: string; icon: React.ElementType } & (
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
-  { workspace: 'work', label: 'Work', icon: Briefcase },
-  { workspace: 'sync', label: 'Sync', icon: RefreshCw },
-  { workspace: 'insights', label: 'Insights', icon: BarChart3 },
+  { workspace: 'work', label: 'Tasks', icon: Briefcase },
+  { workspace: 'sync', label: 'CRM', icon: RefreshCw },
+  { workspace: 'insights', label: 'Reports', icon: BarChart3 },
   { workspace: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -112,11 +112,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const lastCheckedRef = useRef<Set<string>>(new Set());
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
 
-  // Show pre-permission rationale instead of requesting directly
+  // Show pre-permission rationale on second session, not first
   useEffect(() => {
     if (permission === 'default') {
       const dismissed = localStorage.getItem('dp-notif-prompt-dismissed');
       if (dismissed) return;
+      const sessionCount = parseInt(localStorage.getItem('dp-session-count') || '0', 10) + 1;
+      localStorage.setItem('dp-session-count', String(sessionCount));
+      if (sessionCount < 2) return; // Skip first session entirely
       const timer = setTimeout(() => setShowNotifPrompt(true), 15000);
       return () => clearTimeout(timer);
     }
