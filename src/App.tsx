@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Target } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -35,11 +36,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center mx-auto mb-3 animate-pulse">
-            <span className="text-primary-foreground font-bold text-sm">DP</span>
+        <div className="text-center animate-fade-in">
+          <div className="relative h-12 w-12 mx-auto mb-4">
+            <div className="absolute inset-0 rounded-xl bg-primary/20 animate-ping" style={{ animationDuration: '1.5s' }} />
+            <div className="relative h-12 w-12 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/25">
+              <Target className="h-5 w-5 text-primary-foreground" />
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <p className="text-xs font-medium text-muted-foreground tracking-wide">DEAL PILOT</p>
         </div>
       </div>
     );

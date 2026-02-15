@@ -66,6 +66,10 @@ export default {
           DEFAULT: "hsl(var(--time-sensitive))",
           foreground: "hsl(var(--time-sensitive-foreground))",
         },
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          foreground: "hsl(var(--gold-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

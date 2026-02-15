@@ -35,6 +35,10 @@
     --time-sensitive: 263 70% 55%;
     --time-sensitive-foreground: 0 0% 100%;
 
+    /* Financial accent — gold for money signals */
+    --gold: 43 96% 56%;
+    --gold-foreground: 43 96% 12%;
+
     /* Sidebar */
     --sidebar-background: 215 20% 96%;
     --sidebar-foreground: 222 47% 11%;
@@ -47,24 +51,24 @@
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 222 41% 16%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 41% 16%;
-    --popover-foreground: 210 40% 98%;
+    --background: 222 47% 7%;
+    --foreground: 210 40% 96%;
+    --card: 222 41% 11%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 41% 11%;
+    --popover-foreground: 210 40% 96%;
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 222 41% 20%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 222 41% 20%;
-    --muted-foreground: 215 20% 55%;
-    --accent: 222 41% 20%;
-    --accent-foreground: 210 40% 98%;
+    --secondary: 222 41% 16%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 222 41% 14%;
+    --muted-foreground: 215 20% 50%;
+    --accent: 222 41% 16%;
+    --accent-foreground: 210 40% 96%;
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 100%;
-    --border: 222 30% 22%;
-    --input: 222 30% 22%;
+    --border: 222 25% 16%;
+    --input: 222 25% 16%;
     --ring: 217 91% 60%;
 
     /* Status colors (slightly adjusted for dark) */
@@ -77,13 +81,17 @@
     --time-sensitive: 263 70% 55%;
     --time-sensitive-foreground: 0 0% 100%;
 
-    --sidebar-background: 222 47% 9%;
-    --sidebar-foreground: 210 40% 90%;
+    /* Financial accent */
+    --gold: 43 96% 56%;
+    --gold-foreground: 43 96% 12%;
+
+    --sidebar-background: 222 47% 5%;
+    --sidebar-foreground: 210 40% 85%;
     --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 41% 16%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222 30% 22%;
+    --sidebar-accent: 222 41% 12%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 222 25% 14%;
     --sidebar-ring: 217 91% 60%;
   }
 }
@@ -94,6 +102,28 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* Premium scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.2);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.35);
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
   }
 }
 
@@ -113,4 +143,31 @@
   .status-dot-safe {
     @apply status-dot bg-opportunity;
   }
+
+  /* Premium card treatment */
+  .card-elevated {
+    @apply bg-card rounded-lg border border-border/50 shadow-sm;
+    box-shadow:
+      0 1px 2px 0 hsl(var(--foreground) / 0.03),
+      0 1px 3px 0 hsl(var(--foreground) / 0.06);
+  }
+  .dark .card-elevated {
+    box-shadow:
+      0 0 0 1px hsl(var(--border)),
+      0 2px 8px -2px hsl(0 0% 0% / 0.3),
+      0 1px 2px -1px hsl(0 0% 0% / 0.2);
+  }
+
+  /* Staggered fade-in for panel grids */
+  .stagger-in > * {
+    animation: fade-in 0.4s ease-out both;
+  }
+  .stagger-in > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger-in > *:nth-child(2) { animation-delay: 50ms; }
+  .stagger-in > *:nth-child(3) { animation-delay: 100ms; }
+  .stagger-in > *:nth-child(4) { animation-delay: 150ms; }
+  .stagger-in > *:nth-child(5) { animation-delay: 200ms; }
+  .stagger-in > *:nth-child(6) { animation-delay: 250ms; }
+  .stagger-in > *:nth-child(7) { animation-delay: 300ms; }
+  .stagger-in > *:nth-child(8) { animation-delay: 350ms; }
 }
