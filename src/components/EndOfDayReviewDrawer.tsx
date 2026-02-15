@@ -1,13 +1,18 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { CheckCircle2, Clock, Flame, Phone, ClipboardList, ExternalLink, Loader2, Play, ArrowRight, SkipForward, X } from 'lucide-react';
+import { CheckCircle2, Clock, Flame, Phone, ClipboardList, ExternalLink, Loader2, Play, SkipForward, AlarmClock, DollarSign } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
-import type { Task, Lead } from '@/types';
+import { useSweepQueue, buildSmartFollowUp, getSnoozeOptions, type SweepItem } from '@/hooks/useSweepQueue';
+import type { Task, Lead, Deal } from '@/types';
+import type { MoneyModelResult } from '@/lib/moneyModel';
+import type { OpportunityHeatResult } from '@/lib/leadMoneyModel';
 
 function formatFreshness(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -17,38 +22,38 @@ function formatFreshness(date: Date): string {
   return `Updated ${minutes}m ago`;
 }
 
-type SweepItem =
-  | { kind: 'task'; id: string; title: string; reason: string; task: Task }
-  | { kind: 'lead'; id: string; title: string; reason: string; lead: Lead };
-
 interface Props {
   open: boolean;
   onClose: () => void;
   overdueTasks: Task[];
   untouchedHotLeads: Lead[];
   computedAt: Date;
+  deals: Deal[];
+  moneyResults: MoneyModelResult[];
+  opportunityResults: OpportunityHeatResult[];
   onLogTouch: (entityType: 'lead' | 'deal', entityId: string, entityTitle: string) => void;
   onCreateTask: (prefillTitle?: string, relatedLeadId?: string, relatedDealId?: string) => void;
   onNavigateToTasks: () => void;
 }
 
-export function EndOfDayReviewDrawer({ open, onClose, overdueTasks, untouchedHotLeads, computedAt, onLogTouch, onCreateTask, onNavigateToTasks }: Props) {
+export function EndOfDayReviewDrawer({
+  open, onClose, overdueTasks, untouchedHotLeads, computedAt, deals, moneyResults, opportunityResults,
+  onLogTouch, onCreateTask, onNavigateToTasks,
+}: Props) {
   const { completeTask, addTask, refreshData } = useData();
   const { user } = useAuth();
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [inlineMsg, setInlineMsg] = useState<string | null>(null);
-  const [sweepMode, setSweepMode] = useState(false);
-  const [sweepIndex, setSweepIndex] = useState(0);
-  const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
-  const [sweepStats, setSweepStats] = useState({ completed: 0, touches: 0, followUps: 0 });
 
-  // Reset sweep state when drawer closes
+  const sweep = useSweepQueue(overdueTasks, untouchedHotLeads, deals, moneyResults, opportunityResults);
+  const { sweepMode, activeQueue, currentItem, sweepDone, totalItems, sweepStats, resumeNextTime, setResumeNextTime } = sweep;
+
+  const isBusy = currentItem ? busyIds.has(currentItem.id) : false;
+
+  // Reset when drawer closes (unless resuming)
   useEffect(() => {
-    if (!open) {
-      setSweepMode(false);
-      setSweepIndex(0);
-      setProcessedIds(new Set());
-      setSweepStats({ completed: 0, touches: 0, followUps: 0 });
+    if (!open && !resumeNextTime) {
+      sweep.resetSweep();
     }
   }, [open]);
 
@@ -67,40 +72,7 @@ export function EndOfDayReviewDrawer({ open, onClose, overdueTasks, untouchedHot
 
   const sortedLeads = useMemo(() => [...untouchedHotLeads].slice(0, 8), [untouchedHotLeads]);
 
-  // ── Sweep queue ──
-  const sweepQueue = useMemo((): SweepItem[] => {
-    const taskItems: SweepItem[] = [...overdueTasks]
-      .sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime())
-      .map(t => ({
-        kind: 'task' as const,
-        id: t.id,
-        title: t.title,
-        reason: `Overdue · ${formatDistanceToNow(new Date(t.dueAt), { addSuffix: true })}`,
-        task: t,
-      }));
-
-    const leadItems: SweepItem[] = [...untouchedHotLeads]
-      .sort((a, b) => b.engagementScore - a.engagementScore)
-      .map(l => ({
-        kind: 'lead' as const,
-        id: l.id,
-        title: l.name,
-        reason: l.leadTemperature === 'hot' ? 'Hot lead · Untouched today' : 'High engagement · Untouched today',
-        lead: l,
-      }));
-
-    return [...taskItems, ...leadItems];
-  }, [overdueTasks, untouchedHotLeads]);
-
-  // Active queue filters out processed items
-  const activeQueue = useMemo(() => sweepQueue.filter(i => !processedIds.has(i.id)), [sweepQueue, processedIds]);
-  const currentItem = activeQueue.length > 0 ? activeQueue[0] : null;
-  const isBusy = currentItem ? busyIds.has(currentItem.id) : false;
-  const sweepDone = sweepMode && !currentItem;
-
-  const advanceSweep = useCallback((itemId: string) => {
-    setProcessedIds(p => new Set(p).add(itemId));
-  }, []);
+  const snoozeOptions = useMemo(() => getSnoozeOptions(), []);
 
   // ── Sweep actions ──
   const handleSweepComplete = async () => {
@@ -108,8 +80,8 @@ export function EndOfDayReviewDrawer({ open, onClose, overdueTasks, untouchedHot
     markBusy(currentItem.id);
     try {
       await completeTask(currentItem.id);
-      setSweepStats(p => ({ ...p, completed: p.completed + 1 }));
-      advanceSweep(currentItem.id);
+      sweep.recordStat('completed');
+      sweep.advanceSweep(currentItem.id);
       setInlineMsg('Task completed');
     } finally {
       clearBusy(currentItem.id);
@@ -118,10 +90,9 @@ export function EndOfDayReviewDrawer({ open, onClose, overdueTasks, untouchedHot
 
   const handleSweepTouch = async () => {
     if (!currentItem || currentItem.kind !== 'lead' || isBusy) return;
-    // Open LogTouchModal via parent callback — mark as processed when modal opens
     onLogTouch('lead', currentItem.lead.id, currentItem.lead.name);
-    setSweepStats(p => ({ ...p, touches: p.touches + 1 }));
-    advanceSweep(currentItem.id);
+    sweep.recordStat('touches');
+    sweep.advanceSweep(currentItem.id);
     setInlineMsg('Touch flow opened');
   };
 
@@ -129,26 +100,27 @@ export function EndOfDayReviewDrawer({ open, onClose, overdueTasks, untouchedHot
     if (!currentItem || isBusy) return;
     markBusy(currentItem.id);
     try {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(9, 0, 0, 0);
-      const title = currentItem.kind === 'task'
-        ? `Follow up: ${currentItem.task.title}`
-        : `Follow up ${currentItem.lead.name}`;
+      const followUp = buildSmartFollowUp(currentItem, deals);
       await addTask({
-        title,
-        type: 'follow_up',
-        dueAt: tomorrow.toISOString(),
-        relatedLeadId: currentItem.kind === 'lead' ? currentItem.lead.id : currentItem.task.relatedLeadId,
-        relatedDealId: currentItem.kind === 'task' ? currentItem.task.relatedDealId : undefined,
+        title: followUp.title,
+        type: followUp.type as any,
+        dueAt: followUp.dueAt,
+        relatedLeadId: followUp.relatedLeadId,
+        relatedDealId: followUp.relatedDealId,
         assignedToUserId: user?.id || '',
       });
-      setSweepStats(p => ({ ...p, followUps: p.followUps + 1 }));
-      advanceSweep(currentItem.id);
+      sweep.recordStat('followUps');
+      sweep.advanceSweep(currentItem.id);
       setInlineMsg('Follow-up created');
     } finally {
       clearBusy(currentItem.id);
     }
+  };
+
+  const handleSweepSnooze = (until: Date) => {
+    if (!currentItem || isBusy) return;
+    sweep.snoozeItem(currentItem.id, until);
+    setInlineMsg('Snoozed');
   };
 
   // ── List mode handlers ──
@@ -190,8 +162,6 @@ export function EndOfDayReviewDrawer({ open, onClose, overdueTasks, untouchedHot
     follow_up: 'Follow Up', closing: 'Closing', open_house: 'Open House', thank_you: 'Thank You',
   };
 
-  const totalItems = sweepQueue.length;
-
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
       <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
@@ -209,13 +179,13 @@ export function EndOfDayReviewDrawer({ open, onClose, overdueTasks, untouchedHot
                   }
                 </SheetDescription>
               </div>
-              {!sweepMode && sweepQueue.length > 0 && (
-                <Button size="sm" className="text-xs gap-1.5" onClick={() => setSweepMode(true)}>
+              {!sweepMode && sweep.sweepQueue.length > 0 && (
+                <Button size="sm" className="text-xs gap-1.5" onClick={sweep.startSweep}>
                   <Play className="h-3 w-3" /> Start Sweep
                 </Button>
               )}
               {sweepMode && !sweepDone && (
-                <Button size="sm" variant="outline" className="text-xs" onClick={() => setSweepMode(false)}>
+                <Button size="sm" variant="outline" className="text-xs" onClick={sweep.exitSweep}>
                   Exit Sweep
                 </Button>
               )}
@@ -226,65 +196,33 @@ export function EndOfDayReviewDrawer({ open, onClose, overdueTasks, untouchedHot
           {sweepMode ? (
             <div className="space-y-4">
               {sweepDone ? (
-                /* Completion state */
-                <div className="py-8 text-center space-y-3">
-                  <CheckCircle2 className="h-8 w-8 text-muted-foreground mx-auto" />
-                  <p className="text-sm font-medium">All clear for today.</p>
-                  <div className="flex justify-center gap-4 text-xs text-muted-foreground">
-                    {sweepStats.completed > 0 && <span>{sweepStats.completed} task{sweepStats.completed !== 1 ? 's' : ''} completed</span>}
-                    {sweepStats.touches > 0 && <span>{sweepStats.touches} touch{sweepStats.touches !== 1 ? 'es' : ''} logged</span>}
-                    {sweepStats.followUps > 0 && <span>{sweepStats.followUps} follow-up{sweepStats.followUps !== 1 ? 's' : ''} created</span>}
-                    {sweepStats.completed === 0 && sweepStats.touches === 0 && sweepStats.followUps === 0 && (
-                      <span>No items needed attention</span>
-                    )}
-                  </div>
-                  <Button size="sm" variant="outline" className="text-xs mt-2" onClick={onClose}>
-                    Close
-                  </Button>
-                </div>
+                <SweepCompletionState stats={sweepStats} onClose={onClose} />
               ) : currentItem && (
-                /* Up Next card */
-                <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px]">
-                      {currentItem.kind === 'task' ? 'Task' : 'Lead'}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground ml-auto">
-                      {totalItems - activeQueue.length + 1} of {totalItems}
-                    </span>
-                  </div>
+                <SweepCard
+                  item={currentItem}
+                  position={totalItems - activeQueue.length + 1}
+                  total={totalItems}
+                  isBusy={isBusy}
+                  snoozeOptions={snoozeOptions}
+                  onComplete={handleSweepComplete}
+                  onLogTouch={handleSweepTouch}
+                  onFollowUp={handleSweepFollowUp}
+                  onSkip={() => sweep.advanceSweep(currentItem.id)}
+                  onSnooze={handleSweepSnooze}
+                />
+              )}
 
-                  <div>
-                    <p className="text-sm font-semibold">{currentItem.title}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{currentItem.reason}</p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {currentItem.kind === 'task' && (
-                      <Button size="sm" className="text-xs gap-1.5" disabled={isBusy} onClick={handleSweepComplete}>
-                        {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
-                        Complete Task
-                      </Button>
-                    )}
-                    {currentItem.kind === 'lead' && (
-                      <Button size="sm" className="text-xs gap-1.5" disabled={isBusy} onClick={handleSweepTouch}>
-                        <Phone className="h-3 w-3" /> Log Touch
-                      </Button>
-                    )}
-                    <Button size="sm" variant="outline" className="text-xs gap-1.5" disabled={isBusy} onClick={handleSweepFollowUp}>
-                      {isBusy && currentItem.kind !== 'task' ? <Loader2 className="h-3 w-3 animate-spin" /> : <ClipboardList className="h-3 w-3" />}
-                      Follow-up Task
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-xs gap-1 text-muted-foreground ml-auto"
-                      disabled={isBusy}
-                      onClick={() => advanceSweep(currentItem.id)}
-                    >
-                      <SkipForward className="h-3 w-3" /> Skip
-                    </Button>
-                  </div>
+              {/* Resume toggle */}
+              {!sweepDone && (
+                <div className="flex items-center gap-2 pt-1">
+                  <Switch
+                    id="resume-sweep"
+                    checked={resumeNextTime}
+                    onCheckedChange={setResumeNextTime}
+                  />
+                  <Label htmlFor="resume-sweep" className="text-xs text-muted-foreground cursor-pointer">
+                    Resume Sweep next time
+                  </Label>
                 </div>
               )}
 
@@ -413,5 +351,130 @@ export function EndOfDayReviewDrawer({ open, onClose, overdueTasks, untouchedHot
         </PanelErrorBoundary>
       </SheetContent>
     </Sheet>
+  );
+}
+
+// ── Sweep Card sub-component ─────────────────────────────────────────
+
+function SweepCard({
+  item, position, total, isBusy, snoozeOptions,
+  onComplete, onLogTouch, onFollowUp, onSkip, onSnooze,
+}: {
+  item: SweepItem;
+  position: number;
+  total: number;
+  isBusy: boolean;
+  snoozeOptions: { label: string; until: Date }[];
+  onComplete: () => void;
+  onLogTouch: () => void;
+  onFollowUp: () => void;
+  onSkip: () => void;
+  onSnooze: (until: Date) => void;
+}) {
+  const [showSnooze, setShowSnooze] = useState(false);
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Badge variant="outline" className="text-[10px]">
+          {item.kind === 'task' ? 'Task' : 'Lead'}
+        </Badge>
+        {item.kind === 'task' && item.commissionAtRisk && item.commissionAtRisk > 0 && (
+          <Badge variant="warning" className="text-[10px] gap-1">
+            <DollarSign className="h-2.5 w-2.5" />
+            {Math.round(item.commissionAtRisk).toLocaleString()} at risk
+          </Badge>
+        )}
+        {item.kind === 'lead' && item.opportunityValue && item.opportunityValue > 0 && (
+          <Badge variant="opportunity" className="text-[10px] gap-1">
+            <DollarSign className="h-2.5 w-2.5" />
+            {Math.round(item.opportunityValue).toLocaleString()} opportunity
+          </Badge>
+        )}
+        <span className="text-xs text-muted-foreground ml-auto">
+          {position} of {total}
+        </span>
+      </div>
+
+      <div>
+        <p className="text-sm font-semibold">{item.title}</p>
+        <p className="text-xs text-muted-foreground mt-1">{item.reason}</p>
+      </div>
+
+      <div className="flex flex-wrap gap-2 pt-1">
+        {item.kind === 'task' && (
+          <Button size="sm" className="text-xs gap-1.5" disabled={isBusy} onClick={onComplete}>
+            {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+            Complete Task
+          </Button>
+        )}
+        {item.kind === 'lead' && (
+          <Button size="sm" className="text-xs gap-1.5" disabled={isBusy} onClick={onLogTouch}>
+            <Phone className="h-3 w-3" /> Log Touch
+          </Button>
+        )}
+        <Button size="sm" variant="outline" className="text-xs gap-1.5" disabled={isBusy} onClick={onFollowUp}>
+          {isBusy && item.kind !== 'task' ? <Loader2 className="h-3 w-3 animate-spin" /> : <ClipboardList className="h-3 w-3" />}
+          Follow-up Task
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-xs gap-1 text-muted-foreground"
+          disabled={isBusy}
+          onClick={() => setShowSnooze(!showSnooze)}
+        >
+          <AlarmClock className="h-3 w-3" /> Snooze
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-xs gap-1 text-muted-foreground ml-auto"
+          disabled={isBusy}
+          onClick={onSkip}
+        >
+          <SkipForward className="h-3 w-3" /> Skip
+        </Button>
+      </div>
+
+      {/* Snooze options */}
+      {showSnooze && (
+        <div className="flex gap-2 pt-1 animate-fade-in">
+          {snoozeOptions.map(opt => (
+            <Button
+              key={opt.label}
+              size="sm"
+              variant="outline"
+              className="text-xs"
+              onClick={() => { onSnooze(opt.until); setShowSnooze(false); }}
+            >
+              {opt.label}
+            </Button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Completion state sub-component ───────────────────────────────────
+
+function SweepCompletionState({ stats, onClose }: { stats: { completed: number; touches: number; followUps: number }; onClose: () => void }) {
+  return (
+    <div className="py-8 text-center space-y-3">
+      <CheckCircle2 className="h-8 w-8 text-muted-foreground mx-auto" />
+      <p className="text-sm font-medium">All clear for today.</p>
+      <div className="flex justify-center gap-4 text-xs text-muted-foreground">
+        {stats.completed > 0 && <span>{stats.completed} task{stats.completed !== 1 ? 's' : ''} completed</span>}
+        {stats.touches > 0 && <span>{stats.touches} touch{stats.touches !== 1 ? 'es' : ''} logged</span>}
+        {stats.followUps > 0 && <span>{stats.followUps} follow-up{stats.followUps !== 1 ? 's' : ''} created</span>}
+        {stats.completed === 0 && stats.touches === 0 && stats.followUps === 0 && (
+          <span>No items needed attention</span>
+        )}
+      </div>
+      <Button size="sm" variant="outline" className="text-xs mt-2" onClick={onClose}>
+        Close
+      </Button>
+    </div>
   );
 }
