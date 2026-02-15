@@ -20,6 +20,7 @@ import { GuidedTour } from '@/components/GuidedTour';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { usePushNotifications, checkOverdueTasks } from '@/hooks/usePushNotifications';
+import { KeyboardShortcutHint } from '@/components/KeyboardShortcutHint';
 
 type NavItem = { label: string; icon: React.ElementType } & (
   | { path: string; workspace?: undefined }
@@ -239,6 +240,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
       {/* First-session guided tour */}
       <GuidedTour />
+
+      {/* Keyboard shortcut hint for new users */}
+      <KeyboardShortcutHint />
     </div>
   );
 }

@@ -92,6 +92,8 @@ import { DailyStreakBadge } from '@/components/DailyStreakBadge';
 import { ExportSnapshotButton } from '@/components/ExportSnapshotButton';
 import { usePinnedPanels } from '@/hooks/usePinnedPanels';
 import { PanelPinButton } from '@/components/PanelPinButton';
+import { usePanelCollapse } from '@/hooks/usePanelCollapse';
+import { AnimatedCounter } from '@/components/AnimatedCounter';
 import type { RiskLevel, Deal, Lead, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 const SNOOZE_STORAGE_KEY = 'dp-snooze-counts';
@@ -124,6 +126,35 @@ const PAIRED_PANELS: Set<PanelId> = new Set([
   'market-signals',
 ]);
 
+const PANEL_LABELS: Record<PanelId, string> = {
+  'autopilot': 'Autopilot',
+  'prepared-actions': 'Prepared Actions',
+  'money-at-risk': 'Money at Risk',
+  'opportunity-heat': 'Opportunity Heat',
+  'income-forecast': 'Income Forecast',
+  'stability-score': 'Stability Score',
+  'end-of-day': 'End of Day Review',
+  'execution-queue': 'Execution Queue',
+  'income-volatility': 'Income Volatility',
+  'pipeline-fragility': 'Pipeline Fragility',
+  'lead-decay': 'Lead Decay',
+  'operational-load': 'Operational Load',
+  'deal-failure': 'Deal Failure Risk',
+  'ghosting-risk': 'Ghosting Risk',
+  'referral-conversion': 'Referral Conversion',
+  'listing-performance': 'Listing Performance',
+  'time-allocation': 'Time Allocation',
+  'opportunity-radar': 'Opportunity Radar',
+  'income-protection': 'Income Protection',
+  'market-conditions': 'Market Conditions',
+  'learning-transparency': 'Learning Transparency',
+  'network-benchmarks': 'Network Benchmarks',
+  'weekly-review': 'Weekly Review',
+  'agent-profile': 'Agent Profile',
+  'income-patterns': 'Income Patterns',
+  'market-signals': 'Market Signals',
+};
+
 export default function CommandCenter() {
   const { user } = useAuth();
   const { leads, deals, tasks, alerts, dealParticipants, hasData, seedDemoData, completeTask, uncompleteTask, addTask, refreshData } = useData();
@@ -153,6 +184,9 @@ export default function CommandCenter() {
 
   // Pinned panels
   const { pinnedPanels, togglePin, isPinned, sortWithPins } = usePinnedPanels();
+
+  // Panel collapse
+  const { isCollapsed, toggleCollapse } = usePanelCollapse();
 
   // Focus Mode
   const { focusMode, updateFocusMode } = useFocusMode();
@@ -1064,11 +1098,11 @@ export default function CommandCenter() {
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5">
           <div className="flex items-center gap-2">
             <DollarSign className="h-3.5 w-3.5 text-opportunity" />
-            <span className="text-xs text-muted-foreground">{formatCurrency(totalRevenue)} revenue in play</span>
+            <span className="text-xs text-muted-foreground"><AnimatedCounter value={totalRevenue} formatter={formatCurrency} /> revenue in play</span>
           </div>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-3.5 w-3.5 text-warning" />
-            <span className="text-xs text-muted-foreground">{dealsNeedingAttention} deal{dealsNeedingAttention !== 1 ? 's' : ''} need{dealsNeedingAttention === 1 ? 's' : ''} attention</span>
+            <span className="text-xs text-muted-foreground"><AnimatedCounter value={dealsNeedingAttention} /> deal{dealsNeedingAttention !== 1 ? 's' : ''} need{dealsNeedingAttention === 1 ? 's' : ''} attention</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">
@@ -1191,7 +1225,7 @@ export default function CommandCenter() {
               if (!content) return null;
               const isFullWidth = !PAIRED_PANELS.has(panelId);
               return (
-                <SortablePanel key={panelId} id={panelId} editMode={editMode} fullWidth={isFullWidth}>
+                <SortablePanel key={panelId} id={panelId} editMode={editMode} fullWidth={isFullWidth} label={PANEL_LABELS[panelId]} isCollapsed={isCollapsed(panelId)} onToggleCollapse={() => toggleCollapse(panelId)}>
                   <PanelErrorBoundary>
                     <div className="relative group/pin">
                       {editMode && (
