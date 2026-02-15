@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.health-check]
 verify_jwt = false
+
+[functions.commission-backfill]
+verify_jwt = false

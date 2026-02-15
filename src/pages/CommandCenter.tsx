@@ -45,7 +45,7 @@ type DetailItem =
 
 export default function CommandCenter() {
   const { user } = useAuth();
-  const { leads, deals, tasks, alerts, dealParticipants, hasData, seedDemoData, completeTask, addTask } = useData();
+  const { leads, deals, tasks, alerts, dealParticipants, hasData, seedDemoData, completeTask, addTask, refreshData } = useData();
   const [moneyDrawerResult, setMoneyDrawerResult] = useState<MoneyModelResult | null>(null);
   const [moneyDrawerDeal, setMoneyDrawerDeal] = useState<Deal | null>(null);
   const navigate = useNavigate();
@@ -282,6 +282,7 @@ export default function CommandCenter() {
           userId={user?.id || ''}
           onSelect={handleMoneySelect}
           onAddCommissionToDeals={() => navigate('/pipeline')}
+          refreshData={refreshData}
         />
       </PanelErrorBoundary>
 
