@@ -787,6 +787,9 @@ export default function CommandCenter() {
         overdueTasks={eodSummary.overdueTasks}
         untouchedHotLeads={eodSummary.untouchedHotLeads}
         computedAt={eodSummary.computedAt}
+        deals={deals}
+        moneyResults={moneyResults}
+        opportunityResults={opportunityResults}
         onLogTouch={(entityType, entityId, entityTitle) => {
           setTouchTarget({ entityType, entityId, entityTitle });
           setShowLogTouch(true);
