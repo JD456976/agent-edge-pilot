@@ -9,6 +9,8 @@ import type { Deal, DealStage, RiskLevel, DealParticipant } from '@/types';
 import { PARTICIPANT_ROLE_LABELS } from '@/types';
 import { ImportSourceBadge } from '@/components/ImportSourceBadge';
 import { DealCommissionEditor, type DealCommissionState, type ParticipantEdit } from '@/components/DealCommissionEditor';
+import { CommissionDebugPanel } from '@/components/CommissionDebugPanel';
+import { resolvePersonalCommission } from '@/lib/commissionResolver';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -149,6 +151,11 @@ function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, orgU
           currentUserId={user?.id || ''}
           orgUsers={orgUsers}
           onSave={(state, participantEdits) => onCommissionSave(deal.id, state, participantEdits)}
+        />
+
+        {/* Debug Panel (dev only) */}
+        <CommissionDebugPanel
+          resolution={resolvePersonalCommission(deal, participants, user?.id || '')}
         />
 
         {tasks.length > 0 && (

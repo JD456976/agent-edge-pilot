@@ -55,10 +55,11 @@ describe('computePersonalCommissionTotal', () => {
     expect(r.hasParticipant).toBe(true);
   });
 
-  it('applies referral fee before split', () => {
+  it('applies split then referral out deduction', () => {
     const deal = { ...baseDeal, referralFeePercent: 20 };
     const r = computePersonalCommissionTotal(deal, [participant], 'user-1');
-    expect(r.total).toBe(6000); // 15000 * 0.8 * 0.5
+    // base=15000, split 50% → 7500, then referral out 20% of base (3000) → 4500
+    expect(r.total).toBe(4500);
   });
 
   it('uses override when present', () => {
