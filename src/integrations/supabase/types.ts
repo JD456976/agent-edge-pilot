@@ -128,6 +128,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_follow_up_drafts: {
+        Row: {
+          body: string
+          context_summary: string | null
+          created_at: string
+          draft_type: string
+          entity_id: string
+          entity_type: string
+          id: string
+          sent_at: string | null
+          status: string
+          subject: string | null
+          tone: string | null
+          user_id: string
+        }
+        Insert: {
+          body: string
+          context_summary?: string | null
+          created_at?: string
+          draft_type?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          tone?: string | null
+          user_id: string
+        }
+        Update: {
+          body?: string
+          context_summary?: string | null
+          created_at?: string
+          draft_type?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          tone?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       alerts: {
         Row: {
           created_at: string
@@ -400,6 +445,96 @@ export type Database = {
           },
         ]
       }
+      fub_activity_log: {
+        Row: {
+          activity_type: string
+          body_preview: string | null
+          direction: string | null
+          duration_seconds: number | null
+          entity_id: string | null
+          entity_type: string
+          fub_id: string
+          id: string
+          occurred_at: string
+          subject: string | null
+          synced_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          body_preview?: string | null
+          direction?: string | null
+          duration_seconds?: number | null
+          entity_id?: string | null
+          entity_type: string
+          fub_id: string
+          id?: string
+          occurred_at: string
+          subject?: string | null
+          synced_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          body_preview?: string | null
+          direction?: string | null
+          duration_seconds?: number | null
+          entity_id?: string | null
+          entity_type?: string
+          fub_id?: string
+          id?: string
+          occurred_at?: string
+          subject?: string | null
+          synced_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      fub_appointments: {
+        Row: {
+          attendees: Json | null
+          description: string | null
+          end_at: string | null
+          fub_id: string
+          id: string
+          location: string | null
+          related_deal_id: string | null
+          related_lead_id: string | null
+          start_at: string
+          synced_at: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          attendees?: Json | null
+          description?: string | null
+          end_at?: string | null
+          fub_id: string
+          id?: string
+          location?: string | null
+          related_deal_id?: string | null
+          related_lead_id?: string | null
+          start_at: string
+          synced_at?: string
+          title?: string
+          user_id: string
+        }
+        Update: {
+          attendees?: Json | null
+          description?: string | null
+          end_at?: string | null
+          fub_id?: string
+          id?: string
+          location?: string | null
+          related_deal_id?: string | null
+          related_lead_id?: string | null
+          start_at?: string
+          synced_at?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       fub_conflict_resolutions: {
         Row: {
           accepted_fields: string[] | null
@@ -510,6 +645,45 @@ export type Database = {
           status?: string
           undone_at?: string | null
           undone_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      fub_push_log: {
+        Row: {
+          action: string
+          entity_id: string
+          entity_type: string
+          error_message: string | null
+          fields_pushed: Json | null
+          fub_id: string | null
+          id: string
+          pushed_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          entity_id: string
+          entity_type: string
+          error_message?: string | null
+          fields_pushed?: Json | null
+          fub_id?: string | null
+          id?: string
+          pushed_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          entity_id?: string
+          entity_type?: string
+          error_message?: string | null
+          fields_pushed?: Json | null
+          fub_id?: string | null
+          id?: string
+          pushed_at?: string
+          status?: string
           user_id?: string
         }
         Relationships: []
@@ -736,6 +910,42 @@ export type Database = {
         }
         Relationships: []
       }
+      fub_webhook_events: {
+        Row: {
+          created_at: string
+          entity_type: string | null
+          event_type: string
+          fub_id: string | null
+          id: string
+          payload: Json
+          processed: boolean
+          processed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_type?: string | null
+          event_type: string
+          fub_id?: string | null
+          id?: string
+          payload?: Json
+          processed?: boolean
+          processed_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_type?: string | null
+          event_type?: string
+          fub_id?: string | null
+          id?: string
+          payload?: Json
+          processed?: boolean
+          processed_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       import_dedup_rules: {
         Row: {
           deal_address_match: boolean
@@ -772,6 +982,42 @@ export type Database = {
           task_title_only?: boolean
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      lead_routing_rules: {
+        Row: {
+          created_at: string
+          criteria: Json
+          enabled: boolean
+          id: string
+          organization_id: string
+          priority: number
+          rule_name: string
+          target_user_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          criteria?: Json
+          enabled?: boolean
+          id?: string
+          organization_id: string
+          priority?: number
+          rule_name: string
+          target_user_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          criteria?: Json
+          enabled?: boolean
+          id?: string
+          organization_id?: string
+          priority?: number
+          rule_name?: string
+          target_user_id?: string | null
+          updated_at?: string
         }
         Relationships: []
       }

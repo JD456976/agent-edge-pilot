@@ -32,3 +32,24 @@ verify_jwt = false
 
 [functions.delete-account]
 verify_jwt = false
+
+[functions.fub-push]
+verify_jwt = false
+
+[functions.fub-webhook]
+verify_jwt = false
+
+[functions.fub-activity]
+verify_jwt = false
+
+[functions.fub-appointments]
+verify_jwt = false
+
+[functions.fub-action-plan]
+verify_jwt = false
+
+[functions.fub-smart-numbers]
+verify_jwt = false
+
+[functions.ai-follow-up]
+verify_jwt = false
