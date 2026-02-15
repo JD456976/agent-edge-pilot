@@ -25,6 +25,8 @@ import { IncomeForecastPanel } from '@/components/IncomeForecastPanel';
 import { StabilityScorePanel } from '@/components/StabilityScorePanel';
 import { MorningFocusCard, MiddayStabilizationCard, EodSafetyCard } from '@/components/DailyModeCards';
 import { LogTouchModal } from '@/components/LogTouchModal';
+import { TouchPickerModal } from '@/components/TouchPickerModal';
+import { EndOfDayReviewDrawer } from '@/components/EndOfDayReviewDrawer';
 import { computeOpportunityBatch, type OpportunityHeatResult, type UserCommissionDefaults } from '@/lib/leadMoneyModel';
 import { computeForecastBatch } from '@/lib/forecastModel';
 import { computeStabilityScore, type StabilityInputs } from '@/lib/stabilityModel';
@@ -61,7 +63,11 @@ export default function CommandCenter() {
   const [moneyDrawerDeal, setMoneyDrawerDeal] = useState<Deal | null>(null);
   const navigate = useNavigate();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddPrefill, setQuickAddPrefill] = useState<{ title?: string; leadId?: string; dealId?: string }>({});
   const [showLogTouch, setShowLogTouch] = useState(false);
+  const [showTouchPicker, setShowTouchPicker] = useState(false);
+  const [touchTarget, setTouchTarget] = useState<{ entityType: 'lead' | 'deal'; entityId: string; entityTitle: string } | null>(null);
+  const [showEodReview, setShowEodReview] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<DetailItem | null>(null);
   const [snoozedIds, setSnoozedIds] = useState<Set<string>>(new Set());
@@ -483,9 +489,12 @@ export default function CommandCenter() {
           untouchedRiskDeals={untouchedRiskDeals}
           untouchedHotLeads={untouchedHotLeads}
           overdueTasks={overdueTasks}
-          onLogTouch={() => setShowLogTouch(true)}
-          onCreateTask={() => setShowQuickAdd(true)}
-          onReviewItems={() => navigate('/tasks')}
+          onLogTouch={() => setShowTouchPicker(true)}
+          onCreateTask={() => {
+            setQuickAddPrefill({});
+            setShowQuickAdd(true);
+          }}
+          onReviewItems={() => setShowEodReview(true)}
         />
       )}
 
@@ -739,18 +748,54 @@ export default function CommandCenter() {
       />
 
       {/* Quick Add Modal */}
-      {showQuickAdd && <QuickAddModal onClose={() => setShowQuickAdd(false)} />}
-
-      {/* Log Touch Modal (EOD) */}
-      {showLogTouch && untouchedRiskDeals.length > 0 && (
-        <LogTouchModal
-          open={true}
-          entityType="deal"
-          entityId={untouchedRiskDeals[0].id}
-          entityTitle={untouchedRiskDeals[0].title}
-          onClose={() => setShowLogTouch(false)}
+      {showQuickAdd && (
+        <QuickAddModal
+          defaultType="task"
+          prefillTaskTitle={quickAddPrefill.title}
+          prefillRelatedLeadId={quickAddPrefill.leadId}
+          prefillRelatedDealId={quickAddPrefill.dealId}
+          onClose={() => { setShowQuickAdd(false); setQuickAddPrefill({}); }}
         />
       )}
+
+      {/* Touch Picker (EOD Log Touch) */}
+      <TouchPickerModal
+        open={showTouchPicker}
+        onClose={() => setShowTouchPicker(false)}
+        onSelect={(entityType, entityId, entityTitle) => {
+          setShowTouchPicker(false);
+          setTouchTarget({ entityType, entityId, entityTitle });
+          setShowLogTouch(true);
+        }}
+      />
+
+      {/* Log Touch Modal */}
+      {showLogTouch && touchTarget && (
+        <LogTouchModal
+          open={true}
+          entityType={touchTarget.entityType}
+          entityId={touchTarget.entityId}
+          entityTitle={touchTarget.entityTitle}
+          onClose={() => { setShowLogTouch(false); setTouchTarget(null); }}
+        />
+      )}
+
+      {/* End of Day Review Drawer */}
+      <EndOfDayReviewDrawer
+        open={showEodReview}
+        onClose={() => setShowEodReview(false)}
+        overdueTasks={overdueTasks}
+        untouchedHotLeads={untouchedHotLeads}
+        onLogTouch={(entityType, entityId, entityTitle) => {
+          setTouchTarget({ entityType, entityId, entityTitle });
+          setShowLogTouch(true);
+        }}
+        onCreateTask={(prefillTitle, relatedLeadId, relatedDealId) => {
+          setQuickAddPrefill({ title: prefillTitle, leadId: relatedLeadId, dealId: relatedDealId });
+          setShowQuickAdd(true);
+        }}
+        onNavigateToTasks={() => navigate('/tasks')}
+      />
     </div>
   );
 }
