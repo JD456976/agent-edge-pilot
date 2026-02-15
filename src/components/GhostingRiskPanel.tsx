@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import type { Lead, Task, Deal } from '@/types';
 import { cn } from '@/lib/utils';
+import { GhostingRecoveryAction } from '@/components/GhostingRecoveryAction';
 
 interface Props {
   leads: Lead[];
@@ -137,6 +138,8 @@ export function GhostingRiskPanel({ leads, tasks, deals, onLogTouch, onCreateTas
                 <MessageSquare className="h-3 w-3 mr-1" /> Re-engage
               </Button>
             </div>
+            {/* FUB Ghosting Recovery */}
+            <GhostingRecoveryAction leadId={r.leadId} leadName={r.leadName} ghostScore={r.score} />
           </div>
         ))}
       </div>

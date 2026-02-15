@@ -1,10 +1,11 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useWorkspace, type WorkspaceType } from '@/contexts/WorkspaceContext';
 import { useEntityNavigation } from '@/contexts/EntityNavigationContext';
+import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -12,6 +13,7 @@ import { CommandPalette } from '@/components/CommandPalette';
 import { SkinSelector } from '@/components/SkinSelector';
 import { QuickAddModal } from '@/components/QuickAddModal';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { usePushNotifications, checkOverdueTasks } from '@/hooks/usePushNotifications';
 
 type NavItem = { label: string; icon: React.ElementType } & (
   | { path: string; workspace?: undefined }
@@ -31,9 +33,32 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const { activeWorkspace, openWorkspace, closeWorkspace } = useWorkspace();
   const { requestOpenEntity } = useEntityNavigation();
+  const { tasks } = useData();
   const location = useLocation();
   const navigate = useNavigate();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const { permission, requestPermission, sendNotification } = usePushNotifications();
+  const lastCheckedRef = useRef<Set<string>>(new Set());
+
+  // Request notification permission on first load
+  useEffect(() => {
+    if (permission === 'default') {
+      // Delay to avoid intrusive prompt
+      const timer = setTimeout(() => requestPermission(), 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [permission, requestPermission]);
+
+  // Check for overdue tasks every 5 minutes
+  useEffect(() => {
+    if (permission !== 'granted') return;
+    const interval = setInterval(() => {
+      checkOverdueTasks(tasks, sendNotification, lastCheckedRef);
+    }, 5 * 60 * 1000);
+    // Check immediately too
+    checkOverdueTasks(tasks, sendNotification, lastCheckedRef);
+    return () => clearInterval(interval);
+  }, [tasks, permission, sendNotification]);
 
   const items = NAV_ITEMS;
 
