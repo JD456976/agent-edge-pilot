@@ -1,4 +1,5 @@
 import type { Deal, DealParticipant } from '@/types';
+import { resolvePersonalCommissionCached } from '@/lib/commissionResolver';
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -51,40 +52,19 @@ function daysBetween(a: Date, b: Date): number {
 }
 
 // ── 1) Personal Commission Total ─────────────────────────────────────
+// Delegates to the Commission Resolution Engine for accurate computation.
 
 export function computePersonalCommissionTotal(
   deal: Deal,
   participants: DealParticipant[],
   userId: string,
 ): { total: number; hasParticipant: boolean; splitWarning: boolean } {
-  const myParticipant = participants.find(p => p.dealId === deal.id && p.userId === userId);
-
-  if (!myParticipant) {
-    return { total: 0, hasParticipant: false, splitWarning: false };
-  }
-
-  // Check total splits
-  const dealParticipants = participants.filter(p => p.dealId === deal.id);
-  const totalSplit = dealParticipants.reduce((s, p) => s + (p.splitPercent ?? 0), 0);
-  const splitWarning = totalSplit > 100;
-
-  // Override takes precedence
-  if (myParticipant.commissionOverride !== undefined && myParticipant.commissionOverride !== null) {
-    return { total: clampMoney(myParticipant.commissionOverride), hasParticipant: true, splitWarning };
-  }
-
-  const splitPct = myParticipant.splitPercent ?? 0;
-  if (splitPct <= 0) {
-    return { total: 0, hasParticipant: true, splitWarning };
-  }
-
-  // Gross commission
-  const grossCommission = deal.commission || 0;
-  const referralFeePct = deal.referralFeePercent ?? 0;
-  const netAfterReferral = grossCommission * (1 - referralFeePct / 100);
-  const personal = netAfterReferral * (splitPct / 100);
-
-  return { total: clampMoney(Math.round(personal)), hasParticipant: true, splitWarning };
+  const resolution = resolvePersonalCommissionCached(deal, participants, userId);
+  return {
+    total: resolution.personalCommissionTotal,
+    hasParticipant: resolution.hasParticipant,
+    splitWarning: resolution.splitWarning,
+  };
 }
 
 // ── 2) Stage Probability ─────────────────────────────────────────────

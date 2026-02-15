@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { supabase } from '@/integrations/supabase/client';
 import type { Lead, Deal, Task, Alert, DealParticipant } from '@/types';
 import { generateDemoData } from '@/data/demo';
+import { resolvePersonalCommission } from '@/lib/commissionResolver';
 
 interface DataContextType {
   leads: Lead[];
@@ -93,18 +94,26 @@ function mapParticipant(row: any, profileName?: string): DealParticipant {
 }
 
 function computeUserCommission(dealRow: any, participants: DealParticipant[], userId: string): number {
-  const commission = Number(dealRow.commission_amount) || 0;
-  const participant = participants.find(p => p.dealId === dealRow.id && p.userId === userId);
-  if (!participant) return commission;
-  if (participant.commissionOverride !== undefined && participant.commissionOverride !== null) return participant.commissionOverride;
-  const splitPct = participant.splitPercent ?? 0;
-  if (splitPct <= 0) {
-    if (import.meta.env.DEV) console.warn(`[computeUserCommission] splitPercent is ${splitPct} for participant ${participant.id}, treating as 0`);
-    return 0;
-  }
-  const referralFee = dealRow.referral_fee_percent ? Number(dealRow.referral_fee_percent) : 0;
-  const net = commission * (1 - referralFee / 100);
-  return Math.round(net * splitPct / 100);
+  // Build a minimal Deal object for the resolver
+  const deal: Deal = {
+    id: dealRow.id,
+    title: dealRow.title,
+    stage: dealRow.stage,
+    price: Number(dealRow.price),
+    commission: Number(dealRow.commission_amount),
+    commissionRate: dealRow.commission_rate ? Number(dealRow.commission_rate) : undefined,
+    referralFeePercent: dealRow.referral_fee_percent ? Number(dealRow.referral_fee_percent) : undefined,
+    closeDate: dealRow.close_date,
+    riskLevel: dealRow.risk_level,
+    assignedToUserId: dealRow.assigned_to_user_id || '',
+    milestoneStatus: {
+      inspection: dealRow.milestone_inspection || 'unknown',
+      financing: dealRow.milestone_financing || 'unknown',
+      appraisal: dealRow.milestone_appraisal || 'unknown',
+    },
+  };
+  const resolution = resolvePersonalCommission(deal, participants, userId);
+  return resolution.personalCommissionTotal;
 }
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
