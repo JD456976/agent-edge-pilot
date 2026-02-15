@@ -1,5 +1,6 @@
 import { Focus, Briefcase, Users, ClipboardList, Layers } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { UserLevel } from '@/hooks/useUserMaturity';
 
 export type FocusMode = 'tactical' | 'strategic' | 'minimal' | 'deals' | 'leads' | 'tasks';
 
@@ -75,10 +76,6 @@ const STRATEGIC_PANELS: Set<PanelId> = new Set([
   'market-signals',
 ]);
 
-const MINIMAL_PANELS: Set<PanelId> = new Set([
-  'autopilot', 'money-at-risk',
-]);
-
 const DEALS_PANELS: Set<PanelId> = new Set([
   'money-at-risk', 'deal-failure', 'income-forecast',
   'income-protection', 'pipeline-fragility',
@@ -98,11 +95,54 @@ const TASKS_PANELS: Set<PanelId> = new Set([
   'end-of-day',
 ]);
 
-export function isPanelVisibleInMode(panelId: PanelId, focusMode: FocusMode): boolean {
+// ── Maturity-based panel sets for Minimal Mode ──────────────────────
+// Level 0: essentials only
+const LEVEL_0_PANELS: Set<PanelId> = new Set([
+  'autopilot', 'money-at-risk', 'income-forecast',
+]);
+
+// Level 1: add opportunity + stability
+const LEVEL_1_PANELS: Set<PanelId> = new Set([
+  ...LEVEL_0_PANELS,
+  'opportunity-heat', 'stability-score',
+]);
+
+// Level 2: add execution + strategic
+const LEVEL_2_PANELS: Set<PanelId> = new Set([
+  ...LEVEL_1_PANELS,
+  'execution-queue', 'end-of-day',
+  'pipeline-fragility', 'income-volatility',
+  'deal-failure', 'ghosting-risk',
+]);
+
+// Level 3: all panels
+const LEVEL_PANEL_SETS: Record<number, Set<PanelId>> = {
+  0: LEVEL_0_PANELS,
+  1: LEVEL_1_PANELS,
+  2: LEVEL_2_PANELS,
+};
+
+export function getAdaptivePanelSet(userLevel: UserLevel): Set<PanelId> | null {
+  return LEVEL_PANEL_SETS[userLevel] || null; // null = show all
+}
+
+export function isPanelVisibleInMode(
+  panelId: PanelId,
+  focusMode: FocusMode,
+  userLevel?: UserLevel,
+  fullViewOverride?: boolean,
+): boolean {
+  // Minimal mode uses maturity-based visibility
+  if (focusMode === 'minimal') {
+    if (fullViewOverride) return true; // "Full View" toggle
+    const level = userLevel ?? 3;
+    const panelSet = getAdaptivePanelSet(level);
+    return panelSet ? panelSet.has(panelId) : true;
+  }
+
   switch (focusMode) {
     case 'tactical': return TACTICAL_PANELS.has(panelId);
     case 'strategic': return STRATEGIC_PANELS.has(panelId);
-    case 'minimal': return MINIMAL_PANELS.has(panelId);
     case 'deals': return DEALS_PANELS.has(panelId);
     case 'leads': return LEADS_PANELS.has(panelId);
     case 'tasks': return TASKS_PANELS.has(panelId);

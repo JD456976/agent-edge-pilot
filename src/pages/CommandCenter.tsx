@@ -70,6 +70,8 @@ import { MorningBriefCard } from '@/components/MorningBriefCard';
 import { WhatThisMeansPanel } from '@/components/WhatThisMeansPanel';
 import { IncomeControlMeter } from '@/components/IncomeControlMeter';
 import { FocusModeSelector, isPanelVisibleInMode } from '@/components/FocusModeSelector';
+import { useUserMaturity, type UserLevel } from '@/hooks/useUserMaturity';
+import { computeMinimalModeAudit, logAuditReport } from '@/lib/minimalModeAudit';
 import { PanelSearchFilter, matchesPanelFilter } from '@/components/PanelSearchFilter';
 import { useFocusMode } from '@/hooks/useFocusMode';
 import { useHabitTracking } from '@/hooks/useHabitTracking';
@@ -212,6 +214,22 @@ export default function CommandCenter() {
   // Focus Mode
   const { focusMode, updateFocusMode } = useFocusMode();
 
+  // User Maturity & Adaptive Mode
+  const maturity = useUserMaturity();
+  const [fullViewOverride, setFullViewOverride] = useState(() => {
+    try { return localStorage.getItem('dp-full-view') === 'true'; } catch { return false; }
+  });
+
+  // Progressive unlock notification
+  const prevLevelRef = useRef<UserLevel>(maturity.level);
+  useEffect(() => {
+    if (maturity.level > prevLevelRef.current) {
+      toast({ description: 'New insights unlocked as your data grows.', duration: 4000 });
+      prevLevelRef.current = maturity.level;
+    }
+  }, [maturity.level]);
+
+
   // Habit Tracking
   const { stats: habitStats, markBriefViewed, markEodCompleted } = useHabitTracking();
 
@@ -227,7 +245,16 @@ export default function CommandCenter() {
     toggleEditMode, reorder, applyPreset, resetToDefault,
   } = useCommandCenterLayout(user?.id);
 
-  // DnD sensors — distance constraint prevents accidental drags
+  // Minimal Mode Audit (dev only)
+  useEffect(() => {
+    if (focusMode === 'minimal' && !fullViewOverride) {
+      const visibleCount = panelOrder.filter(id => isPanelVisibleInMode(id, 'minimal', maturity.level, false)).length;
+      const report = computeMinimalModeAudit(visibleCount, maturity.level);
+      logAuditReport(report);
+    }
+  }, [focusMode, fullViewOverride, maturity.level, panelOrder]);
+
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
@@ -1080,6 +1107,23 @@ export default function CommandCenter() {
         </div>
       </div>
 
+      {/* Adaptive Mode First-Run Banner */}
+      {focusMode === 'minimal' && maturity.level <= 1 && !fullViewOverride && (
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-center gap-3">
+          <Info className="h-4 w-4 text-primary shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm text-foreground">Starting with a focused view — more insights will appear as your data grows.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Level: {maturity.label} · {maturity.dealCount} deals · {maturity.leadCount} leads</p>
+          </div>
+          <Button size="sm" variant="ghost" className="text-xs shrink-0" onClick={() => {
+            setFullViewOverride(true);
+            localStorage.setItem('dp-full-view', 'true');
+          }}>
+            Switch to Full View
+          </Button>
+        </div>
+      )}
+
       {/* Getting Started Checklist (shows until dismissed or all complete) */}
       <GettingStartedChecklist
         hasCrmConnected={hasFubIntegration}
@@ -1281,7 +1325,7 @@ export default function CommandCenter() {
         <SortableContext items={sortWithPins(panelOrder)} strategy={verticalListSortingStrategy}>
           <div className={cn('grid grid-cols-1 md:grid-cols-2', density === 'compact' ? 'gap-2' : 'gap-4')}>
             {sortWithPins(panelOrder).map(panelId => {
-              if (!isPanelVisibleInMode(panelId, focusMode)) return null;
+              if (!isPanelVisibleInMode(panelId, focusMode, maturity.level, fullViewOverride)) return null;
               if (!matchesPanelFilter(panelId, panelFilter)) return null;
               const content = renderPanel(panelId);
               if (!content) return null;
