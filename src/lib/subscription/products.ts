@@ -1,22 +1,11 @@
 /**
- * Subscription product identifiers and entitlement names.
- * These must match App Store Connect configuration.
+ * @deprecated Use @/lib/stripe/stripeConfig instead.
+ * Kept temporarily for any remaining references.
  */
+export { PRICE_DISPLAY, TRIAL_DURATION_DAYS } from '@/lib/stripe/stripeConfig';
 
-/** StoreKit product ID for Deal Pilot Pro monthly subscription */
-export const DEAL_PILOT_PRO_MONTHLY_PRODUCT_ID = 'com.dealpilot.pro.monthly';
-
-/** Entitlement identifier for Pro access */
+/** @deprecated No longer used — Stripe handles products */
+export const DEAL_PILOT_PRO_MONTHLY_PRODUCT_ID = 'deprecated';
 export const ENTITLEMENT_PRO = 'pro';
-
-/** Trial duration in days (Apple-managed, used only for display) */
-export const TRIAL_DURATION_DAYS = 14;
-
-/** Price display string */
-export const PRICE_DISPLAY = '$39/month';
-
-/** Cached entitlement key in localStorage */
 export const ENTITLEMENT_CACHE_KEY = 'dp_entitlement_state';
-
-/** Max age for cached entitlement before requiring refresh (24h) */
 export const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;

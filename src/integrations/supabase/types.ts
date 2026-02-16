@@ -1827,6 +1827,9 @@ export type Database = {
           last_receipt_check_at: string | null
           product_id: string | null
           source: string | null
+          stripe_customer_id: string | null
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
           trial_ends_at: string | null
           updated_at: string
           user_id: string
@@ -1840,6 +1843,9 @@ export type Database = {
           last_receipt_check_at?: string | null
           product_id?: string | null
           source?: string | null
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
           trial_ends_at?: string | null
           updated_at?: string
           user_id: string
@@ -1853,6 +1859,9 @@ export type Database = {
           last_receipt_check_at?: string | null
           product_id?: string | null
           source?: string | null
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
           trial_ends_at?: string | null
           updated_at?: string
           user_id?: string

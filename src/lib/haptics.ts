@@ -1,60 +1,25 @@
 /**
- * Haptic feedback utility — uses Capacitor Haptics when available,
- * gracefully no-ops in regular browsers.
+ * Haptic feedback utility — no-ops in web browsers.
+ * Capacitor has been removed; these are retained as stubs for call-site compatibility.
  */
 
-import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
-
-const isNative = (): boolean => {
-  try {
-    return typeof (window as any)?.Capacitor?.isNativePlatform === 'function'
-      ? (window as any).Capacitor.isNativePlatform()
-      : false;
-  } catch {
-    return false;
-  }
-};
-
 /** Light tap — buttons, toggles */
-export async function tapLight() {
-  if (!isNative()) return;
-  await Haptics.impact({ style: ImpactStyle.Light });
-}
+export async function tapLight() { /* no-op */ }
 
 /** Medium tap — completing actions, confirming */
-export async function tapMedium() {
-  if (!isNative()) return;
-  await Haptics.impact({ style: ImpactStyle.Medium });
-}
+export async function tapMedium() { /* no-op */ }
 
 /** Heavy tap — destructive actions, important confirmations */
-export async function tapHeavy() {
-  if (!isNative()) return;
-  await Haptics.impact({ style: ImpactStyle.Heavy });
-}
+export async function tapHeavy() { /* no-op */ }
 
 /** Success notification — deal closed, task completed */
-export async function notifySuccess() {
-  if (!isNative()) return;
-  await Haptics.notification({ type: NotificationType.Success });
-}
+export async function notifySuccess() { /* no-op */ }
 
 /** Warning notification — risk alerts */
-export async function notifyWarning() {
-  if (!isNative()) return;
-  await Haptics.notification({ type: NotificationType.Warning });
-}
+export async function notifyWarning() { /* no-op */ }
 
 /** Error notification — failures */
-export async function notifyError() {
-  if (!isNative()) return;
-  await Haptics.notification({ type: NotificationType.Error });
-}
+export async function notifyError() { /* no-op */ }
 
 /** Selection tick — scrolling through pickers, lists */
-export async function selectionTick() {
-  if (!isNative()) return;
-  await Haptics.selectionStart();
-  await Haptics.selectionChanged();
-  await Haptics.selectionEnd();
-}
+export async function selectionTick() { /* no-op */ }
