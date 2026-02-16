@@ -17,8 +17,8 @@ export function usePushNotifications() {
     if (!supported || permission !== 'granted') return;
     try {
       new Notification(title, {
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
+        icon: '/app-icon.png',
+        badge: '/app-icon.png',
         ...options,
       });
     } catch {

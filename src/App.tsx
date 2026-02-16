@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Target } from "lucide-react";
+import appIcon from "@/assets/app-icon.png";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -43,8 +43,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
         <div className="text-center animate-fade-in">
           <div className="relative h-12 w-12 mx-auto mb-4">
             <div className="absolute inset-0 rounded-xl bg-primary/20 animate-ping" style={{ animationDuration: '1.5s' }} />
-            <div className="relative h-12 w-12 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/25">
-              <Target className="h-5 w-5 text-primary-foreground" />
+            <div className="relative h-12 w-12 rounded-xl overflow-hidden shadow-lg shadow-primary/25">
+              <img src={appIcon} alt="Deal Pilot" className="h-12 w-12" />
             </div>
           </div>
           <p className="text-xs font-medium text-muted-foreground tracking-wide">DEAL PILOT</p>

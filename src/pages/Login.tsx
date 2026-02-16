@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, ArrowRight, Mail, Shield, Zap, TrendingUp, ArrowLeft } from 'lucide-react';
+import { ArrowRight, Mail, Shield, Zap, TrendingUp, ArrowLeft } from 'lucide-react';
+import appIcon from '@/assets/app-icon.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { lovable } from '@/integrations/lovable/index';
 import { supabase } from '@/integrations/supabase/client';
@@ -102,8 +103,8 @@ export default function Login() {
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">
-            <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-              <Target className="h-5 w-5 text-primary-foreground" />
+            <div className="h-10 w-10 rounded-xl overflow-hidden shadow-lg shadow-primary/20">
+              <img src={appIcon} alt="Deal Pilot" className="h-10 w-10" />
             </div>
             <span className="text-xl font-bold tracking-tight">Deal Pilot</span>
           </div>
@@ -146,8 +147,8 @@ export default function Login() {
         <div className="w-full max-w-sm animate-fade-in">
           {/* Mobile logo */}
           <div className="flex flex-col items-center mb-8 lg:hidden">
-            <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
-              <Target className="h-7 w-7 text-primary-foreground" />
+            <div className="h-14 w-14 rounded-2xl overflow-hidden mb-4 shadow-lg shadow-primary/20">
+              <img src={appIcon} alt="Deal Pilot" className="h-14 w-14" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight">Deal Pilot</h1>
             <p className="text-sm text-muted-foreground mt-1">Your real estate command center</p>
