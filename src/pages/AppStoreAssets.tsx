@@ -20,7 +20,7 @@ export default function AppStoreAssets() {
       <section className="relative overflow-hidden px-6 py-20 text-center">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-transparent to-transparent" />
         <div className="relative space-y-6 max-w-lg mx-auto">
-          <img src="/icon-512.png" alt="Deal Pilot" className="h-20 w-20 rounded-2xl mx-auto shadow-xl shadow-primary/20" />
+          <img src="/app-icon.png" alt="Deal Pilot" className="h-20 w-20 rounded-2xl mx-auto shadow-xl shadow-primary/20" />
           <h1 className="text-4xl font-extrabold tracking-tight">
             Deal Pilot
           </h1>

@@ -55,7 +55,7 @@ export default function InstallPage() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="max-w-md w-full space-y-8 text-center">
         <div className="space-y-4">
-          <img src="/icon-512.png" alt="Deal Pilot" className="h-24 w-24 rounded-2xl mx-auto shadow-2xl shadow-primary/20" />
+          <img src="/app-icon.png" alt="Deal Pilot" className="h-24 w-24 rounded-2xl mx-auto shadow-2xl shadow-primary/20" />
           <h1 className="text-3xl font-bold tracking-tight">Install Deal Pilot</h1>
           <p className="text-muted-foreground text-lg">
             Get instant access from your home screen. Works offline, loads fast, feels native.
