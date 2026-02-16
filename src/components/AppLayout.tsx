@@ -316,9 +316,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
       {/* Paywall modal triggered by restricted mode */}
       {showPaywall && (
-        <div className="fixed inset-0 z-50 bg-background">
-          <PaywallLazy onDismiss={() => setShowPaywall(false)} showDismiss />
-        </div>
+        <Suspense fallback={<div className="fixed inset-0 z-50 bg-background flex items-center justify-center"><p className="text-sm text-muted-foreground">Loading…</p></div>}>
+          <div className="fixed inset-0 z-50 bg-background">
+            <PaywallLazy onDismiss={() => setShowPaywall(false)} showDismiss />
+          </div>
+        </Suspense>
       )}
 
       {/* Notification permission rationale prompt */}
