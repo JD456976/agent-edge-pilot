@@ -20,7 +20,7 @@ export async function redirectToCheckout(): Promise<void> {
   if (data?.error) throw new Error(data.error);
   if (!data?.url) throw new Error('No checkout URL returned');
 
-  window.location.href = data.url;
+  window.open(data.url, '_blank');
 }
 
 export interface SubscriptionStatus {
