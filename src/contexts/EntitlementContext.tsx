@@ -1,110 +1,114 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import {
-  type EntitlementState,
-  refreshEntitlements,
-  purchase as purchaseProduct,
-  restorePurchases as restoreProducts,
-  getEntitlementState,
-} from '@/lib/subscription/subscriptionService';
-import { DEAL_PILOT_PRO_MONTHLY_PRODUCT_ID } from '@/lib/subscription/products';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { checkSubscription, redirectToCheckout, openCustomerPortal, type SubscriptionStatus } from '@/lib/stripe/stripeService';
+
+interface EntitlementState {
+  isPro: boolean;
+  isTrial: boolean;
+  trialEndsAt: string | null;
+  isActive: boolean;
+  expiresAt: string | null;
+}
 
 interface EntitlementContextType {
   entitlementState: EntitlementState;
   loading: boolean;
-  /** Whether the user can perform write actions (Pro, trial, or reviewer) */
   canWrite: boolean;
-  purchasePro: () => Promise<void>;
-  restore: () => Promise<void>;
+  startCheckout: () => Promise<void>;
+  manageSubscription: () => Promise<void>;
   refresh: () => Promise<void>;
 }
+
+const DEFAULT_STATE: EntitlementState = {
+  isPro: false,
+  isTrial: false,
+  trialEndsAt: null,
+  isActive: false,
+  expiresAt: null,
+};
 
 const EntitlementContext = createContext<EntitlementContextType | undefined>(undefined);
 
 export function EntitlementProvider({ children }: { children: React.ReactNode }) {
-  const { isReviewer } = useAuth();
-  const [state, setState] = useState<EntitlementState>(getEntitlementState());
+  const { isReviewer, user } = useAuth();
+  const [state, setState] = useState<EntitlementState>(DEFAULT_STATE);
   const [loading, setLoading] = useState(true);
   const mountedRef = useRef(true);
 
-  const checkServerGrant = useCallback(async (): Promise<boolean> => {
-    try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) return false;
-      const { data } = await supabase
-        .from('user_entitlements')
-        .select('is_pro, expires_at')
-        .eq('user_id', authUser.id)
-        .eq('is_pro', true)
-        .maybeSingle();
-      if (!data) return false;
-      // Check expiry
-      if (data.expires_at && new Date(data.expires_at) < new Date()) return false;
-      return true;
-    } catch {
-      return false;
-    }
-  }, []);
-
   const refresh = useCallback(async () => {
     try {
-      const updated = await refreshEntitlements();
-      // Also check server-side admin grants
-      const serverGrant = await checkServerGrant();
-      if (serverGrant) {
-        updated.isPro = true;
-        updated.isActive = true;
-      }
-      if (mountedRef.current) setState(updated);
-    } catch {
+      const result: SubscriptionStatus = await checkSubscription();
+      if (!mountedRef.current) return;
+
+      const isPro = result.subscribed && !result.isTrial;
+      const isTrial = result.isTrial;
+
+      setState({
+        isPro,
+        isTrial,
+        trialEndsAt: result.trialEnd,
+        isActive: result.subscribed,
+        expiresAt: result.subscriptionEnd,
+      });
+    } catch (err) {
+      console.warn('[Entitlement] refresh failed:', err);
       // Keep existing state
     }
-  }, [checkServerGrant]);
+  }, []);
 
   // Initial load
   useEffect(() => {
     mountedRef.current = true;
-    (async () => {
-      await refresh();
-      if (mountedRef.current) setLoading(false);
-    })();
+    if (user) {
+      (async () => {
+        await refresh();
+        if (mountedRef.current) setLoading(false);
+      })();
+    } else {
+      setLoading(false);
+    }
     return () => { mountedRef.current = false; };
-  }, [refresh]);
+  }, [refresh, user]);
 
   // Refresh when app returns to foreground
   useEffect(() => {
+    if (!user) return;
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        refresh();
-      }
+      if (document.visibilityState === 'visible') refresh();
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [refresh]);
+  }, [refresh, user]);
 
-  const purchasePro = useCallback(async () => {
+  // Periodic refresh every 60s
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(refresh, 60_000);
+    return () => clearInterval(interval);
+  }, [refresh, user]);
+
+  const startCheckout = useCallback(async () => {
     setLoading(true);
-    const result = await purchaseProduct(DEAL_PILOT_PRO_MONTHLY_PRODUCT_ID);
-    if (mountedRef.current) {
-      setState(result);
-      setLoading(false);
+    try {
+      await redirectToCheckout();
+    } catch (err) {
+      console.error('[Entitlement] checkout failed:', err);
+      if (mountedRef.current) setLoading(false);
     }
   }, []);
 
-  const restore = useCallback(async () => {
-    setLoading(true);
-    const result = await restoreProducts();
-    if (mountedRef.current) {
-      setState(result);
-      setLoading(false);
+  const manageSubscription = useCallback(async () => {
+    try {
+      await openCustomerPortal();
+    } catch (err) {
+      console.error('[Entitlement] portal failed:', err);
     }
   }, []);
 
   const canWrite = isReviewer || state.isPro || state.isTrial;
 
   return (
-    <EntitlementContext.Provider value={{ entitlementState: state, loading, canWrite, purchasePro, restore, refresh }}>
+    <EntitlementContext.Provider value={{ entitlementState: state, loading, canWrite, startCheckout, manageSubscription, refresh }}>
       {children}
     </EntitlementContext.Provider>
   );
