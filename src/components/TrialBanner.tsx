@@ -1,11 +1,13 @@
 /**
  * Non-intrusive trial banner shown once per day on Command Center.
+ * Shows remaining trial days.
  */
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles } from 'lucide-react';
 import { useEntitlement } from '@/contexts/EntitlementContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { differenceInDays, parseISO } from 'date-fns';
 
 const DISMISS_KEY = 'dp_trial_banner_dismissed';
 
@@ -18,12 +20,11 @@ function wasDismissedToday(): boolean {
 }
 
 export function TrialBanner() {
-  const { entitlementState, canWrite } = useEntitlement();
+  const { entitlementState } = useEntitlement();
   const { isReviewer } = useAuth();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    // Only show for trial users, not reviewers, once per day
     if (entitlementState.isTrial && !isReviewer && !wasDismissedToday()) {
       setVisible(true);
     }
@@ -33,6 +34,10 @@ export function TrialBanner() {
     localStorage.setItem(DISMISS_KEY, new Date().toISOString());
     setVisible(false);
   };
+
+  const daysLeft = entitlementState.trialEndsAt
+    ? Math.max(0, differenceInDays(parseISO(entitlementState.trialEndsAt), new Date()))
+    : null;
 
   return (
     <AnimatePresence>
@@ -48,7 +53,11 @@ export function TrialBanner() {
             <span className="flex items-center gap-2 text-foreground">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               <span className="font-medium">Trial active</span>
-              <span className="text-muted-foreground">— unlock your workflow</span>
+              {daysLeft !== null && (
+                <span className="text-muted-foreground">
+                  — {daysLeft === 0 ? 'expires today' : `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`}
+                </span>
+              )}
             </span>
             <button
               onClick={dismiss}
