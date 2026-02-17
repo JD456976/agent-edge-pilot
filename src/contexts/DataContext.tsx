@@ -279,11 +279,46 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const wipeData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    // Clean up tables without FK constraints first
+    await supabase.from('activity_events').delete().eq('user_id', user.id);
+    await supabase.from('ai_follow_up_drafts').delete().eq('user_id', user.id);
+    await supabase.from('fub_activity_log').delete().eq('user_id', user.id);
+    await supabase.from('fub_appointments').delete().eq('user_id', user.id);
+    await supabase.from('fub_push_log').delete().eq('user_id', user.id);
+    await supabase.from('fub_watchlist').delete().eq('user_id', user.id);
+    await supabase.from('fub_ignored_changes').delete().eq('user_id', user.id);
+    await supabase.from('fub_conflict_resolutions').delete().eq('user_id', user.id);
+    await supabase.from('fub_sync_state').delete().eq('user_id', user.id);
+    await supabase.from('self_opt_action_outcomes').delete().eq('user_id', user.id);
+    await supabase.from('self_opt_behavior_signals').delete().eq('user_id', user.id);
+    await supabase.from('self_opt_preferences').delete().eq('user_id', user.id);
+    await supabase.from('network_telemetry_events').delete().eq('user_id', user.id);
+    await supabase.from('network_participation').delete().eq('user_id', user.id);
+    await supabase.from('scoring_preferences').delete().eq('user_id', user.id);
+    await supabase.from('commission_defaults').delete().eq('user_id', user.id);
+    await supabase.from('agent_intelligence_profile').delete().eq('user_id', user.id);
+    await supabase.from('crm_integrations').delete().eq('user_id', user.id);
+
+    // FUB staged data (child tables first due to FK)
+    const { data: importRuns } = await supabase.from('fub_import_runs').select('id').eq('user_id', user.id);
+    if (importRuns && importRuns.length > 0) {
+      const runIds = importRuns.map(r => r.id);
+      await supabase.from('fub_staged_leads').delete().in('import_run_id', runIds);
+      await supabase.from('fub_staged_deals').delete().in('import_run_id', runIds);
+      await supabase.from('fub_staged_tasks').delete().in('import_run_id', runIds);
+    }
+
+    // Deal participants before deals
     const dealIds = deals.map(d => d.id);
     if (dealIds.length > 0) {
       await supabase.from('deal_participants').delete().in('deal_id', dealIds);
     }
+
+    // Tasks before leads/deals (FK is SET NULL but delete anyway)
     await supabase.from('tasks').delete().eq('assigned_to_user_id', user.id);
+
+    // Alerts referencing leads/deals
     const leadIds = leads.map(l => l.id);
     if (leadIds.length > 0) {
       await supabase.from('alerts').delete().in('related_lead_id', leadIds);
@@ -291,6 +326,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (dealIds.length > 0) {
       await supabase.from('alerts').delete().in('related_deal_id', dealIds);
     }
+
+    // Now safe to delete deals and leads
     await supabase.from('deals').delete().eq('assigned_to_user_id', user.id);
     await supabase.from('leads').delete().eq('assigned_to_user_id', user.id);
 
