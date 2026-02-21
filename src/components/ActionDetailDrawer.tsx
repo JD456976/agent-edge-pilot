@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LogTouchModal } from '@/components/LogTouchModal';
 import { ActivityTrail } from '@/components/ActivityTrail';
+import { IntelBriefPanel } from '@/components/IntelBriefPanel';
 import type { ScoredEntity, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 type DetailItem =
@@ -177,6 +178,15 @@ export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 
             <p className="text-xs text-warning italic border-l-2 border-warning/50 pl-3">
               Action repeatedly deferred.
             </p>
+          )}
+
+          {/* Intel Brief */}
+          {touchEntityType && touchEntityId && (
+            <IntelBriefPanel
+              entityId={touchEntityId}
+              entityType={touchEntityType}
+              entityName={title}
+            />
           )}
 
           {/* Activity Trail */}

@@ -985,6 +985,42 @@ export type Database = {
         }
         Relationships: []
       }
+      intel_briefs: {
+        Row: {
+          activity_count: number
+          brief_json: Json
+          created_at: string
+          entity_id: string
+          entity_type: string
+          generated_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_count?: number
+          brief_json?: Json
+          created_at?: string
+          entity_id: string
+          entity_type?: string
+          generated_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_count?: number
+          brief_json?: Json
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          generated_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       lead_routing_rules: {
         Row: {
           created_at: string

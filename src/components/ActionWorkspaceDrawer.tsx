@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
+import { IntelBriefPanel } from '@/components/IntelBriefPanel';
 import type { Deal, Lead, Task, TaskType } from '@/types';
 import type { MoneyModelResult } from '@/lib/moneyModel';
 import type { OpportunityHeatResult } from '@/lib/leadMoneyModel';
@@ -28,7 +29,7 @@ import {
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type WorkspaceTab = 'call' | 'text' | 'email' | 'task' | 'notes';
+type WorkspaceTab = 'call' | 'text' | 'email' | 'task' | 'notes' | 'intel';
 
 interface Props {
   open: boolean;
@@ -261,6 +262,7 @@ export function ActionWorkspaceDrawer({
   if (!entity || !context || !draft) return null;
 
   const tabs: { key: WorkspaceTab; label: string; icon: typeof Phone; subtitle: string }[] = [
+    { key: 'intel', label: 'Intel', icon: Zap, subtitle: 'AI brief' },
     { key: 'call', label: 'Call', icon: Phone, subtitle: 'Script & outcomes' },
     { key: 'text', label: 'Text', icon: MessageSquare, subtitle: 'SMS templates' },
     { key: 'email', label: 'Email', icon: Mail, subtitle: 'Draft & send' },
@@ -318,6 +320,15 @@ export function ActionWorkspaceDrawer({
 
           {/* Tab content */}
           <div className="px-5 py-4 space-y-4">
+
+            {/* ── INTEL TAB ────────────────────────────────────────── */}
+            {activeTab === 'intel' && entity && (
+              <IntelBriefPanel
+                entityId={context.entityId}
+                entityType={context.entityType}
+                entityName={context.entityName}
+              />
+            )}
 
             {/* ── CALL TAB ─────────────────────────────────────────── */}
             {activeTab === 'call' && callBrief && (
