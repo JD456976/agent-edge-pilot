@@ -68,3 +68,9 @@ verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.intel-brief]
+verify_jwt = false
+
+[functions.check-subscription]
+verify_jwt = false
