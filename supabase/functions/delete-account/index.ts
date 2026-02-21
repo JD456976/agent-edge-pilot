@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
       "agent_intelligence_profile",
       "crm_integrations",
       "import_dedup_rules",
+      "intel_briefs",
     ];
 
     // Delete from simple user_id tables
