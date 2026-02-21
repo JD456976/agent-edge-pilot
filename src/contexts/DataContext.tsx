@@ -299,6 +299,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     await supabase.from('commission_defaults').delete().eq('user_id', user.id);
     await supabase.from('agent_intelligence_profile').delete().eq('user_id', user.id);
     await supabase.from('crm_integrations').delete().eq('user_id', user.id);
+    await supabase.from('import_dedup_rules').delete().eq('user_id', user.id);
+    await supabase.from('intel_briefs').delete().eq('user_id', user.id);
 
     // FUB staged data (child tables first due to FK)
     const { data: importRuns } = await supabase.from('fub_import_runs').select('id').eq('user_id', user.id);
@@ -307,7 +309,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       await supabase.from('fub_staged_leads').delete().in('import_run_id', runIds);
       await supabase.from('fub_staged_deals').delete().in('import_run_id', runIds);
       await supabase.from('fub_staged_tasks').delete().in('import_run_id', runIds);
+      await supabase.from('fub_import_runs').delete().eq('user_id', user.id);
     }
+
+    // FUB sync/webhook data missed previously
+    await supabase.from('fub_appointments').delete().eq('user_id', user.id);
+    await supabase.from('fub_webhook_events').delete().eq('user_id', user.id);
 
     // Deal participants before deals
     const dealIds = deals.map(d => d.id);
