@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
-import { IntelBriefPanel } from '@/components/IntelBriefPanel';
+import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
 import type { Deal, Lead, Task, TaskType } from '@/types';
 import type { MoneyModelResult } from '@/lib/moneyModel';
 import type { OpportunityHeatResult } from '@/lib/leadMoneyModel';
@@ -262,7 +262,7 @@ export function ActionWorkspaceDrawer({
   if (!entity || !context || !draft) return null;
 
   const tabs: { key: WorkspaceTab; label: string; icon: typeof Phone; subtitle: string }[] = [
-    { key: 'intel', label: 'Intel', icon: Zap, subtitle: 'AI brief' },
+    { key: 'intel', label: 'Intel', icon: Zap, subtitle: 'Data brief' },
     { key: 'call', label: 'Call', icon: Phone, subtitle: 'Script & outcomes' },
     { key: 'text', label: 'Text', icon: MessageSquare, subtitle: 'SMS templates' },
     { key: 'email', label: 'Email', icon: Mail, subtitle: 'Draft & send' },
@@ -323,10 +323,11 @@ export function ActionWorkspaceDrawer({
 
             {/* ── INTEL TAB ────────────────────────────────────────── */}
             {activeTab === 'intel' && entity && (
-              <IntelBriefPanel
+              <LocalIntelBriefPanel
                 entityId={context.entityId}
                 entityType={context.entityType}
                 entityName={context.entityName}
+                entity={entity}
               />
             )}
 
