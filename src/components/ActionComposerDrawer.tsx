@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { ActivityTrail } from '@/components/ActivityTrail';
+import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
 import type { Deal, Lead, Task, TaskType } from '@/types';
 import type { MoneyModelResult } from '@/lib/moneyModel';
 import type { OpportunityHeatResult } from '@/lib/leadMoneyModel';
@@ -35,7 +36,7 @@ import {
   type ConfidenceLevel,
 } from '@/lib/executionEngine';
 
-type WorkspaceTab = 'call' | 'text' | 'email' | 'task' | 'notes';
+type WorkspaceTab = 'call' | 'text' | 'email' | 'task' | 'notes' | 'intel';
 
 interface Props {
   open: boolean;
@@ -415,6 +416,7 @@ export function ActionComposerDrawer({
     { key: 'email', label: 'Email', icon: Mail },
     { key: 'task', label: 'Task', icon: ListTodo },
     { key: 'notes', label: 'Notes', icon: StickyNote },
+    { key: 'intel', label: 'Intel', icon: TrendingUp },
   ];
 
   const displayEmail = editedEmail ?? emailBody;
@@ -659,6 +661,16 @@ export function ActionComposerDrawer({
                       </div>
                     )}
                   </div>
+                )}
+
+                {/* INTEL */}
+                {activeTab === 'intel' && entity && (
+                  <LocalIntelBriefPanel
+                    entityId={context.entityId}
+                    entityType={context.entityType}
+                    entityName={context.entityName}
+                    entity={entity}
+                  />
                 )}
               </div>
             </div>
