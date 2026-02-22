@@ -363,6 +363,29 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       // Rollback on failure
       setTasks(prev => prev.map(t => t.id === id ? { ...t, completedAt: undefined } : t));
       console.error('Failed to complete task:', error);
+    } else {
+      // Auto-push completion to FUB (non-blocking)
+      const task = tasks.find(t => t.id === id);
+      if (task?.relatedLeadId || task?.relatedDealId) {
+        const entityId = task.relatedLeadId || task.relatedDealId;
+        const entityTable = task.relatedLeadId ? 'leads' : 'deals';
+        supabase.from(entityTable).select('imported_from').eq('id', entityId!).maybeSingle().then(({ data: entity }) => {
+          if ((entity as any)?.imported_from?.startsWith('fub:')) {
+            import('@/lib/edgeClient').then(({ callEdgeFunction }) => {
+              callEdgeFunction('fub-push', {
+                entity_type: 'note',
+                entity_id: entityId,
+                action: 'create',
+                fields: {
+                  fub_person_id: parseInt((entity as any).imported_from.replace('fub:', '')),
+                  body: `Task completed: ${task.title}`,
+                  subject: 'Deal Pilot: Task Completed',
+                },
+              }).catch(() => {});
+            });
+          }
+        });
+      }
     }
   };
 
@@ -389,7 +412,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       console.error('Failed to add task:', error);
       return;
     }
-    if (data) setTasks(prev => [...prev, mapTask(data)]);
+    if (data) {
+      setTasks(prev => [...prev, mapTask(data)]);
+
+      // Auto-push task to FUB (best-effort, non-blocking)
+      const relatedLeadId = task.relatedLeadId;
+      const relatedDealId = task.relatedDealId;
+      if (relatedLeadId || relatedDealId) {
+        const entityId = relatedLeadId || relatedDealId;
+        const entityTable = relatedLeadId ? 'leads' : 'deals';
+        supabase.from(entityTable).select('imported_from').eq('id', entityId!).maybeSingle().then(({ data: entity }) => {
+          const importedFrom = (entity as any)?.imported_from;
+          if (importedFrom?.startsWith('fub:')) {
+            import('@/lib/edgeClient').then(({ callEdgeFunction }) => {
+              callEdgeFunction('fub-push', {
+                entity_type: 'task',
+                entity_id: data.id,
+                action: 'create',
+                fields: {},
+              }).catch(err => {
+                if (import.meta.env.DEV) console.warn('FUB task push failed (non-blocking):', err);
+              });
+            });
+          }
+        });
+      }
+    }
   };
 
   const updateDealParticipant = async (p: DealParticipant) => {
