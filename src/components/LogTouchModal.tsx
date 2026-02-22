@@ -93,20 +93,32 @@ export function LogTouchModal({ open, onClose, entityType, entityId, entityTitle
       }
 
       // Auto-push note to FUB (best-effort, don't block)
-      if (entityType === 'lead') {
-        const { data: leadData } = await supabase.from('leads').select('imported_from').eq('id', entityId).maybeSingle();
-        const fubId = (leadData as any)?.imported_from?.startsWith('fub:') ? (leadData as any).imported_from.replace('fub:', '') : null;
-        if (fubId) {
-          callEdgeFunction('fub-push', {
-            entity_type: 'note',
-            entity_id: entityId,
-            action: 'create',
-            fields: { fub_person_id: parseInt(fubId), body: note || `${touchType} logged via Deal Pilot`, subject: `Deal Pilot: ${touchType}` },
-          }).catch((err) => {
-            if (import.meta.env.DEV) console.warn('FUB push failed (non-blocking):', err);
-          });
+      const checkEntity = async () => {
+        if (entityType === 'lead') {
+          const { data: leadData } = await supabase.from('leads').select('imported_from').eq('id', entityId).maybeSingle();
+          const fubId = (leadData as any)?.imported_from?.startsWith('fub:') ? (leadData as any).imported_from.replace('fub:', '') : null;
+          if (fubId) {
+            callEdgeFunction('fub-push', {
+              entity_type: 'note',
+              entity_id: entityId,
+              action: 'create',
+              fields: { fub_person_id: parseInt(fubId), body: note || `${touchType} logged via Deal Pilot`, subject: `Deal Pilot: ${touchType}` },
+            }).catch(() => {});
+          }
+        } else if (entityType === 'deal') {
+          const { data: dealData } = await supabase.from('deals').select('imported_from').eq('id', entityId).maybeSingle();
+          const fubId = (dealData as any)?.imported_from?.startsWith('fub:') ? (dealData as any).imported_from.replace('fub:', '') : null;
+          if (fubId) {
+            callEdgeFunction('fub-push', {
+              entity_type: 'deal',
+              entity_id: entityId,
+              action: 'update',
+              fields: { description: `${touchType}: ${note || 'Touch logged via Deal Pilot'}` },
+            }).catch(() => {});
+          }
         }
-      }
+      };
+      checkEntity();
 
       await refreshData();
       toast({ description: `Touch logged — ${touchType}` });

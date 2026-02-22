@@ -81,6 +81,33 @@ Deno.serve(async (req) => {
           ...(fields || {}),
         };
       }
+    } else if (entity_type === "task") {
+      // Push a task to FUB
+      const { data: task } = await serviceClient.from("tasks").select("title, due_at, type, related_lead_id, related_deal_id").eq("id", entity_id).single();
+      if (!task) throw new Error("Task not found");
+
+      // Resolve FUB person ID from related lead
+      let fubPersonId: number | null = null;
+      if (task.related_lead_id) {
+        const { data: lead } = await serviceClient.from("leads").select("imported_from").eq("id", task.related_lead_id).single();
+        if (lead?.imported_from?.startsWith("fub:")) {
+          fubPersonId = parseInt(lead.imported_from.replace("fub:", ""));
+        }
+      }
+
+      if (action === "create") {
+        fubEndpoint = "https://api.followupboss.com/v1/tasks";
+        fubMethod = "POST";
+        fubBody = {
+          name: task.title,
+          dueDate: task.due_at ? new Date(task.due_at).toISOString().split("T")[0] : undefined,
+          ...(fubPersonId ? { personId: fubPersonId } : {}),
+          ...(fields || {}),
+        };
+      } else if (action === "complete" && fields?.fub_task_id) {
+        fubEndpoint = `https://api.followupboss.com/v1/tasks/${fields.fub_task_id}`;
+        fubBody = { status: "completed" };
+      }
     } else if (entity_type === "note") {
       // Push a note to a FUB person
       fubEndpoint = "https://api.followupboss.com/v1/notes";
