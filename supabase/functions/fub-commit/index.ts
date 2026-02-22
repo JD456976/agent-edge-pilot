@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
             engagement_score: norm.engagementScore || 0,
             last_contact_at: norm.lastContactAt || new Date().toISOString(),
             status_tags: ["fub-import"],
-            imported_from: "fub",
+            imported_from: `fub:${sl.fub_id}`,
             import_run_id: import_run_id,
             imported_at: importedAt,
           });
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
             close_date: norm.closeDate || new Date(Date.now() + 30 * 86400000).toISOString(),
             commission_amount: commissionAmount,
             commission_rate: commissionRate,
-            imported_from: "fub",
+            imported_from: `fub:${sd.fub_id}`,
             import_run_id: import_run_id,
             imported_at: importedAt,
           }).select("id").single();
@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
             type: norm.type || "follow_up",
             due_at: norm.dueAt || new Date().toISOString(),
             completed_at: norm.completedAt || null,
-            imported_from: "fub",
+            imported_from: `fub:${st.fub_id}`,
             import_run_id: import_run_id,
             imported_at: importedAt,
           });
