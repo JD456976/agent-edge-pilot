@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Zap, Clock, Target, MessageSquare, AlertTriangle, TrendingUp, Activity, BarChart3 } from 'lucide-react';
+import { Zap, Clock, Target, MessageSquare, AlertTriangle, TrendingUp, Activity, BarChart3, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow, differenceInDays, format } from 'date-fns';
+import { callEdgeFunction } from '@/lib/edgeClient';
 
 interface Props {
   entityId: string;
@@ -31,28 +32,71 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
   const [fubActivities, setFubActivities] = useState<FubActivity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchingFub, setFetchingFub] = useState(false);
+
+  const fetchLocalData = async () => {
+    if (!user) return { acts: [], fubs: [] };
+    const [actRes, fubRes] = await Promise.all([
+      supabase
+        .from('activity_events')
+        .select('touch_type, note, created_at')
+        .eq('entity_id', entityId)
+        .order('created_at', { ascending: false })
+        .limit(100),
+      supabase
+        .from('fub_activity_log')
+        .select('activity_type, subject, body_preview, direction, occurred_at')
+        .eq('entity_id', entityId)
+        .eq('user_id', user.id)
+        .order('occurred_at', { ascending: false })
+        .limit(100),
+    ]);
+    return {
+      acts: (actRes.data as any[]) || [],
+      fubs: (fubRes.data as any[]) || [],
+    };
+  };
+
+  const fetchFromFub = async () => {
+    if (!user || !entity) return;
+    // Get FUB person ID from imported_from field
+    const importedFrom = entity.importedFrom || entity.imported_from;
+    const fubPersonId = importedFrom?.startsWith('fub:') ? importedFrom.replace('fub:', '') : null;
+    if (!fubPersonId) return;
+
+    setFetchingFub(true);
+    try {
+      await callEdgeFunction('fub-activity', {
+        fub_person_id: parseInt(fubPersonId),
+        entity_id: entityId,
+        limit: 100,
+      });
+      // Re-fetch local data after FUB sync
+      const { acts, fubs } = await fetchLocalData();
+      setActivities(acts);
+      setFubActivities(fubs);
+    } catch (err) {
+      console.warn('FUB activity fetch failed:', err);
+    } finally {
+      setFetchingFub(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [actRes, fubRes] = await Promise.all([
-        supabase
-          .from('activity_events')
-          .select('touch_type, note, created_at')
-          .eq('entity_id', entityId)
-          .order('created_at', { ascending: false })
-          .limit(100),
-        supabase
-          .from('fub_activity_log')
-          .select('activity_type, subject, body_preview, direction, occurred_at')
-          .eq('entity_id', entityId)
-          .eq('user_id', user.id)
-          .order('occurred_at', { ascending: false })
-          .limit(100),
-      ]);
-      setActivities((actRes.data as any[]) || []);
-      setFubActivities((fubRes.data as any[]) || []);
+      const { acts, fubs } = await fetchLocalData();
+      setActivities(acts);
+      setFubActivities(fubs);
       setLoading(false);
+
+      // Auto-fetch from FUB if local data is empty and entity is FUB-imported
+      if (acts.length === 0 && fubs.length === 0) {
+        const importedFrom = entity?.importedFrom || entity?.imported_from;
+        if (importedFrom?.startsWith('fub:')) {
+          await fetchFromFub();
+        }
+      }
     })();
   }, [user, entityId]);
 
@@ -148,11 +192,13 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
     };
   }, [activities, fubActivities, entity, entityType]);
 
-  if (loading) {
+  if (loading || fetchingFub) {
     return (
       <div className="rounded-lg border border-border bg-card p-6 flex items-center justify-center">
         <Activity className="h-4 w-4 animate-pulse text-muted-foreground mr-2" />
-        <span className="text-sm text-muted-foreground">Loading intel…</span>
+        <span className="text-sm text-muted-foreground">
+          {fetchingFub ? 'Syncing activity from FUB…' : 'Loading intel…'}
+        </span>
       </div>
     );
   }
@@ -166,7 +212,18 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
           <span className="text-sm font-semibold">Intel Brief</span>
           <Badge variant="outline" className="text-[10px]">{insights.totalEvents} events</Badge>
         </div>
-        <Badge variant="secondary" className="text-[10px]">Local Analysis</Badge>
+        <div className="flex items-center gap-1.5">
+          {(entity?.importedFrom?.startsWith('fub:') || entity?.imported_from?.startsWith('fub:')) && (
+            <button
+              onClick={fetchFromFub}
+              className="p-1 rounded hover:bg-accent transition-colors"
+              title="Refresh from FUB"
+            >
+              <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
+          )}
+          <Badge variant="secondary" className="text-[10px]">Local Analysis</Badge>
+        </div>
       </div>
 
       <div className="p-4 space-y-4">
