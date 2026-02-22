@@ -1,14 +1,25 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Zap, Clock, Target, MessageSquare, AlertTriangle, TrendingUp, Activity, BarChart3, RefreshCw, Home, MapPin, DollarSign, Tag, Heart, Phone, Mail, MessageCircle, Calendar, ArrowUpRight, ArrowDownLeft, Shield, User } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Zap, Clock, Target, MessageSquare, AlertTriangle, TrendingUp, Activity, BarChart3,
+  RefreshCw, Home, MapPin, DollarSign, Tag, Heart, Phone, Mail, MessageCircle,
+  Calendar, ArrowUpRight, ArrowDownLeft, Shield, User, Gauge, Repeat, Timer,
+  ChevronDown, Flame, Snowflake, Thermometer, FileText, Users, Compass,
+  ArrowRight, Zap as ZapIcon, Radio, LayoutGrid
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow, differenceInDays, format } from 'date-fns';
 import { callEdgeFunction } from '@/lib/edgeClient';
+import { ExpandableContent } from '@/components/ExpandableContent';
 import {
   type ActivityEvent, type FubActivity, type FubPersonProfile,
   computeEngagementTrend, computeResponseMetrics, computeChannelPreference,
   computeMilestones, computeHealthScore, analyzePropertyInterest,
+  computeActivityHeatmap, computeEngagementVelocity, computeCommunicationStyle,
+  computeCadenceAnalysis, extractConversationTopics, computeReengagementMetrics,
+  computeLifecyclePosition, computeOutreachEffectiveness, getRecentActivity,
+  fmtK,
 } from '@/lib/intelAnalyzer';
 
 interface Props {
@@ -34,14 +45,14 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
         .select('touch_type, note, created_at')
         .eq('entity_id', entityId)
         .order('created_at', { ascending: false })
-        .limit(100),
+        .limit(200),
       supabase
         .from('fub_activity_log')
         .select('activity_type, subject, body_preview, direction, occurred_at, duration_seconds')
         .eq('entity_id', entityId)
         .eq('user_id', user.id)
         .order('occurred_at', { ascending: false })
-        .limit(100),
+        .limit(200),
     ]);
     return {
       acts: (actRes.data as any[]) || [],
@@ -60,7 +71,7 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
       const result = await callEdgeFunction('fub-activity', {
         fub_person_id: parseInt(fubPersonId),
         entity_id: entityId,
-        limit: 100,
+        limit: 200,
       });
       if (result?.personProfile) {
         setPersonProfile(result.personProfile as FubPersonProfile);
@@ -83,31 +94,22 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
       setFubActivities(fubs);
       setLoading(false);
 
-      if (acts.length === 0 && fubs.length === 0) {
-        const importedFrom = entity?.importedFrom || entity?.imported_from;
-        if (importedFrom?.startsWith('fub:')) {
-          await fetchFromFub();
-        }
-      } else {
-        // Still fetch person profile for property analysis even if we have activity
-        const importedFrom = entity?.importedFrom || entity?.imported_from;
-        if (importedFrom?.startsWith('fub:')) {
+      const importedFrom = entity?.importedFrom || entity?.imported_from;
+      if (importedFrom?.startsWith('fub:')) {
+        try {
           const fubPersonId = importedFrom.replace('fub:', '');
-          try {
-            const result = await callEdgeFunction('fub-activity', {
-              fub_person_id: parseInt(fubPersonId),
-              entity_id: entityId,
-              limit: 100,
-            });
-            if (result?.personProfile) {
-              setPersonProfile(result.personProfile as FubPersonProfile);
-            }
-            // Also refresh fub activities
-            const { acts: newActs, fubs: newFubs } = await fetchLocalData();
-            setActivities(newActs);
-            setFubActivities(newFubs);
-          } catch { /* non-critical */ }
-        }
+          const result = await callEdgeFunction('fub-activity', {
+            fub_person_id: parseInt(fubPersonId),
+            entity_id: entityId,
+            limit: 200,
+          });
+          if (result?.personProfile) {
+            setPersonProfile(result.personProfile as FubPersonProfile);
+          }
+          const { acts: newActs, fubs: newFubs } = await fetchLocalData();
+          setActivities(newActs);
+          setFubActivities(newFubs);
+        } catch { /* non-critical */ }
       }
     })();
   }, [user, entityId]);
@@ -132,12 +134,14 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
     else if (daysSinceLastContact !== null && daysSinceLastContact > 7) risks.push(`Going quiet — ${daysSinceLastContact} days since last touch`);
     if (totalEvents === 0) risks.push('No activity history — relationship needs nurturing');
     if (entityType === 'deal' && entity?.riskLevel === 'red') risks.push('Deal flagged as high risk');
+    if (totalEvents < 5 && relationshipDuration > 30) risks.push('Very low engagement relative to relationship age');
 
     // Opportunities
     const opportunities: string[] = [];
     if (entityType === 'lead' && entity?.leadTemperature === 'hot') opportunities.push('Hot lead — prioritize immediate follow-up');
     if (entityType === 'deal' && entity?.stage === 'pending') opportunities.push('Deal pending close — stay attentive');
     if (daysSinceLastContact !== null && daysSinceLastContact <= 2 && totalEvents > 0) opportunities.push('Recently engaged — momentum is fresh');
+    if (totalEvents >= 15) opportunities.push('Deep relationship — leverage for referrals');
 
     // Next action
     let nextAction = 'Log your first touch to start building the relationship.';
@@ -151,18 +155,29 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
       nextAction = 'Check in with a quick text or call to stay top of mind.';
     }
 
-    // Computed analytics
+    // All computed analytics
     const trend = computeEngagementTrend(activities, fubActivities);
     const response = computeResponseMetrics(fubActivities);
     const channel = computeChannelPreference(activities, fubActivities);
     const milestones = computeMilestones(activities, fubActivities, entity, entityType);
     const health = computeHealthScore(activities, fubActivities, entity, entityType);
     const propertyInterest = analyzePropertyInterest(fubActivities, personProfile, entity);
+    const heatmap = computeActivityHeatmap(activities, fubActivities);
+    const velocity = computeEngagementVelocity(activities, fubActivities);
+    const commStyle = computeCommunicationStyle(fubActivities);
+    const cadence = computeCadenceAnalysis(activities, fubActivities);
+    const topics = extractConversationTopics(activities, fubActivities);
+    const reengagement = computeReengagementMetrics(activities, fubActivities);
+    const lifecycle = computeLifecyclePosition(entity, entityType);
+    const outreach = computeOutreachEffectiveness(fubActivities);
+    const recentActivity = getRecentActivity(activities, fubActivities);
 
     return {
       totalEvents, firstContact, lastContact, daysSinceLastContact,
       relationshipDuration, avgFrequency, risks, opportunities, nextAction,
       trend, response, channel, milestones, health, propertyInterest,
+      heatmap, velocity, commStyle, cadence, topics, reengagement,
+      lifecycle, outreach, recentActivity,
     };
   }, [activities, fubActivities, entity, entityType, personProfile]);
 
@@ -203,6 +218,12 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
         {/* ═══ RELATIONSHIP HEALTH SCORE ═══ */}
         <HealthScoreBar health={insights.health} />
 
+        {/* ═══ LIFECYCLE POSITION ═══ */}
+        <LifecycleProgressBar lifecycle={insights.lifecycle} entityType={entityType} />
+
+        {/* ═══ ENGAGEMENT VELOCITY ═══ */}
+        <VelocityIndicator velocity={insights.velocity} />
+
         {/* ═══ PROPERTY INTEREST ANALYSIS (PROMINENT) ═══ */}
         {hasPropertyData && (
           <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4 space-y-3">
@@ -211,24 +232,16 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
             </p>
 
             <div className="grid grid-cols-2 gap-2">
-              {pi.priceRange && (
-                <InfoChip icon={DollarSign} label="Budget" value={pi.priceRange} />
-              )}
-              {pi.bedrooms && (
-                <InfoChip icon={Home} label="Beds" value={`${pi.bedrooms} BR${pi.bathrooms ? ` / ${pi.bathrooms} BA` : ''}`} />
-              )}
-              {pi.timeFrame && (
-                <InfoChip icon={Calendar} label="Timeline" value={pi.timeFrame} />
-              )}
+              {pi.priceRange && <InfoChip icon={DollarSign} label="Budget" value={pi.priceRange} />}
+              {pi.bedrooms && <InfoChip icon={Home} label="Beds / Bath" value={`${pi.bedrooms} BR${pi.bathrooms ? ` / ${pi.bathrooms} BA` : ''}`} />}
+              {pi.timeFrame && <InfoChip icon={Calendar} label="Timeline" value={pi.timeFrame} />}
               {pi.preApproved != null && (
                 <InfoChip icon={Shield} label="Pre-approved" value={pi.preApproved ? (pi.preApprovalAmount ? `Yes — $${fmtK(pi.preApprovalAmount)}` : 'Yes') : 'No'} />
               )}
-              {pi.stage && (
-                <InfoChip icon={User} label="FUB Stage" value={pi.stage} />
-              )}
-              {pi.source && (
-                <InfoChip icon={ArrowDownLeft} label="Source" value={pi.source} />
-              )}
+              {pi.stage && <InfoChip icon={User} label="FUB Stage" value={pi.stage} />}
+              {pi.source && <InfoChip icon={ArrowDownLeft} label="Source" value={pi.source} />}
+              {pi.squareFeet && <InfoChip icon={LayoutGrid} label="Sq Ft" value={`${pi.squareFeet.toLocaleString()} sqft`} />}
+              {pi.zipCode && <InfoChip icon={MapPin} label="ZIP" value={pi.zipCode} />}
             </div>
 
             {pi.locations.length > 0 && (
@@ -238,9 +251,7 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {pi.locations.map((loc, i) => (
-                    <span key={i} className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">
-                      {loc}
-                    </span>
+                    <span key={i} className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">{loc}</span>
                   ))}
                 </div>
               </div>
@@ -291,10 +302,11 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
         )}
 
         {/* ═══ SUMMARY STATS ═══ */}
-        <div className="grid grid-cols-3 gap-2">
-          <StatBox label="Relationship" value={insights.relationshipDuration > 0 ? `${insights.relationshipDuration}d` : '—'} />
+        <div className="grid grid-cols-4 gap-2">
+          <StatBox label="Duration" value={insights.relationshipDuration > 0 ? `${insights.relationshipDuration}d` : '—'} />
           <StatBox label="Last Contact" value={insights.daysSinceLastContact !== null ? `${insights.daysSinceLastContact}d ago` : '—'} />
-          <StatBox label="Avg Freq" value={insights.avgFrequency ? `Every ${insights.avgFrequency}d` : '—'} />
+          <StatBox label="Avg Gap" value={insights.avgFrequency ? `${insights.avgFrequency}d` : '—'} />
+          <StatBox label="Total" value={`${insights.totalEvents}`} />
         </div>
 
         {/* ═══ ENGAGEMENT TREND SPARKLINE ═══ */}
@@ -304,7 +316,14 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
           </Section>
         )}
 
-        {/* ═══ RESPONSE RATE ═══ */}
+        {/* ═══ ACTIVITY HEATMAP ═══ */}
+        {insights.totalEvents > 2 && (
+          <Section icon={LayoutGrid} label="Activity Heatmap">
+            <ActivityHeatmap heatmap={insights.heatmap} />
+          </Section>
+        )}
+
+        {/* ═══ RESPONSE METRICS ═══ */}
         {(insights.response.totalOutbound > 0 || insights.response.totalInbound > 0) && (
           <Section icon={MessageSquare} label="Response Metrics">
             <div className="flex items-center gap-3">
@@ -324,56 +343,244 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
                 </div>
               </div>
             </div>
-            <div className="flex gap-3 mt-2 text-[10px] text-muted-foreground">
-              <span className="flex items-center gap-1"><ArrowUpRight className="h-3 w-3" /> {insights.response.totalOutbound} sent</span>
-              <span className="flex items-center gap-1"><ArrowDownLeft className="h-3 w-3" /> {insights.response.totalInbound} received</span>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <MiniStat icon={ArrowUpRight} label="Sent" value={`${insights.response.totalOutbound}`} />
+              <MiniStat icon={ArrowDownLeft} label="Received" value={`${insights.response.totalInbound}`} />
               {insights.response.avgResponseGapDays !== null && (
-                <span>Avg reply: {insights.response.avgResponseGapDays}d</span>
+                <MiniStat icon={Timer} label="Avg reply" value={`${insights.response.avgResponseGapDays}d`} />
+              )}
+              {insights.response.fastestReplyDays !== null && (
+                <MiniStat icon={Zap} label="Fastest" value={`${insights.response.fastestReplyDays}d`} />
+              )}
+              {insights.response.longestStreak > 1 && (
+                <MiniStat icon={AlertTriangle} label="Max unanswered" value={`${insights.response.longestStreak}`} />
               )}
             </div>
           </Section>
         )}
 
-        {/* ═══ CHANNEL PREFERENCE ═══ */}
-        {insights.channel.channels.length > 0 && (
-          <Section icon={Phone} label="Best Channel">
-            <p className="text-xs text-muted-foreground mb-2">{insights.channel.insight}</p>
-            <div className="flex gap-1.5 flex-wrap">
-              {insights.channel.channels.map(ch => (
-                <span key={ch.channel} className={`text-[10px] px-2 py-0.5 rounded-full border ${ch.channel === insights.channel.bestChannel ? 'bg-primary/10 text-primary border-primary/30 font-semibold' : 'bg-accent text-accent-foreground border-transparent'}`}>
-                  {channelIcon(ch.channel)} {ch.channel} {ch.pct}%
-                  {ch.inboundCount > 0 && <span className="opacity-60"> ({ch.inboundCount} in)</span>}
-                </span>
+        {/* ═══ OUTREACH EFFECTIVENESS ═══ */}
+        {insights.outreach.channels.length > 0 && (
+          <Section icon={Target} label="Outreach Effectiveness by Channel">
+            <div className="space-y-1.5">
+              {insights.outreach.channels.map(ch => (
+                <div key={ch.channel} className="flex items-center gap-2">
+                  <span className="text-[11px] w-12 text-right font-medium">{ch.channel}</span>
+                  <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${ch.rate}%`,
+                        backgroundColor: ch.rate >= 50 ? 'hsl(var(--primary))' : ch.rate >= 25 ? 'hsl(var(--warning, 45 93% 47%))' : 'hsl(var(--destructive))',
+                      }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground w-16 text-right">{ch.replied}/{ch.sent} ({ch.rate}%)</span>
+                </div>
               ))}
             </div>
+            <p className="text-[10px] text-muted-foreground mt-2">{insights.outreach.insight}</p>
           </Section>
         )}
 
-        {/* ═══ KEY MILESTONES ═══ */}
-        {insights.milestones.length > 0 && (
-          <Section icon={Calendar} label="Key Milestones">
-            <div className="relative pl-3 space-y-1.5">
-              <div className="absolute left-[5px] top-1 bottom-1 w-px bg-border" />
-              {insights.milestones.slice(-6).map((m, i) => (
-                <div key={i} className="flex items-start gap-2 relative">
-                  <div className={`w-2 h-2 rounded-full mt-1 flex-shrink-0 ${
-                    m.type === 'gap' ? 'bg-destructive' :
-                    m.type === 'first_contact' ? 'bg-primary' :
-                    m.type === 'deal' ? 'bg-primary' : 'bg-muted-foreground'
-                  }`} />
-                  <div>
-                    <span className="text-[11px]">{m.label}</span>
-                    <span className="text-[10px] text-muted-foreground ml-1.5">{format(m.date, 'MMM d, yyyy')}</span>
+        {/* ═══ CHANNEL PREFERENCE ═══ */}
+        {insights.channel.channels.length > 0 && (
+          <Section icon={Phone} label="Channel Breakdown">
+            <p className="text-xs text-muted-foreground mb-2">{insights.channel.insight}</p>
+            <div className="space-y-1">
+              {insights.channel.channels.map(ch => (
+                <div key={ch.channel} className="flex items-center gap-2">
+                  <span className="text-[11px] w-12 text-right">{channelIcon(ch.channel)} {ch.channel}</span>
+                  <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary/60 transition-all"
+                      style={{ width: `${ch.pct}%` }}
+                    />
                   </div>
+                  <span className="text-[10px] text-muted-foreground w-20 text-right">
+                    {ch.count} ({ch.pct}%)
+                    {ch.inboundCount > 0 && <span className="text-primary ml-1">↓{ch.inboundCount}</span>}
+                  </span>
                 </div>
               ))}
             </div>
           </Section>
         )}
 
+        {/* ═══ COMMUNICATION STYLE ═══ */}
+        {insights.commStyle.totalMessages > 0 || insights.commStyle.totalCallMinutes > 0 ? (
+          <Section icon={MessageCircle} label="Communication Style">
+            <p className="text-xs text-muted-foreground mb-2">{insights.commStyle.style}</p>
+            <div className="grid grid-cols-2 gap-2">
+              {insights.commStyle.totalCallMinutes > 0 && (
+                <MiniStat icon={Phone} label="Total talk time" value={`${insights.commStyle.totalCallMinutes}m`} />
+              )}
+              {insights.commStyle.avgCallDurationMin != null && (
+                <MiniStat icon={Timer} label="Avg call" value={`${insights.commStyle.avgCallDurationMin}m`} />
+              )}
+              {insights.commStyle.longestCallMin != null && (
+                <MiniStat icon={TrendingUp} label="Longest call" value={`${insights.commStyle.longestCallMin}m`} />
+              )}
+              {insights.commStyle.avgMessageLength != null && (
+                <MiniStat icon={FileText} label="Avg msg length" value={`${insights.commStyle.avgMessageLength} chars`} />
+              )}
+            </div>
+            {/* Direction balance */}
+            <div className="mt-2">
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                <span>Outbound</span>
+                <span>Inbound</span>
+              </div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden flex">
+                <div className="h-full bg-primary/70 transition-all" style={{ width: `${insights.commStyle.directionalBalance}%` }} />
+                <div className="h-full bg-accent transition-all" style={{ width: `${100 - insights.commStyle.directionalBalance}%` }} />
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1 text-center">
+                {insights.commStyle.preferredDirection === 'mostly_outbound' && "You're doing most of the reaching out"}
+                {insights.commStyle.preferredDirection === 'balanced' && 'Good two-way communication balance'}
+                {insights.commStyle.preferredDirection === 'mostly_inbound' && "They're reaching out more than you"}
+              </p>
+            </div>
+          </Section>
+        ) : null}
+
+        {/* ═══ CONTACT CADENCE ═══ */}
+        {insights.cadence.avgDaysBetweenTouches != null && (
+          <Section icon={Repeat} label="Contact Cadence">
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <StatBox label="Avg Gap" value={`${insights.cadence.avgDaysBetweenTouches}d`} />
+              <StatBox label="Median" value={`${insights.cadence.medianDaysBetweenTouches}d`} />
+              <StatBox label="Consistency" value={`${insights.cadence.consistencyScore}%`} />
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="outline" className={`text-[10px] ${
+                insights.cadence.consistency === 'very_consistent' ? 'text-primary border-primary/30' :
+                insights.cadence.consistency === 'consistent' ? 'text-primary border-primary/30' :
+                insights.cadence.consistency === 'irregular' ? 'text-warning border-warning/30' :
+                'text-destructive border-destructive/30'
+              }`}>
+                {insights.cadence.consistency.replace('_', ' ')}
+              </Badge>
+              {insights.cadence.minGap !== null && (
+                <span className="text-[10px] text-muted-foreground">
+                  Range: {insights.cadence.minGap}d – {insights.cadence.maxGap}d
+                </span>
+              )}
+            </div>
+            <p className="text-[10px] text-muted-foreground">{insights.cadence.recommendation}</p>
+            {/* Gap distribution */}
+            {insights.cadence.gapDistribution.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {insights.cadence.gapDistribution.map(gd => {
+                  const maxCount = Math.max(...insights.cadence.gapDistribution.map(g => g.count));
+                  return (
+                    <div key={gd.label} className="flex items-center gap-2">
+                      <span className="text-[10px] w-20 text-right text-muted-foreground">{gd.label}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full bg-primary/50 transition-all" style={{ width: `${(gd.count / maxCount) * 100}%` }} />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground w-6">{gd.count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Section>
+        )}
+
+        {/* ═══ CONVERSATION TOPICS ═══ */}
+        {insights.topics.length > 0 && (
+          <Section icon={FileText} label="Conversation Topics">
+            <ExpandableContent maxHeight={120}>
+              <div className="space-y-1">
+                {insights.topics.slice(0, 15).map((t, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium uppercase tracking-wider ${
+                      t.category === 'property' ? 'bg-primary/10 text-primary' :
+                      t.category === 'financial' ? 'bg-accent text-accent-foreground' :
+                      t.category === 'timing' ? 'bg-secondary text-secondary-foreground' :
+                      t.category === 'concern' ? 'bg-destructive/10 text-destructive' :
+                      t.category === 'action' ? 'bg-muted text-muted-foreground' :
+                      'bg-muted text-muted-foreground'
+                    }`}>{t.category}</span>
+                    <span className="text-[11px] flex-1">{t.topic}</span>
+                    <span className="text-[10px] text-muted-foreground">{t.mentions}×</span>
+                  </div>
+                ))}
+              </div>
+            </ExpandableContent>
+          </Section>
+        )}
+
+        {/* ═══ RE-ENGAGEMENT METRICS ═══ */}
+        {insights.reengagement.totalGaps > 0 && (
+          <Section icon={Repeat} label="Re-engagement Success">
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <StatBox label="Gaps (7d+)" value={`${insights.reengagement.totalGaps}`} />
+              <StatBox label="Re-engaged" value={`${insights.reengagement.successfulReengagements}`} />
+              <StatBox label="Success Rate" value={`${insights.reengagement.successRate}%`} />
+            </div>
+            <p className="text-[10px] text-muted-foreground">{insights.reengagement.insight}</p>
+          </Section>
+        )}
+
+        {/* ═══ KEY MILESTONES ═══ */}
+        {insights.milestones.length > 0 && (
+          <Section icon={Calendar} label="Key Milestones">
+            <ExpandableContent maxHeight={120}>
+              <div className="relative pl-3 space-y-1.5">
+                <div className="absolute left-[5px] top-1 bottom-1 w-px bg-border" />
+                {insights.milestones.map((m, i) => (
+                  <div key={i} className="flex items-start gap-2 relative">
+                    <div className={`w-2 h-2 rounded-full mt-1 flex-shrink-0 ${
+                      m.type === 'gap' ? 'bg-destructive' :
+                      m.type === 'first_contact' ? 'bg-primary' :
+                      m.type === 'deal' ? 'bg-primary' : 'bg-muted-foreground'
+                    }`} />
+                    <div>
+                      <span className="text-[11px]">{m.label}</span>
+                      <span className="text-[10px] text-muted-foreground ml-1.5">{format(m.date, 'MMM d, yyyy')}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ExpandableContent>
+          </Section>
+        )}
+
+        {/* ═══ RECENT ACTIVITY LOG ═══ */}
+        {insights.recentActivity.length > 0 && (
+          <Section icon={Activity} label="Recent Activity">
+            <ExpandableContent maxHeight={140}>
+              <div className="space-y-1.5">
+                {insights.recentActivity.map((item, i) => (
+                  <div key={i} className="flex items-start gap-2 text-[11px]">
+                    <span className="text-muted-foreground w-16 text-right flex-shrink-0">{item.dayLabel}</span>
+                    <span className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
+                      item.direction === 'inbound' ? 'bg-primary' : 'bg-muted-foreground'
+                    }`} />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium">{channelIcon(item.channel)} {item.channel}</span>
+                      {item.direction && <span className="text-muted-foreground ml-1">({item.direction})</span>}
+                      {item.subject && (
+                        <p className="text-muted-foreground truncate text-[10px]">{item.subject}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ExpandableContent>
+          </Section>
+        )}
+
         {/* ═══ RECOMMENDED ACTION ═══ */}
         <Section icon={Target} label="Recommended Next Action" accent>
           <p className="text-sm">{insights.nextAction}</p>
+          {insights.lifecycle.actionToAdvance && (
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <ArrowRight className="h-3 w-3" /> {insights.lifecycle.actionToAdvance}
+            </p>
+          )}
         </Section>
 
         {/* ═══ RISKS & OPPORTUNITIES ═══ */}
@@ -432,15 +639,129 @@ function HealthScoreBar({ health }: { health: ReturnType<typeof computeHealthSco
         </div>
       </div>
       <div className="h-2 rounded-full bg-muted overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${health.score}%`, backgroundColor: colorMap[health.color] }}
-        />
+        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${health.score}%`, backgroundColor: colorMap[health.color] }} />
       </div>
       <div className="mt-2 flex flex-wrap gap-1">
-        {health.factors.slice(0, 4).map((f, i) => (
+        {health.factors.map((f, i) => (
           <span key={i} className="text-[9px] text-muted-foreground">{f}</span>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function LifecycleProgressBar({ lifecycle, entityType }: { lifecycle: ReturnType<typeof computeLifecyclePosition>; entityType: string }) {
+  const stages = entityType === 'deal'
+    ? ['Offer', 'Pending', 'Contract', 'Closing', 'Closed']
+    : ['Cold', 'Warm', 'Hot', 'Converting', 'Won'];
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+          <Compass className="h-3 w-3" /> Lifecycle — {lifecycle.phase}
+        </p>
+        <span className="text-[10px] text-muted-foreground">{lifecycle.daysInPhase}d in phase</span>
+      </div>
+      <div className="flex gap-1">
+        {stages.map((stage, i) => (
+          <div key={stage} className="flex-1">
+            <div className={`h-2 rounded-full transition-all ${
+              i < lifecycle.phaseIndex ? 'bg-primary' :
+              i === lifecycle.phaseIndex ? 'bg-primary/60' : 'bg-muted'
+            }`} />
+            <p className="text-[8px] text-center text-muted-foreground mt-0.5">{stage}</p>
+          </div>
+        ))}
+      </div>
+      {lifecycle.nextPhase && (
+        <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+          <ArrowRight className="h-3 w-3" /> Next: {lifecycle.nextPhase}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function VelocityIndicator({ velocity }: { velocity: ReturnType<typeof computeEngagementVelocity> }) {
+  const icons = {
+    accelerating: <TrendingUp className="h-3.5 w-3.5 text-primary" />,
+    steady: <Gauge className="h-3.5 w-3.5 text-muted-foreground" />,
+    decelerating: <TrendingUp className="h-3.5 w-3.5 text-destructive rotate-180" />,
+    stalled: <Snowflake className="h-3.5 w-3.5 text-destructive" />,
+    insufficient: <Activity className="h-3.5 w-3.5 text-muted-foreground" />,
+  };
+  const colors = {
+    accelerating: 'text-primary',
+    steady: 'text-muted-foreground',
+    decelerating: 'text-destructive',
+    stalled: 'text-destructive',
+    insufficient: 'text-muted-foreground',
+  };
+
+  return (
+    <div className="flex items-center gap-3 rounded-md border border-border bg-background/50 px-3 py-2">
+      {icons[velocity.trend]}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className={`text-xs font-semibold capitalize ${colors[velocity.trend]}`}>
+            {velocity.trend === 'insufficient' ? 'Building data' : velocity.trend}
+          </span>
+          {velocity.changePercent !== 0 && velocity.trend !== 'insufficient' && (
+            <Badge variant="outline" className={`text-[9px] ${velocity.changePercent > 0 ? 'text-primary' : 'text-destructive'}`}>
+              {velocity.changePercent > 0 ? '+' : ''}{velocity.changePercent}%
+            </Badge>
+          )}
+        </div>
+        <p className="text-[10px] text-muted-foreground truncate">{velocity.description}</p>
+      </div>
+      <div className="text-right">
+        <p className="text-xs font-semibold">{velocity.recentRate.toFixed(1)}</p>
+        <p className="text-[9px] text-muted-foreground">per wk</p>
+      </div>
+    </div>
+  );
+}
+
+function ActivityHeatmap({ heatmap }: { heatmap: ReturnType<typeof computeActivityHeatmap> }) {
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const timeLabels = ['AM', 'PM', 'Eve'];
+  const maxCount = Math.max(...heatmap.cells.map(c => c.count), 1);
+
+  return (
+    <div>
+      <div className="grid grid-cols-8 gap-px">
+        <div /> {/* top-left corner */}
+        {dayNames.map(d => <span key={d} className="text-[8px] text-center text-muted-foreground">{d}</span>)}
+        {(['morning', 'afternoon', 'evening'] as const).map((time, ti) => (
+          <React.Fragment key={time}>
+            <span className="text-[8px] text-muted-foreground text-right pr-1 flex items-center justify-end">{timeLabels[ti]}</span>
+            {[0, 1, 2, 3, 4, 5, 6].map(day => {
+              const cell = heatmap.cells.find(c => c.day === day && c.hour === time);
+              const intensity = cell ? cell.count / maxCount : 0;
+              return (
+                <div
+                  key={`${day}-${time}`}
+                  className="aspect-square rounded-sm transition-colors"
+                  style={{
+                    backgroundColor: intensity > 0
+                      ? `hsl(var(--primary) / ${Math.max(intensity * 0.9, 0.1)})`
+                      : 'hsl(var(--muted))',
+                  }}
+                  title={`${dayNames[day]} ${time}: ${cell?.count || 0}`}
+                />
+              );
+            })}
+          </React.Fragment>
+        ))}
+      </div>
+      <div className="flex items-center justify-between mt-1.5">
+        {heatmap.bestDay && (
+          <span className="text-[10px] text-muted-foreground">Best day: <span className="font-medium text-foreground">{heatmap.bestDay}</span></span>
+        )}
+        {heatmap.bestTime && (
+          <span className="text-[10px] text-muted-foreground">Best time: <span className="font-medium text-foreground">{heatmap.bestTime}</span></span>
+        )}
       </div>
     </div>
   );
@@ -467,9 +788,19 @@ function Sparkline({ data }: { data: Array<{ week: string; count: number }> }) {
 
 function StatBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-border bg-background/50 px-3 py-2 text-center">
-      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</p>
+    <div className="rounded-md border border-border bg-background/50 px-2 py-1.5 text-center">
+      <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{label}</p>
       <p className="text-sm font-semibold mt-0.5">{value}</p>
+    </div>
+  );
+}
+
+function MiniStat({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+      <Icon className="h-3 w-3 flex-shrink-0" />
+      <span>{label}:</span>
+      <span className="font-medium text-foreground">{value}</span>
     </div>
   );
 }
@@ -504,10 +835,4 @@ function channelIcon(channel: string): string {
     case 'Meeting': return '🤝';
     default: return '📌';
   }
-}
-
-function fmtK(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
-  return n.toString();
 }
