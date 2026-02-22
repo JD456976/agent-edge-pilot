@@ -1,4 +1,4 @@
-import { differenceInDays, differenceInWeeks, format, startOfWeek } from 'date-fns';
+import { differenceInDays, differenceInWeeks, differenceInHours, format, startOfWeek, getDay, getHours } from 'date-fns';
 
 // ── Types ──────────────────────────────────────────────────────────────
 export interface ActivityEvent {
@@ -81,6 +81,9 @@ export interface ResponseMetrics {
   responseRatio: number; // 0-100
   avgResponseGapDays: number | null;
   label: string;
+  longestStreak: number; // consecutive outbound with no reply
+  fastestReplyDays: number | null;
+  slowestReplyDays: number | null;
 }
 
 export function computeResponseMetrics(fubActivities: FubActivity[]): ResponseMetrics {
@@ -93,16 +96,27 @@ export function computeResponseMetrics(fubActivities: FubActivity[]): ResponseMe
 
   const ratio = outbound > 0 ? Math.round((inbound / outbound) * 100) : inbound > 0 ? 100 : 0;
 
-  // Estimate avg gap between outbound and next inbound
   const sorted = [...fubActivities].sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime());
   const gaps: number[] = [];
+  let currentStreak = 0;
+  let longestStreak = 0;
+
   for (let i = 0; i < sorted.length - 1; i++) {
     if (sorted[i].direction === 'outbound' && sorted[i + 1].direction === 'inbound') {
       const gap = differenceInDays(new Date(sorted[i + 1].occurred_at), new Date(sorted[i].occurred_at));
       if (gap >= 0 && gap < 60) gaps.push(gap);
+      currentStreak = 0;
+    } else if (sorted[i].direction === 'outbound') {
+      currentStreak++;
+      longestStreak = Math.max(longestStreak, currentStreak);
+    } else {
+      currentStreak = 0;
     }
   }
+
   const avgGap = gaps.length > 0 ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length) : null;
+  const fastestReplyDays = gaps.length > 0 ? Math.min(...gaps) : null;
+  const slowestReplyDays = gaps.length > 0 ? Math.max(...gaps) : null;
 
   let label = 'No data';
   if (ratio >= 80) label = 'Highly responsive';
@@ -110,7 +124,7 @@ export function computeResponseMetrics(fubActivities: FubActivity[]): ResponseMe
   else if (ratio >= 25) label = 'Moderate engagement';
   else if (outbound > 0) label = 'Low responsiveness';
 
-  return { totalOutbound: outbound, totalInbound: inbound, responseRatio: ratio, avgResponseGapDays: avgGap, label };
+  return { totalOutbound: outbound, totalInbound: inbound, responseRatio: ratio, avgResponseGapDays: avgGap, label, longestStreak, fastestReplyDays, slowestReplyDays };
 }
 
 // ── 3. Channel Preference ───────────────────────────────────────────
@@ -150,7 +164,6 @@ export function computeChannelPreference(
     }))
     .sort((a, b) => b.count - a.count);
 
-  // Best channel = one with highest inbound response
   const bestByInbound = channels.filter(c => c.inboundCount > 0).sort((a, b) => b.inboundCount - a.inboundCount)[0];
   const bestChannel = bestByInbound?.channel || channels[0]?.channel || null;
 
@@ -236,7 +249,7 @@ export function computeHealthScore(
   entity: any,
   entityType: string,
 ): HealthScore {
-  let score = 50; // baseline
+  let score = 50;
   const factors: string[] = [];
   const totalEvents = activities.length + fubActivities.length;
 
@@ -248,7 +261,6 @@ export function computeHealthScore(
   const lastDate = allDates[allDates.length - 1];
   const daysSinceLast = lastDate ? differenceInDays(new Date(), lastDate) : null;
 
-  // Recency factor
   if (daysSinceLast !== null) {
     if (daysSinceLast <= 2) { score += 15; factors.push('+15 Recent contact'); }
     else if (daysSinceLast <= 7) { score += 5; factors.push('+5 Active this week'); }
@@ -258,13 +270,11 @@ export function computeHealthScore(
     score -= 25; factors.push('-25 No activity history');
   }
 
-  // Volume factor
   if (totalEvents >= 20) { score += 15; factors.push('+15 Deep relationship'); }
   else if (totalEvents >= 10) { score += 10; factors.push('+10 Good engagement volume'); }
   else if (totalEvents >= 5) { score += 5; factors.push('+5 Some engagement'); }
   else if (totalEvents < 3) { score -= 10; factors.push('-10 Minimal interaction'); }
 
-  // Response ratio factor
   let inbound = 0, outbound = 0;
   fubActivities.forEach(a => {
     if (a.direction === 'inbound') inbound++;
@@ -274,7 +284,6 @@ export function computeHealthScore(
   else if (inbound > outbound && totalEvents > 3) { score += 10; factors.push('+10 Strong inbound engagement'); }
   else if (inbound > 0 && outbound > 0) { score += 5; factors.push('+5 Two-way communication'); }
 
-  // Entity-specific
   if (entityType === 'lead' && entity?.leadTemperature === 'hot') { score += 10; factors.push('+10 Hot lead'); }
   if (entityType === 'lead' && entity?.leadTemperature === 'cold' && totalEvents < 5) { score -= 10; factors.push('-10 Cold with low activity'); }
   if (entityType === 'deal' && entity?.riskLevel === 'red') { score -= 15; factors.push('-15 High-risk deal'); }
@@ -305,6 +314,8 @@ export interface PropertyInterest {
   stage: string | null;
   source: string | null;
   background: string | null;
+  squareFeet: number | null;
+  zipCode: string | null;
 }
 
 export function analyzePropertyInterest(
@@ -313,30 +324,21 @@ export function analyzePropertyInterest(
   entity: any,
 ): PropertyInterest {
   const result: PropertyInterest = {
-    priceRange: null,
-    propertyTypes: [],
-    locations: [],
-    bedrooms: null,
-    bathrooms: null,
-    timeFrame: null,
-    preApproved: null,
-    preApprovalAmount: null,
-    tags: [],
-    extractedKeywords: [],
-    currentAddress: null,
-    stage: null,
-    source: null,
-    background: null,
+    priceRange: null, propertyTypes: [], locations: [], bedrooms: null,
+    bathrooms: null, timeFrame: null, preApproved: null, preApprovalAmount: null,
+    tags: [], extractedKeywords: [], currentAddress: null, stage: null,
+    source: null, background: null, squareFeet: null, zipCode: null,
   };
 
   if (!personProfile && fubActivities.length === 0) return result;
 
-  // ── From FUB person profile ──
   if (personProfile) {
     result.stage = personProfile.stage || null;
     result.source = personProfile.source || null;
     result.background = personProfile.background || null;
     result.tags = (personProfile.tags || []).filter(Boolean);
+    result.squareFeet = personProfile.squareFeet || null;
+    result.zipCode = personProfile.zipCode || null;
 
     if (personProfile.price || personProfile.priceRangeLow || personProfile.priceRangeHigh) {
       const low = personProfile.priceRangeLow || personProfile.price;
@@ -348,17 +350,13 @@ export function analyzePropertyInterest(
       }
     }
 
-    if (personProfile.propertyType) {
-      result.propertyTypes.push(personProfile.propertyType);
-    }
-
+    if (personProfile.propertyType) result.propertyTypes.push(personProfile.propertyType);
     if (personProfile.bedrooms) result.bedrooms = `${personProfile.bedrooms}`;
     if (personProfile.bathrooms) result.bathrooms = `${personProfile.bathrooms}`;
     if (personProfile.timeFrame) result.timeFrame = personProfile.timeFrame;
     if (personProfile.preApproved != null) result.preApproved = personProfile.preApproved;
     if (personProfile.preApprovalAmount) result.preApprovalAmount = personProfile.preApprovalAmount;
 
-    // Addresses → locations
     const addresses = personProfile.addresses || [];
     for (const addr of addresses) {
       if (addr.city || addr.state) {
@@ -370,7 +368,6 @@ export function analyzePropertyInterest(
       }
     }
 
-    // Cities
     if (personProfile.cities) {
       const cities = Array.isArray(personProfile.cities) ? personProfile.cities : [personProfile.cities];
       for (const c of cities) {
@@ -381,7 +378,6 @@ export function analyzePropertyInterest(
       result.locations.push(personProfile.state);
     }
 
-    // Custom fields
     if (personProfile.customFields) {
       for (const cf of personProfile.customFields) {
         const name = (cf.name || '').toLowerCase();
@@ -407,21 +403,14 @@ export function analyzePropertyInterest(
     }
   }
 
-  // ── From entity notes ──
   const notes = entity?.notes || '';
-  if (notes) {
-    extractPropertyKeywords(notes, result);
-  }
+  if (notes) extractPropertyKeywords(notes, result);
 
-  // ── From activity content (subjects + body previews) ──
   const textCorpus = fubActivities
     .map(a => [a.subject, a.body_preview].filter(Boolean).join(' '))
     .join(' ');
-  if (textCorpus.length > 20) {
-    extractPropertyKeywords(textCorpus, result);
-  }
+  if (textCorpus.length > 20) extractPropertyKeywords(textCorpus, result);
 
-  // ── From tags ──
   for (const tag of result.tags) {
     const tl = tag.toLowerCase();
     if (tl.includes('buyer')) result.extractedKeywords.push('Buyer');
@@ -436,7 +425,6 @@ export function analyzePropertyInterest(
     if (tl.includes('single family') || tl.includes('single-family') || tl.includes('sfr')) { if (!result.propertyTypes.includes('Single Family')) result.propertyTypes.push('Single Family'); }
   }
 
-  // Deduplicate
   result.extractedKeywords = [...new Set(result.extractedKeywords)];
   result.propertyTypes = [...new Set(result.propertyTypes)];
   result.locations = [...new Set(result.locations)];
@@ -444,10 +432,517 @@ export function analyzePropertyInterest(
   return result;
 }
 
-function extractPropertyKeywords(text: string, result: PropertyInterest) {
-  const lower = text.toLowerCase();
+// ── 7. Activity Heatmap (day of week × time of day) ─────────────────
+export interface HeatmapCell {
+  day: number; // 0=Sun, 6=Sat
+  hour: 'morning' | 'afternoon' | 'evening';
+  count: number;
+}
 
-  // Property types
+export function computeActivityHeatmap(
+  activities: ActivityEvent[],
+  fubActivities: FubActivity[],
+): { cells: HeatmapCell[]; bestDay: string | null; bestTime: string | null } {
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const grid: Record<string, number> = {};
+  const dayCounts: Record<number, number> = {};
+  const timeCounts: Record<string, number> = {};
+
+  const allDates = [
+    ...activities.map(a => new Date(a.created_at)),
+    ...fubActivities.map(a => new Date(a.occurred_at)),
+  ];
+
+  for (const d of allDates) {
+    const day = getDay(d);
+    const h = getHours(d);
+    const timeBucket = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+    const key = `${day}-${timeBucket}`;
+    grid[key] = (grid[key] || 0) + 1;
+    dayCounts[day] = (dayCounts[day] || 0) + 1;
+    timeCounts[timeBucket] = (timeCounts[timeBucket] || 0) + 1;
+  }
+
+  const cells: HeatmapCell[] = [];
+  for (let day = 0; day < 7; day++) {
+    for (const hour of ['morning', 'afternoon', 'evening'] as const) {
+      cells.push({ day, hour, count: grid[`${day}-${hour}`] || 0 });
+    }
+  }
+
+  const bestDayEntry = Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0];
+  const bestTimeEntry = Object.entries(timeCounts).sort((a, b) => b[1] - a[1])[0];
+
+  return {
+    cells,
+    bestDay: bestDayEntry ? dayNames[parseInt(bestDayEntry[0])] : null,
+    bestTime: bestTimeEntry ? bestTimeEntry[0] : null,
+  };
+}
+
+// ── 8. Engagement Velocity ──────────────────────────────────────────
+export interface EngagementVelocity {
+  trend: 'accelerating' | 'steady' | 'decelerating' | 'stalled' | 'insufficient';
+  recentRate: number; // events per week (last 4 weeks)
+  priorRate: number; // events per week (prior 4 weeks)
+  changePercent: number;
+  description: string;
+}
+
+export function computeEngagementVelocity(
+  activities: ActivityEvent[],
+  fubActivities: FubActivity[],
+): EngagementVelocity {
+  const now = new Date();
+  const allDates = [
+    ...activities.map(a => new Date(a.created_at)),
+    ...fubActivities.map(a => new Date(a.occurred_at)),
+  ];
+
+  const recent = allDates.filter(d => differenceInDays(now, d) <= 28).length;
+  const prior = allDates.filter(d => {
+    const days = differenceInDays(now, d);
+    return days > 28 && days <= 56;
+  }).length;
+
+  const recentRate = recent / 4;
+  const priorRate = prior / 4;
+
+  if (recent + prior < 3) {
+    return { trend: 'insufficient', recentRate, priorRate, changePercent: 0, description: 'Not enough data to measure velocity.' };
+  }
+
+  const change = priorRate > 0 ? Math.round(((recentRate - priorRate) / priorRate) * 100) : recentRate > 0 ? 100 : 0;
+
+  let trend: EngagementVelocity['trend'] = 'steady';
+  let description = 'Engagement is steady — maintaining consistent cadence.';
+
+  if (recentRate === 0) {
+    trend = 'stalled';
+    description = 'Engagement has stalled — no activity in the past 4 weeks.';
+  } else if (change >= 30) {
+    trend = 'accelerating';
+    description = `Engagement is accelerating (+${change}%) — momentum is building.`;
+  } else if (change <= -30) {
+    trend = 'decelerating';
+    description = `Engagement is decelerating (${change}%) — attention needed.`;
+  }
+
+  return { trend, recentRate, priorRate, changePercent: change, description };
+}
+
+// ── 9. Communication Style Analysis ─────────────────────────────────
+export interface CommunicationStyle {
+  avgCallDurationMin: number | null;
+  totalCallMinutes: number;
+  longestCallMin: number | null;
+  avgMessageLength: number | null;
+  totalMessages: number;
+  preferredDirection: 'mostly_outbound' | 'balanced' | 'mostly_inbound' | 'unknown';
+  directionalBalance: number; // 0-100, 50 = balanced
+  style: string;
+}
+
+export function computeCommunicationStyle(fubActivities: FubActivity[]): CommunicationStyle {
+  const calls = fubActivities.filter(a => normalizeChannel(a.activity_type) === 'Call');
+  const durations = calls.map(c => c.duration_seconds).filter((d): d is number => d != null && d > 0);
+  const totalCallSec = durations.reduce((s, d) => s + d, 0);
+  const avgCallSec = durations.length > 0 ? totalCallSec / durations.length : 0;
+  const longestCall = durations.length > 0 ? Math.max(...durations) : null;
+
+  const messages = fubActivities.filter(a => a.body_preview && a.body_preview.length > 0);
+  const lengths = messages.map(m => m.body_preview!.length);
+  const avgLen = lengths.length > 0 ? Math.round(lengths.reduce((s, l) => s + l, 0) / lengths.length) : null;
+
+  let inbound = 0, outbound = 0;
+  fubActivities.forEach(a => {
+    if (a.direction === 'inbound') inbound++;
+    else if (a.direction === 'outbound') outbound++;
+  });
+
+  const total = inbound + outbound;
+  const balance = total > 0 ? Math.round((outbound / total) * 100) : 50;
+  let preferredDirection: CommunicationStyle['preferredDirection'] = 'unknown';
+  if (total > 2) {
+    if (balance >= 70) preferredDirection = 'mostly_outbound';
+    else if (balance <= 30) preferredDirection = 'mostly_inbound';
+    else preferredDirection = 'balanced';
+  }
+
+  let style = 'Not enough data to determine communication style.';
+  if (calls.length >= 5 && messages.length < 3) {
+    style = 'Phone-first communicator — prefers voice over text.';
+  } else if (messages.length >= 5 && calls.length < 3) {
+    style = 'Text-heavy communicator — prefers written messages.';
+  } else if (calls.length >= 3 && messages.length >= 3) {
+    style = 'Multi-channel communicator — uses both calls and messages.';
+  }
+
+  return {
+    avgCallDurationMin: avgCallSec > 0 ? Math.round(avgCallSec / 60 * 10) / 10 : null,
+    totalCallMinutes: Math.round(totalCallSec / 60),
+    longestCallMin: longestCall ? Math.round(longestCall / 60 * 10) / 10 : null,
+    avgMessageLength: avgLen,
+    totalMessages: messages.length,
+    preferredDirection,
+    directionalBalance: balance,
+    style,
+  };
+}
+
+// ── 10. Contact Cadence Analysis ────────────────────────────────────
+export interface CadenceAnalysis {
+  avgDaysBetweenTouches: number | null;
+  medianDaysBetweenTouches: number | null;
+  minGap: number | null;
+  maxGap: number | null;
+  consistency: 'very_consistent' | 'consistent' | 'irregular' | 'sporadic' | 'insufficient';
+  consistencyScore: number; // 0-100
+  recommendation: string;
+  gapDistribution: { label: string; count: number }[];
+}
+
+export function computeCadenceAnalysis(
+  activities: ActivityEvent[],
+  fubActivities: FubActivity[],
+): CadenceAnalysis {
+  const allDates = [
+    ...activities.map(a => new Date(a.created_at)),
+    ...fubActivities.map(a => new Date(a.occurred_at)),
+  ].sort((a, b) => a.getTime() - b.getTime());
+
+  if (allDates.length < 3) {
+    return {
+      avgDaysBetweenTouches: null, medianDaysBetweenTouches: null, minGap: null, maxGap: null,
+      consistency: 'insufficient', consistencyScore: 0, recommendation: 'Need more interactions to analyze cadence.',
+      gapDistribution: [],
+    };
+  }
+
+  const gaps: number[] = [];
+  for (let i = 1; i < allDates.length; i++) {
+    gaps.push(differenceInDays(allDates[i], allDates[i - 1]));
+  }
+
+  const avg = Math.round(gaps.reduce((s, g) => s + g, 0) / gaps.length);
+  const sorted = [...gaps].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  const minGap = sorted[0];
+  const maxGap = sorted[sorted.length - 1];
+
+  // Standard deviation for consistency
+  const variance = gaps.reduce((s, g) => s + Math.pow(g - avg, 2), 0) / gaps.length;
+  const stdDev = Math.sqrt(variance);
+  const cv = avg > 0 ? stdDev / avg : 0; // coefficient of variation
+
+  let consistency: CadenceAnalysis['consistency'] = 'irregular';
+  let consistencyScore = 50;
+
+  if (cv <= 0.3) { consistency = 'very_consistent'; consistencyScore = 90; }
+  else if (cv <= 0.6) { consistency = 'consistent'; consistencyScore = 70; }
+  else if (cv <= 1.0) { consistency = 'irregular'; consistencyScore = 40; }
+  else { consistency = 'sporadic'; consistencyScore = 20; }
+
+  let recommendation = '';
+  if (avg <= 3) recommendation = 'Great cadence — highly attentive. Make sure you\'re not overwhelming them.';
+  else if (avg <= 7) recommendation = 'Good weekly rhythm. Maintain this pace.';
+  else if (avg <= 14) recommendation = 'Bi-weekly cadence. Consider increasing for warmer leads.';
+  else recommendation = `Average ${avg}-day gaps. Set a recurring reminder to stay in touch.`;
+
+  // Gap distribution
+  const gapDistribution = [
+    { label: 'Same day', count: gaps.filter(g => g === 0).length },
+    { label: '1–3 days', count: gaps.filter(g => g >= 1 && g <= 3).length },
+    { label: '4–7 days', count: gaps.filter(g => g >= 4 && g <= 7).length },
+    { label: '1–2 weeks', count: gaps.filter(g => g >= 8 && g <= 14).length },
+    { label: '2–4 weeks', count: gaps.filter(g => g >= 15 && g <= 30).length },
+    { label: '1+ month', count: gaps.filter(g => g > 30).length },
+  ].filter(d => d.count > 0);
+
+  return { avgDaysBetweenTouches: avg, medianDaysBetweenTouches: median, minGap, maxGap, consistency, consistencyScore, recommendation, gapDistribution };
+}
+
+// ── 11. Conversation Topics Extraction ──────────────────────────────
+export interface TopicCluster {
+  topic: string;
+  mentions: number;
+  category: 'property' | 'financial' | 'timing' | 'preference' | 'concern' | 'action';
+}
+
+export function extractConversationTopics(
+  activities: ActivityEvent[],
+  fubActivities: FubActivity[],
+): TopicCluster[] {
+  const textCorpus = [
+    ...activities.map(a => a.note || ''),
+    ...fubActivities.map(a => [a.subject, a.body_preview].filter(Boolean).join(' ')),
+  ].join(' ').toLowerCase();
+
+  if (textCorpus.length < 30) return [];
+
+  const topicPatterns: { pattern: RegExp; topic: string; category: TopicCluster['category'] }[] = [
+    // Property topics
+    { pattern: /\b(?:showing|tour|view|walkthrough|open house)\b/gi, topic: 'Property showings', category: 'property' },
+    { pattern: /\b(?:offer|bid|submit|countered?)\b/gi, topic: 'Offers & negotiations', category: 'property' },
+    { pattern: /\b(?:listing|list price|listed)\b/gi, topic: 'Listings', category: 'property' },
+    { pattern: /\b(?:inspection|inspect|home inspection)\b/gi, topic: 'Inspection', category: 'property' },
+    { pattern: /\b(?:appraisal|appraised)\b/gi, topic: 'Appraisal', category: 'property' },
+    { pattern: /\b(?:renovati|remodel|update|upgrade|repair)\b/gi, topic: 'Renovation/updates', category: 'property' },
+    { pattern: /\b(?:new construct|new build|builder)\b/gi, topic: 'New construction', category: 'property' },
+    // Financial
+    { pattern: /\b(?:mortgage|loan|financ|lender|rate)\b/gi, topic: 'Financing & mortgage', category: 'financial' },
+    { pattern: /\b(?:pre[\s-]?approv|pre[\s-]?qual)\b/gi, topic: 'Pre-approval', category: 'financial' },
+    { pattern: /\b(?:down payment|earnest|escrow)\b/gi, topic: 'Down payment/escrow', category: 'financial' },
+    { pattern: /\b(?:budget|afford|price range)\b/gi, topic: 'Budget discussions', category: 'financial' },
+    { pattern: /\b(?:closing cost|settlement)\b/gi, topic: 'Closing costs', category: 'financial' },
+    // Timing
+    { pattern: /\b(?:timeline|time frame|moving date|move[\s-]?in)\b/gi, topic: 'Timeline/move-in', category: 'timing' },
+    { pattern: /\b(?:urgency|urgent|asap|quickly)\b/gi, topic: 'Urgency', category: 'timing' },
+    { pattern: /\b(?:lease|rental|rent)\b/gi, topic: 'Lease/rental', category: 'timing' },
+    // Preferences
+    { pattern: /\b(?:school|district|education)\b/gi, topic: 'Schools/education', category: 'preference' },
+    { pattern: /\b(?:commute|transit|transport)\b/gi, topic: 'Commute/transit', category: 'preference' },
+    { pattern: /\b(?:neighbor|community|hoa)\b/gi, topic: 'Neighborhood/HOA', category: 'preference' },
+    { pattern: /\b(?:yard|garage|parking|pool|patio)\b/gi, topic: 'Amenities', category: 'preference' },
+    { pattern: /\b(?:pet|dog|cat)\b/gi, topic: 'Pet-friendly', category: 'preference' },
+    // Concerns
+    { pattern: /\b(?:concern|worried|issue|problem|hesitat)\b/gi, topic: 'Concerns/hesitations', category: 'concern' },
+    { pattern: /\b(?:competitor|other agent|another)\b/gi, topic: 'Competition', category: 'concern' },
+    { pattern: /\b(?:wait|not ready|hold off|delay)\b/gi, topic: 'Timing hesitation', category: 'concern' },
+    // Actions
+    { pattern: /\b(?:follow up|follow-up|check in|check-in|touch base)\b/gi, topic: 'Follow-ups', category: 'action' },
+    { pattern: /\b(?:schedul|appointment|meeting|call)\b/gi, topic: 'Scheduling', category: 'action' },
+    { pattern: /\b(?:send|sent|forward|attach|document|contract|paperwork)\b/gi, topic: 'Documents/paperwork', category: 'action' },
+    { pattern: /\b(?:referr|recommend)\b/gi, topic: 'Referrals', category: 'action' },
+  ];
+
+  const clusters: TopicCluster[] = [];
+  for (const { pattern, topic, category } of topicPatterns) {
+    const matches = textCorpus.match(pattern);
+    if (matches && matches.length > 0) {
+      clusters.push({ topic, mentions: matches.length, category });
+    }
+  }
+
+  return clusters.sort((a, b) => b.mentions - a.mentions);
+}
+
+// ── 12. Re-engagement Success Rate ──────────────────────────────────
+export interface ReengagementMetrics {
+  totalGaps: number;
+  successfulReengagements: number;
+  failedReengagements: number;
+  successRate: number;
+  avgGapLength: number | null;
+  insight: string;
+}
+
+export function computeReengagementMetrics(
+  activities: ActivityEvent[],
+  fubActivities: FubActivity[],
+): ReengagementMetrics {
+  const allEvents = [
+    ...activities.map(a => ({ date: new Date(a.created_at), direction: 'outbound' as const })),
+    ...fubActivities.map(a => ({ date: new Date(a.occurred_at), direction: a.direction || 'outbound' })),
+  ].sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  if (allEvents.length < 4) {
+    return { totalGaps: 0, successfulReengagements: 0, failedReengagements: 0, successRate: 0, avgGapLength: null, insight: 'Not enough data.' };
+  }
+
+  // Find gaps > 7 days and check if outbound after gap got inbound response within 14 days
+  let totalGaps = 0;
+  let successful = 0;
+  let failed = 0;
+  const gapLengths: number[] = [];
+
+  for (let i = 1; i < allEvents.length; i++) {
+    const gap = differenceInDays(allEvents[i].date, allEvents[i - 1].date);
+    if (gap >= 7) {
+      totalGaps++;
+      gapLengths.push(gap);
+
+      // Check if the re-engagement attempt (outbound) got a response
+      if (allEvents[i].direction === 'outbound') {
+        const gotReply = allEvents.slice(i + 1, i + 5).some(e =>
+          e.direction === 'inbound' && differenceInDays(e.date, allEvents[i].date) <= 14
+        );
+        if (gotReply) successful++;
+        else failed++;
+      }
+    }
+  }
+
+  const successRate = totalGaps > 0 ? Math.round((successful / totalGaps) * 100) : 0;
+  const avgGap = gapLengths.length > 0 ? Math.round(gapLengths.reduce((s, g) => s + g, 0) / gapLengths.length) : null;
+
+  let insight = 'No significant communication gaps detected.';
+  if (totalGaps > 0 && successRate >= 60) insight = `Strong re-engagement: ${successRate}% success rate after communication gaps.`;
+  else if (totalGaps > 0 && successRate >= 30) insight = `Moderate re-engagement: ${successRate}% success rate. Consider different approaches.`;
+  else if (totalGaps > 0) insight = `Low re-engagement: ${successRate}% success rate. Try changing channels or timing.`;
+
+  return { totalGaps, successfulReengagements: successful, failedReengagements: failed, successRate, avgGapLength: avgGap, insight };
+}
+
+// ── 13. Lifecycle Position ──────────────────────────────────────────
+export interface LifecyclePosition {
+  phase: string;
+  phaseIndex: number; // 0-4
+  daysInPhase: number;
+  nextPhase: string | null;
+  actionToAdvance: string;
+  progressPct: number; // 0-100
+}
+
+export function computeLifecyclePosition(entity: any, entityType: string): LifecyclePosition {
+  if (entityType === 'deal') {
+    const phases = ['offer', 'pending', 'under_contract', 'closing', 'closed'];
+    const labels = ['Offer Submitted', 'Pending', 'Under Contract', 'Closing', 'Closed'];
+    const nextLabels = ['Move to Pending', 'Get under contract', 'Prepare for closing', 'Close the deal', null];
+    const actions = ['Follow up on offer response', 'Negotiate terms and get accepted', 'Handle inspections & appraisal', 'Finalize paperwork & funding', 'Deal complete — nurture for referrals'];
+
+    const stage = entity?.stage || 'offer';
+    const idx = phases.indexOf(stage);
+    const phaseIndex = idx >= 0 ? idx : 0;
+
+    const createdAt = entity?.created_at ? new Date(entity.created_at) : new Date();
+    const daysInPhase = differenceInDays(new Date(), createdAt);
+
+    return {
+      phase: labels[phaseIndex],
+      phaseIndex,
+      daysInPhase,
+      nextPhase: nextLabels[phaseIndex] || null,
+      actionToAdvance: actions[phaseIndex],
+      progressPct: Math.round(((phaseIndex + 1) / phases.length) * 100),
+    };
+  }
+
+  // Lead lifecycle
+  const temp = entity?.leadTemperature || entity?.lead_temperature || 'cold';
+  const converted = !!entity?.converted_at;
+  const lost = !!entity?.lost_at;
+
+  if (lost) return { phase: 'Lost', phaseIndex: 0, daysInPhase: 0, nextPhase: 'Reactivation', actionToAdvance: 'Attempt re-engagement with a fresh approach.', progressPct: 0 };
+  if (converted) return { phase: 'Converted', phaseIndex: 4, daysInPhase: 0, nextPhase: null, actionToAdvance: 'Nurture for referrals and repeat business.', progressPct: 100 };
+
+  const phases = [
+    { temp: 'cold', label: 'Cold Lead', action: 'Warm up with consistent outreach.', pct: 20 },
+    { temp: 'warm', label: 'Warm Lead', action: 'Increase engagement to build momentum.', pct: 50 },
+    { temp: 'hot', label: 'Hot Lead', action: 'Push for conversion — schedule meeting or showing.', pct: 80 },
+  ];
+
+  const match = phases.find(p => p.temp === temp) || phases[0];
+  const createdAt = entity?.created_at ? new Date(entity.created_at) : new Date();
+
+  return {
+    phase: match.label,
+    phaseIndex: phases.indexOf(match) + 1,
+    daysInPhase: differenceInDays(new Date(), createdAt),
+    nextPhase: phases[phases.indexOf(match) + 1]?.label || 'Conversion',
+    actionToAdvance: match.action,
+    progressPct: match.pct,
+  };
+}
+
+// ── 14. Outreach Effectiveness ──────────────────────────────────────
+export interface OutreachEffectiveness {
+  channels: { channel: string; sent: number; replied: number; rate: number }[];
+  bestChannel: string | null;
+  worstChannel: string | null;
+  insight: string;
+}
+
+export function computeOutreachEffectiveness(fubActivities: FubActivity[]): OutreachEffectiveness {
+  const sorted = [...fubActivities].sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime());
+
+  const channelStats: Record<string, { sent: number; replied: number }> = {};
+
+  for (let i = 0; i < sorted.length; i++) {
+    const ch = normalizeChannel(sorted[i].activity_type);
+    if (!channelStats[ch]) channelStats[ch] = { sent: 0, replied: 0 };
+
+    if (sorted[i].direction === 'outbound') {
+      channelStats[ch].sent++;
+      // Check if next event within 7 days is inbound
+      for (let j = i + 1; j < Math.min(i + 5, sorted.length); j++) {
+        if (sorted[j].direction === 'inbound' && differenceInDays(new Date(sorted[j].occurred_at), new Date(sorted[i].occurred_at)) <= 7) {
+          channelStats[ch].replied++;
+          break;
+        }
+      }
+    }
+  }
+
+  const channels = Object.entries(channelStats)
+    .filter(([, s]) => s.sent > 0)
+    .map(([channel, s]) => ({ channel, sent: s.sent, replied: s.replied, rate: Math.round((s.replied / s.sent) * 100) }))
+    .sort((a, b) => b.rate - a.rate);
+
+  const best = channels[0];
+  const worst = channels.length > 1 ? channels[channels.length - 1] : null;
+
+  let insight = 'Not enough outbound data to measure effectiveness.';
+  if (best && best.sent >= 2) {
+    insight = `${best.channel} gets the best response rate (${best.rate}%).`;
+    if (worst && worst.rate < best.rate) {
+      insight += ` ${worst.channel} is least effective (${worst.rate}%).`;
+    }
+  }
+
+  return { channels, bestChannel: best?.channel || null, worstChannel: worst?.channel || null, insight };
+}
+
+// ── 15. Recent Activity Summary ─────────────────────────────────────
+export interface RecentActivityItem {
+  type: string;
+  direction: string | null;
+  subject: string | null;
+  date: Date;
+  dayLabel: string;
+  channel: string;
+}
+
+export function getRecentActivity(
+  activities: ActivityEvent[],
+  fubActivities: FubActivity[],
+  limit = 8,
+): RecentActivityItem[] {
+  const combined = [
+    ...activities.map(a => ({
+      type: a.touch_type,
+      direction: null as string | null,
+      subject: a.note,
+      date: new Date(a.created_at),
+      channel: normalizeChannel(a.touch_type),
+    })),
+    ...fubActivities.map(a => ({
+      type: a.activity_type,
+      direction: a.direction,
+      subject: a.subject || a.body_preview,
+      date: new Date(a.occurred_at),
+      channel: normalizeChannel(a.activity_type),
+    })),
+  ].sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, limit);
+
+  return combined.map(item => ({
+    ...item,
+    dayLabel: formatDaysAgo(item.date),
+  }));
+}
+
+function formatDaysAgo(date: Date): string {
+  const days = differenceInDays(new Date(), date);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.round(days / 7)}w ago`;
+  return format(date, 'MMM d');
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────
+
+function extractPropertyKeywords(text: string, result: PropertyInterest) {
   const typePatterns: [RegExp, string][] = [
     [/\bsingle[\s-]?family\b/i, 'Single Family'],
     [/\bcondo(?:minium)?\b/i, 'Condo'],
@@ -465,7 +960,6 @@ function extractPropertyKeywords(text: string, result: PropertyInterest) {
     }
   }
 
-  // Price mentions
   const priceMatch = text.match(/\$[\d,]+(?:k|K|,000)?/g);
   if (priceMatch && !result.priceRange) {
     const prices = priceMatch.map(p => parsePrice(p)).filter(p => p > 10000).sort((a, b) => a - b);
@@ -476,15 +970,12 @@ function extractPropertyKeywords(text: string, result: PropertyInterest) {
     }
   }
 
-  // Bedroom mentions
-  const bedMatch = lower.match(/(\d)\s*(?:bed(?:room)?s?|br|bd)\b/);
+  const bedMatch = text.toLowerCase().match(/(\d)\s*(?:bed(?:room)?s?|br|bd)\b/);
   if (bedMatch && !result.bedrooms) result.bedrooms = bedMatch[1];
 
-  // Bathroom mentions
-  const bathMatch = lower.match(/([\d.]+)\s*(?:bath(?:room)?s?|ba)\b/);
+  const bathMatch = text.toLowerCase().match(/([\d.]+)\s*(?:bath(?:room)?s?|ba)\b/);
   if (bathMatch && !result.bathrooms) result.bathrooms = bathMatch[1];
 
-  // Interest keywords
   if (/\bfixer[\s-]?upper\b/i.test(text)) result.extractedKeywords.push('Fixer-upper');
   if (/\bnew\s+construction\b/i.test(text)) result.extractedKeywords.push('New construction');
   if (/\bpool\b/i.test(text)) result.extractedKeywords.push('Pool');
@@ -503,7 +994,7 @@ function parsePrice(s: string): number {
   return parseFloat(cleaned) || 0;
 }
 
-function fmtK(n: number): string {
+export function fmtK(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
   return n.toString();
