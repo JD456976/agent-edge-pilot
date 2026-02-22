@@ -37,8 +37,8 @@ Deno.serve(async (req) => {
 
     const fubAuth = `Basic ${btoa(apiKey + ":")}`;
 
-    // Fetch calls
-    const [callsRes, emailsRes, textsRes] = await Promise.all([
+    // Fetch calls, emails, texts, AND person profile in parallel
+    const [callsRes, emailsRes, textsRes, personRes] = await Promise.all([
       fetch(`https://api.followupboss.com/v1/calls?personId=${fub_person_id}&limit=${limit}&sort=-created`, {
         headers: { Authorization: fubAuth, Accept: "application/json" },
       }),
@@ -48,13 +48,55 @@ Deno.serve(async (req) => {
       fetch(`https://api.followupboss.com/v1/textMessages?personId=${fub_person_id}&limit=${limit}&sort=-created`, {
         headers: { Authorization: fubAuth, Accept: "application/json" },
       }),
+      fetch(`https://api.followupboss.com/v1/people/${fub_person_id}`, {
+        headers: { Authorization: fubAuth, Accept: "application/json" },
+      }),
     ]);
 
-    const [calls, emails, texts] = await Promise.all([
+    const [calls, emails, texts, personData] = await Promise.all([
       callsRes.ok ? callsRes.json() : { calls: [] },
       emailsRes.ok ? emailsRes.json() : { emails: [] },
       textsRes.ok ? textsRes.json() : { textmessages: [] },
+      personRes.ok ? personRes.json() : null,
     ]);
+
+    // Extract person profile fields useful for property interest analysis
+    const personProfile: Record<string, unknown> = {};
+    if (personData) {
+      personProfile.tags = personData.tags || [];
+      personProfile.addresses = personData.addresses || [];
+      personProfile.emails = (personData.emails || []).map((e: any) => e.value);
+      personProfile.phones = (personData.phones || []).map((p: any) => p.value);
+      personProfile.stage = personData.stage || null;
+      personProfile.source = personData.source || null;
+      personProfile.created = personData.created || null;
+      personProfile.lastActivity = personData.lastActivity || null;
+      personProfile.price = personData.price || null;
+      personProfile.priceRangeLow = personData.priceRangeLow || null;
+      personProfile.priceRangeHigh = personData.priceRangeHigh || null;
+      personProfile.propertyType = personData.propertyType || null;
+      personProfile.bedrooms = personData.bedrooms || null;
+      personProfile.bathrooms = personData.bathrooms || null;
+      personProfile.squareFeet = personData.squareFeet || null;
+      personProfile.timeFrame = personData.timeFrame || null;
+      personProfile.preApproved = personData.preApproved || null;
+      personProfile.preApprovalAmount = personData.preApprovalAmount || null;
+      personProfile.assignedTo = personData.assignedTo || null;
+      personProfile.background = personData.background || null;
+      // Custom fields
+      if (personData.customFields && Array.isArray(personData.customFields)) {
+        personProfile.customFields = personData.customFields;
+      } else if (personData.customField) {
+        // Some FUB API versions use key-value
+        personProfile.customFields = Object.entries(personData.customField || {}).map(([k, v]) => ({ name: k, value: v }));
+      }
+      // Deals associated with this person
+      personProfile.dealIds = personData.deals || [];
+      // Interested cities / areas (common FUB fields)
+      personProfile.cities = personData.cities || personData.city || null;
+      personProfile.state = personData.state || null;
+      personProfile.zipCode = personData.zipCode || null;
+    }
 
     // Normalize into unified activity format
     const activities: Array<{
@@ -85,7 +127,7 @@ Deno.serve(async (req) => {
         activity_type: "email",
         direction: e.isIncoming ? "inbound" : "outbound",
         subject: e.subject || null,
-        body_preview: (e.body || e.textBody || "").slice(0, 200),
+        body_preview: (e.body || e.textBody || "").slice(0, 500),
         duration_seconds: null,
         occurred_at: e.created || e.dateCreated || new Date().toISOString(),
       });
@@ -97,7 +139,7 @@ Deno.serve(async (req) => {
         activity_type: "text",
         direction: t.isIncoming ? "inbound" : "outbound",
         subject: null,
-        body_preview: (t.message || t.body || "").slice(0, 200),
+        body_preview: (t.message || t.body || "").slice(0, 500),
         duration_seconds: null,
         occurred_at: t.created || t.dateCreated || new Date().toISOString(),
       });
@@ -128,7 +170,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ activities: activities.slice(0, limit) }), {
+    return new Response(JSON.stringify({ 
+      activities: activities.slice(0, limit),
+      personProfile,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
