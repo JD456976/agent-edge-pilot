@@ -322,10 +322,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       await supabase.from('deal_participants').delete().in('deal_id', dealIds);
     }
 
-    // Tasks before leads/deals (FK is SET NULL but delete anyway)
+    // Tasks (including seeded)
     await supabase.from('tasks').delete().eq('assigned_to_user_id', user.id);
+    await (supabase.from('tasks').delete() as any).eq('seeded', true);
 
-    // Alerts referencing leads/deals
+    // Alerts referencing leads/deals (and seeded)
     const leadIds = leads.map(l => l.id);
     if (leadIds.length > 0) {
       await supabase.from('alerts').delete().in('related_lead_id', leadIds);
@@ -333,10 +334,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (dealIds.length > 0) {
       await supabase.from('alerts').delete().in('related_deal_id', dealIds);
     }
+    await (supabase.from('alerts').delete() as any).eq('seeded', true);
 
-    // Now safe to delete deals and leads
+    // Now safe to delete deals and leads (include seeded data)
     await supabase.from('deals').delete().eq('assigned_to_user_id', user.id);
+    await (supabase.from('deals').delete() as any).eq('seeded', true);
     await supabase.from('leads').delete().eq('assigned_to_user_id', user.id);
+    await (supabase.from('leads').delete() as any).eq('seeded', true);
+
+    // Clean admin audit events for this user
+    await supabase.from('admin_audit_events' as any).delete().eq('admin_user_id', user.id);
 
     await supabase.from('admin_audit_events' as any).insert({
       admin_user_id: user.id,
