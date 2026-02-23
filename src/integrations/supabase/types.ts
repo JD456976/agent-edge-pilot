@@ -1412,6 +1412,81 @@ export type Database = {
         }
         Relationships: []
       }
+      preference_feedback: {
+        Row: {
+          action: string
+          created_at: string
+          entity_id: string
+          field: string
+          id: string
+          user_id: string
+          value: Json | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          entity_id: string
+          field: string
+          id?: string
+          user_id: string
+          value?: Json | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          entity_id?: string
+          field?: string
+          id?: string
+          user_id?: string
+          value?: Json | null
+        }
+        Relationships: []
+      }
+      preference_profiles: {
+        Row: {
+          confidence: number
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          last_computed_at: string
+          overrides: Json
+          profile: Json
+          reasons: Json
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          entity_id: string
+          entity_type?: string
+          id?: string
+          last_computed_at?: string
+          overrides?: Json
+          profile?: Json
+          reasons?: Json
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          last_computed_at?: string
+          overrides?: Json
+          profile?: Json
+          reasons?: Json
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
