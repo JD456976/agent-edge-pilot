@@ -1,19 +1,13 @@
 import { useState } from 'react';
-import { X, Zap, DollarSign, AlertTriangle, TrendingUp, Eye, Check, Phone, Compass, Settings } from 'lucide-react';
+import { X, Zap, DollarSign, AlertTriangle, TrendingUp, Eye, Check, Phone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { LogTouchModal } from '@/components/LogTouchModal';
 import { ActivityTrail } from '@/components/ActivityTrail';
 import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
 import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
 import { useToast } from '@/hooks/use-toast';
 import type { ScoredEntity, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
-
-const MC_URL_KEY = 'market_compass_url';
-function getMcUrl(): string | null { return localStorage.getItem(MC_URL_KEY); }
-function setMcUrlVal(url: string) { localStorage.setItem(MC_URL_KEY, url); }
 
 type DetailItem =
   | { kind: 'action'; data: CommandCenterAction }
@@ -92,8 +86,6 @@ function ExplanationList({ explanation }: { explanation: string[] }) {
 
 export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 }: Props) {
   const [showTouch, setShowTouch] = useState(false);
-  const [mcSetupOpen, setMcSetupOpen] = useState(false);
-  const [mcInputUrl, setMcInputUrl] = useState('');
   const { toast } = useToast();
   if (!item) return null;
 
@@ -226,23 +218,6 @@ export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 
 
         {/* Actions */}
         <div className="p-4 border-t border-border space-y-2">
-          {touchEntityType === 'lead' && (
-            <Button
-              size="sm"
-              className="w-full gap-2 bg-gradient-to-r from-chart-1 to-chart-2 hover:from-chart-1/90 hover:to-chart-2/90 text-white border-0"
-              onClick={() => {
-                const base = getMcUrl();
-                if (!base) { setMcSetupOpen(true); return; }
-                const leadName = item.kind === 'opportunity' ? item.data.lead.name : title;
-                const params = new URLSearchParams({ clientName: leadName, source: 'deal-pilot' });
-                window.open(`${base.replace(/\/$/, '')}/buyer?${params.toString()}`, '_blank', 'noopener,noreferrer');
-                toast({ title: 'Opening Market Compass', description: 'Client data pre-filled.' });
-              }}
-            >
-              <Compass className="h-3.5 w-3.5" />
-              Open in Market Compass
-            </Button>
-          )}
           <div className="flex gap-2">
             {taskId && onComplete && (
               <Button size="sm" variant="default" className="flex-1" onClick={() => { onComplete(taskId!); onClose(); }}>
@@ -273,58 +248,6 @@ export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 
         />
       )}
 
-      {/* MC Setup Modal */}
-      {mcSetupOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/60 backdrop-blur-sm" onClick={() => setMcSetupOpen(false)}>
-          <div className="bg-card border border-border rounded-xl p-5 w-full max-w-md mx-4 space-y-4 shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-primary/10"><Settings className="h-5 w-5 text-primary" /></div>
-              <div>
-                <h3 className="text-sm font-bold">Connect Market Compass</h3>
-                <p className="text-xs text-muted-foreground">Enter your Market Compass URL to generate client reports.</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="mcUrlDrawer" className="text-xs">Market Compass URL</Label>
-              <Input
-                id="mcUrlDrawer"
-                placeholder="https://your-market-compass.lovable.app"
-                value={mcInputUrl}
-                onChange={e => setMcInputUrl(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && mcInputUrl.trim()) {
-                    let url = mcInputUrl.trim();
-                    if (!url.startsWith('http')) url = `https://${url}`;
-                    setMcUrlVal(url);
-                    setMcSetupOpen(false);
-                    const leadName = item?.kind === 'opportunity' ? item.data.lead.name : title;
-                    const params = new URLSearchParams({ clientName: leadName, source: 'deal-pilot' });
-                    window.open(`${url.replace(/\/$/, '')}/buyer?${params.toString()}`, '_blank');
-                    toast({ title: 'Market Compass connected!' });
-                  }
-                }}
-                className="h-9"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setMcSetupOpen(false)} className="flex-1">Cancel</Button>
-              <Button size="sm" disabled={!mcInputUrl.trim()} className="flex-1 gap-1.5" onClick={() => {
-                let url = mcInputUrl.trim();
-                if (!url.startsWith('http')) url = `https://${url}`;
-                setMcUrlVal(url);
-                setMcSetupOpen(false);
-                const leadName = item?.kind === 'opportunity' ? item.data.lead.name : title;
-                const params = new URLSearchParams({ clientName: leadName, source: 'deal-pilot' });
-                window.open(`${url.replace(/\/$/, '')}/buyer?${params.toString()}`, '_blank');
-                toast({ title: 'Market Compass connected!' });
-              }}>
-                <Compass className="h-3.5 w-3.5" />
-                Connect & Open
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
