@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Home, Plus, QrCode, Users, TrendingUp } from 'lucide-react';
+import { Home, Plus, QrCode, Users, TrendingUp, FileText } from 'lucide-react';
 import { MyOpenHouses } from '@/components/openhouse/MyOpenHouses';
 import { CreateOpenHouse } from '@/components/openhouse/CreateOpenHouse';
 import { OpenHouseQRCodes } from '@/components/openhouse/OpenHouseQRCodes';
 import { CapturedVisitors } from '@/components/openhouse/CapturedVisitors';
 import { OpenHouseInsights } from '@/components/openhouse/OpenHouseInsights';
+import { VisitorReport } from '@/components/openhouse/VisitorReport';
 
 export default function OpenHouse() {
   const [activeTab, setActiveTab] = useState('my-open-houses');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [reportId, setReportId] = useState<string | null>(null);
 
   const handleCreated = (id: string) => {
     setActiveTab('qr-codes');
@@ -19,6 +21,26 @@ export default function OpenHouse() {
     setEditingId(id);
     setActiveTab('create');
   };
+
+  const handleViewReport = (id: string) => {
+    setReportId(id);
+    setActiveTab('report');
+  };
+
+  // If viewing a report, show just that
+  if (activeTab === 'report' && reportId) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            Visitor Report
+          </h1>
+        </div>
+        <VisitorReport openHouseId={reportId} onBack={() => { setReportId(null); setActiveTab('my-open-houses'); }} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -39,8 +61,8 @@ export default function OpenHouse() {
           </TabsTrigger>
           <TabsTrigger value="create" className="text-xs gap-1">
             <Plus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Create</span>
-            <span className="sm:hidden">New</span>
+            <span className="hidden sm:inline">{editingId ? 'Edit' : 'Create'}</span>
+            <span className="sm:hidden">{editingId ? 'Edit' : 'New'}</span>
           </TabsTrigger>
           <TabsTrigger value="qr-codes" className="text-xs gap-1">
             <QrCode className="h-3.5 w-3.5" />
@@ -60,7 +82,7 @@ export default function OpenHouse() {
         </TabsList>
 
         <TabsContent value="my-open-houses" className="mt-4">
-          <MyOpenHouses onEdit={handleEdit} onViewQR={(id) => { setActiveTab('qr-codes'); }} />
+          <MyOpenHouses onEdit={handleEdit} onViewQR={(id) => { setActiveTab('qr-codes'); }} onViewReport={handleViewReport} />
         </TabsContent>
         <TabsContent value="create" className="mt-4">
           <CreateOpenHouse onCreated={handleCreated} editingId={editingId} onClearEdit={() => setEditingId(null)} />

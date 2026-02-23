@@ -1485,6 +1485,7 @@ export type Database = {
           agent_email: string | null
           agent_name: string | null
           agent_phone: string | null
+          agent_role: string
           brokerage: string | null
           created_at: string
           event_date: string | null
@@ -1502,6 +1503,7 @@ export type Database = {
           agent_email?: string | null
           agent_name?: string | null
           agent_phone?: string | null
+          agent_role?: string
           brokerage?: string | null
           created_at?: string
           event_date?: string | null
@@ -1519,6 +1521,7 @@ export type Database = {
           agent_email?: string | null
           agent_name?: string | null
           agent_phone?: string | null
+          agent_role?: string
           brokerage?: string | null
           created_at?: string
           event_date?: string | null
