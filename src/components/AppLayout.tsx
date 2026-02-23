@@ -1,7 +1,8 @@
 import { ReactNode, useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import { ChevronDown, Home, Compass } from 'lucide-react';
+import { ChevronDown, Home, Compass, MoreHorizontal } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush, Bell } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { NotificationBell } from '@/components/NotificationBell';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
@@ -265,10 +266,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      {/* Mobile bottom tabs */}
+      {/* Mobile bottom tabs — show 4 primary + More menu */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 border-t border-border bg-card z-50 safe-area-bottom" style={{ position: 'fixed' }}>
         <div className="flex items-center justify-around h-14 px-2">
-          {items.map(item => {
+          {items.slice(0, 4).map(item => {
             const key = item.workspace ?? item.path ?? 'home';
             return (
               <button
@@ -285,6 +286,39 @@ export function AppLayout({ children }: { children: ReactNode }) {
               </button>
             );
           })}
+          {/* More menu for overflow items */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                aria-label="More"
+                className={cn(
+                  'flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg transition-colors min-w-0',
+                  items.slice(4).some(i => isActive(i)) ? 'text-primary' : 'text-muted-foreground'
+                )}
+              >
+                <MoreHorizontal className="h-5 w-5" />
+                <span className="text-[10px] font-medium">More</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="end" className="w-48 p-1.5">
+              {items.slice(4).map(item => {
+                const key = item.workspace ?? item.path ?? 'overflow';
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleNavClick(item)}
+                    className={cn(
+                      'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm transition-colors',
+                      isActive(item) ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </PopoverContent>
+          </Popover>
         </div>
       </nav>
 
