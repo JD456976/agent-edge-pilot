@@ -27,7 +27,12 @@ export function OpenHouseQRCodes() {
   });
 
   const getIntakeUrl = (token: string) => {
-    const base = window.location.origin;
+    // Use published URL for QR codes so visitors aren't prompted to log in.
+    // Preview domains (*.lovableproject.com) require authentication;
+    // the published domain is publicly accessible.
+    const origin = window.location.origin;
+    const isPreview = origin.includes('.lovableproject.com') || origin.includes('-preview--');
+    const base = isPreview ? 'https://agent-edge-pilot.lovable.app' : origin;
     return `${base}/visit/${token}`;
   };
 
