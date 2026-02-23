@@ -15,11 +15,13 @@ import {
   CheckCircle2, XCircle, Loader2, Plus, Trash2, Search,
   LinkIcon, Share2, ChevronRight, Sparkles, Users, RefreshCw,
   Brain, MapPin, DollarSign, Home, Target, MessageSquare, AlertTriangle, TrendingUp, HelpCircle,
-  FileText, ClipboardCopy
+  FileText, ClipboardCopy, Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Market Compass URL will be configured when the app is deployed
+const MC_URL_KEY = 'market_compass_url';
+function getMcUrl(): string | null { return localStorage.getItem(MC_URL_KEY); }
+function setMcUrl(url: string) { localStorage.setItem(MC_URL_KEY, url); }
 
 interface ClientIdentity {
   id: string;
@@ -347,6 +349,112 @@ function AnalysisSection({ icon: Icon, title, children }: { icon: React.ElementT
   );
 }
 
+/** Reusable button that opens Market Compass with client data pre-filled.
+ *  On first use, prompts the agent to enter their MC URL (saved in localStorage). */
+function McDeepLinkButton({ clientName, clientEmail, analysis, size = 'default' }: {
+  clientName: string;
+  clientEmail?: string;
+  analysis?: ClientAnalysis | null;
+  size?: 'default' | 'sm';
+}) {
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [inputUrl, setInputUrl] = useState('');
+  const { toast } = useToast();
+
+  const buildLink = (base: string) => {
+    const params = new URLSearchParams({ source: 'deal-pilot' });
+    if (clientName) params.set('clientName', clientName);
+    if (clientEmail) params.set('email', clientEmail);
+    if (analysis) {
+      if (analysis.client_type && analysis.client_type !== 'unknown') params.set('type', analysis.client_type);
+      if (analysis.readiness_stage && analysis.readiness_stage !== 'unknown') params.set('stage', analysis.readiness_stage);
+      if (analysis.timeline?.urgency && analysis.timeline.urgency !== 'unknown') params.set('urgency', analysis.timeline.urgency);
+      if (analysis.budget?.price_range_low) params.set('budgetLow', String(analysis.budget.price_range_low));
+      if (analysis.budget?.price_range_high) params.set('budgetHigh', String(analysis.budget.price_range_high));
+      if (analysis.budget?.pre_approved === 'yes') params.set('preApproved', 'yes');
+      if (analysis.budget?.financing_type && analysis.budget.financing_type !== 'not specified') params.set('financing', analysis.budget.financing_type);
+      if (analysis.property_preferences?.bedrooms && analysis.property_preferences.bedrooms !== 'not specified') params.set('beds', analysis.property_preferences.bedrooms);
+      if (analysis.property_preferences?.property_types?.length && analysis.property_preferences.property_types[0] !== 'not specified') {
+        params.set('propTypes', analysis.property_preferences.property_types.join(','));
+      }
+      if (analysis.location_preferences?.preferred_areas?.length) params.set('areas', analysis.location_preferences.preferred_areas.join(','));
+      if (analysis.communication_insights?.preferred_channel) params.set('channel', analysis.communication_insights.preferred_channel);
+    }
+    const url = base.replace(/\/$/, '');
+    // Route to buyer flow if buyer, seller flow if seller, otherwise home
+    const route = analysis?.client_type === 'seller' ? '/seller' : analysis?.client_type === 'buyer' || analysis?.client_type === 'both' ? '/buyer' : '/';
+    return `${url}${route}?${params.toString()}`;
+  };
+
+  const handleClick = () => {
+    const base = getMcUrl();
+    if (!base) {
+      setSetupOpen(true);
+      return;
+    }
+    window.open(buildLink(base), '_blank', 'noopener,noreferrer');
+    toast({ title: 'Opening Market Compass', description: 'Client data pre-filled for report generation.' });
+  };
+
+  const handleSave = () => {
+    if (!inputUrl.trim()) return;
+    let url = inputUrl.trim();
+    if (!url.startsWith('http')) url = `https://${url}`;
+    setMcUrl(url);
+    setSetupOpen(false);
+    window.open(buildLink(url), '_blank', 'noopener,noreferrer');
+    toast({ title: 'Market Compass connected!', description: 'Your MC URL has been saved for future use.' });
+  };
+
+  return (
+    <>
+      <Button
+        size={size}
+        className={`w-full gap-2 bg-gradient-to-r from-chart-1 to-chart-2 hover:from-chart-1/90 hover:to-chart-2/90 text-white border-0 ${size === 'sm' ? 'h-8 text-xs' : ''}`}
+        onClick={handleClick}
+      >
+        <Compass className="h-4 w-4" />
+        Open in Market Compass
+      </Button>
+
+      {setupOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm" onClick={() => setSetupOpen(false)}>
+          <div className="bg-card border border-border rounded-xl p-5 w-full max-w-md mx-4 space-y-4 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-primary/10"><Settings className="h-5 w-5 text-primary" /></div>
+              <div>
+                <h3 className="text-sm font-bold">Connect Market Compass</h3>
+                <p className="text-xs text-muted-foreground">Enter your Market Compass app URL to enable one-click reports.</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mcUrl" className="text-xs">Market Compass URL</Label>
+              <Input
+                id="mcUrl"
+                placeholder="https://your-market-compass.lovable.app"
+                value={inputUrl}
+                onChange={e => setInputUrl(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSave()}
+                className="h-9"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Find this in your Market Compass project settings. Client name, budget, preferences, and all FUB data will be passed automatically.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setSetupOpen(false)} className="flex-1">Cancel</Button>
+              <Button size="sm" onClick={handleSave} disabled={!inputUrl.trim()} className="flex-1 gap-1.5">
+                <ExternalLink className="h-3.5 w-3.5" />
+                Connect & Open
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function buildPlainTextReport(analysis: ClientAnalysis, clientName: string): string {
   const lines: string[] = [];
   lines.push(`CLIENT INTELLIGENCE REPORT — ${clientName}`);
@@ -561,6 +669,11 @@ function AnalysisDisplay({ analysis, updatedAt, onRefresh, refreshing, clientNam
 
       {/* Action buttons */}
       <div className="space-y-2 pt-1">
+        <McDeepLinkButton
+          clientName={clientName}
+          clientEmail={clientEmail}
+          analysis={analysis}
+        />
         <div className="flex gap-2">
           <Button
             variant="outline"
