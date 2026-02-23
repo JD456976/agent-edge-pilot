@@ -14,7 +14,8 @@ import {
   Compass, Copy, ExternalLink, Send, User, Clock,
   CheckCircle2, XCircle, Loader2, Plus, Trash2, Search,
   LinkIcon, Share2, ChevronRight, Sparkles, Users, RefreshCw,
-  Brain, MapPin, DollarSign, Home, Target, MessageSquare, AlertTriangle, TrendingUp, HelpCircle
+  Brain, MapPin, DollarSign, Home, Target, MessageSquare, AlertTriangle, TrendingUp, HelpCircle,
+  FileText, ClipboardCopy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -346,12 +347,67 @@ function AnalysisSection({ icon: Icon, title, children }: { icon: React.ElementT
   );
 }
 
-function AnalysisDisplay({ analysis, updatedAt, onRefresh, refreshing }: {
+function buildPlainTextReport(analysis: ClientAnalysis, clientName: string): string {
+  const lines: string[] = [];
+  lines.push(`CLIENT INTELLIGENCE REPORT — ${clientName}`);
+  lines.push(`Generated: ${new Date().toLocaleDateString()}`);
+  lines.push('─'.repeat(50));
+  lines.push('');
+  lines.push(`Type: ${analysis.client_type || 'Unknown'}  |  Stage: ${analysis.readiness_stage || 'Unknown'}  |  Confidence: ${analysis.confidence_level || 'N/A'}`);
+  lines.push('');
+  lines.push(analysis.summary || '');
+  lines.push('');
+  if (analysis.property_preferences) {
+    lines.push('PROPERTY PREFERENCES');
+    lines.push(`  Types: ${analysis.property_preferences.property_types?.join(', ') || 'Not specified'}`);
+    lines.push(`  Bedrooms: ${analysis.property_preferences.bedrooms || 'N/A'}  |  Bathrooms: ${analysis.property_preferences.bathrooms || 'N/A'}`);
+    if (analysis.property_preferences.must_haves?.length) lines.push(`  Must-haves: ${analysis.property_preferences.must_haves.join(', ')}`);
+    if (analysis.property_preferences.deal_breakers?.length) lines.push(`  Deal-breakers: ${analysis.property_preferences.deal_breakers.join(', ')}`);
+    lines.push('');
+  }
+  if (analysis.location_preferences?.preferred_areas?.length) {
+    lines.push(`LOCATION: ${analysis.location_preferences.preferred_areas.join(', ')}`);
+    lines.push('');
+  }
+  if (analysis.budget && (analysis.budget.price_range_low || analysis.budget.price_range_high)) {
+    const lo = analysis.budget.price_range_low ? `$${(analysis.budget.price_range_low / 1000).toFixed(0)}K` : '?';
+    const hi = analysis.budget.price_range_high ? `$${(analysis.budget.price_range_high / 1000).toFixed(0)}K` : '?';
+    lines.push(`BUDGET: ${lo} – ${hi}  |  Pre-approved: ${analysis.budget.pre_approved || 'Unknown'}  |  Financing: ${analysis.budget.financing_type || 'N/A'}`);
+    lines.push('');
+  }
+  if (analysis.timeline) {
+    lines.push(`TIMELINE: ${analysis.timeline.urgency || 'Unknown'} urgency${analysis.timeline.driving_event ? ` — ${analysis.timeline.driving_event}` : ''}`);
+    lines.push('');
+  }
+  if (analysis.recommended_actions?.length) {
+    lines.push('RECOMMENDED NEXT STEPS');
+    analysis.recommended_actions.forEach((a, i) => lines.push(`  ${i + 1}. ${a}`));
+    lines.push('');
+  }
+  if (analysis.suggested_questions?.length) {
+    lines.push('QUESTIONS TO ASK');
+    analysis.suggested_questions.forEach(q => lines.push(`  • ${q}`));
+    lines.push('');
+  }
+  if (analysis.key_concerns?.length) {
+    lines.push(`KEY CONCERNS: ${analysis.key_concerns.join(' · ')}`);
+    lines.push('');
+  }
+  if (analysis.data_gaps?.length) {
+    lines.push(`DATA GAPS: ${analysis.data_gaps.join(' · ')}`);
+  }
+  return lines.join('\n');
+}
+
+function AnalysisDisplay({ analysis, updatedAt, onRefresh, refreshing, clientName, clientEmail }: {
   analysis: ClientAnalysis;
   updatedAt: string;
   onRefresh: () => void;
   refreshing: boolean;
+  clientName: string;
+  clientEmail: string;
 }) {
+  const { toast } = useToast();
   const confidenceColor = analysis.confidence_level === 'high' ? 'text-chart-2' : analysis.confidence_level === 'medium' ? 'text-chart-4' : 'text-destructive';
   const stageLabel: Record<string, string> = {
     exploring: '🔍 Exploring', actively_searching: '🏠 Actively Searching',
@@ -503,6 +559,37 @@ function AnalysisDisplay({ analysis, updatedAt, onRefresh, refreshing }: {
         </div>
       )}
 
+      {/* Big CTA buttons */}
+      <div className="flex gap-2 pt-1">
+        <Button
+          className="flex-1 gap-2 bg-gradient-to-r from-chart-1 to-chart-2 hover:from-chart-1/90 hover:to-chart-2/90 text-white border-0"
+          onClick={() => {
+            const params = new URLSearchParams({
+              client: clientName,
+              email: clientEmail,
+              type: analysis.client_type || '',
+              stage: analysis.readiness_stage || '',
+            });
+            window.open(`${MARKET_COMPASS_URL}?${params.toString()}`, '_blank');
+          }}
+        >
+          <ExternalLink className="h-4 w-4" />
+          Open Full Report in Market Compass
+        </Button>
+        <Button
+          variant="outline"
+          className="gap-1.5 shrink-0"
+          onClick={() => {
+            const text = buildPlainTextReport(analysis, clientName);
+            navigator.clipboard.writeText(text);
+            toast({ title: 'Report copied!', description: 'Paste it into an email, text, or notes.' });
+          }}
+        >
+          <ClipboardCopy className="h-4 w-4" />
+          Copy
+        </Button>
+      </div>
+
       <p className="text-[9px] text-muted-foreground text-right">
         Updated {new Date(updatedAt).toLocaleDateString()} · Generated from FUB data
       </p>
@@ -621,6 +708,8 @@ function ClientCard({ client, tokens, isExpanded, onToggle, onShareReport, onCop
                   updatedAt={analysisUpdatedAt}
                   onRefresh={() => generateAnalysis(true)}
                   refreshing={generating}
+                  clientName={clientName}
+                  clientEmail={ci.email_normalized}
                 />
               ) : null}
 
