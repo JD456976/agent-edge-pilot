@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Compass, Copy, ExternalLink, Send, User, Clock,
   CheckCircle2, XCircle, Loader2, Plus, Trash2, Search,
-  LinkIcon, Share2, ChevronRight, Sparkles, Users
+  LinkIcon, Share2, ChevronRight, Sparkles, Users, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -91,12 +91,91 @@ function EmptyClientsState({ onAdd }: { onAdd: () => void }) {
   );
 }
 
+interface FubContact {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  source: string;
+  fubId: string;
+}
+
 function AddClientForm({ onSave, onCancel, saving }: {
   onSave: (data: { first_name: string; last_name: string; email: string; phone: string }) => void;
   onCancel: () => void;
   saving: boolean;
 }) {
+  const { user } = useAuth();
   const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '' });
+  const [fubContacts, setFubContacts] = useState<FubContact[]>([]);
+  const [loadingFub, setLoadingFub] = useState(false);
+  const [fubLoaded, setFubLoaded] = useState(false);
+  const [fubSearch, setFubSearch] = useState('');
+  const [showFubPicker, setShowFubPicker] = useState(false);
+
+  const loadFubContacts = useCallback(async () => {
+    if (!user || fubLoaded) return;
+    setLoadingFub(true);
+    try {
+      // Get FUB-imported leads with their staged data for email/phone
+      const { data: leads } = await supabase
+        .from('leads')
+        .select('id, name, source, imported_from')
+        .like('imported_from', 'fub:%')
+        .eq('assigned_to_user_id', user.id)
+        .limit(200);
+
+      if (!leads?.length) { setFubLoaded(true); setLoadingFub(false); return; }
+
+      const fubIds = leads.map(l => l.imported_from!.replace('fub:', ''));
+      const { data: staged } = await supabase
+        .from('fub_staged_leads')
+        .select('fub_id, normalized')
+        .in('fub_id', fubIds);
+
+      const stagedMap = new Map((staged || []).map(s => [s.fub_id, s.normalized as any]));
+
+      const contacts: FubContact[] = leads.map(l => {
+        const fubId = l.imported_from!.replace('fub:', '');
+        const norm = stagedMap.get(fubId);
+        return {
+          id: l.id,
+          name: l.name,
+          email: norm?.email || '',
+          phone: norm?.phone || '',
+          source: l.source || '',
+          fubId,
+        };
+      });
+      setFubContacts(contacts);
+      setFubLoaded(true);
+    } catch (err) {
+      console.error('Failed to load FUB contacts:', err);
+    } finally {
+      setLoadingFub(false);
+    }
+  }, [user, fubLoaded]);
+
+  const handleImportFromFub = (contact: FubContact) => {
+    const nameParts = contact.name.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    setForm({
+      first_name: firstName,
+      last_name: lastName,
+      email: contact.email,
+      phone: contact.phone,
+    });
+    setShowFubPicker(false);
+  };
+
+  const filteredFubContacts = useMemo(() => {
+    if (!fubSearch) return fubContacts;
+    const q = fubSearch.toLowerCase();
+    return fubContacts.filter(c =>
+      c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.source.toLowerCase().includes(q)
+    );
+  }, [fubContacts, fubSearch]);
 
   return (
     <motion.div
@@ -106,6 +185,81 @@ function AddClientForm({ onSave, onCancel, saving }: {
       className="overflow-hidden"
     >
       <div className="p-4 rounded-xl border border-dashed border-primary/30 bg-primary/5 space-y-3">
+        {/* Import from FUB */}
+        <AnimatePresence mode="wait">
+          {!showFubPicker ? (
+            <motion.div key="btn" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full gap-2 border-chart-1/30 text-chart-1 hover:bg-chart-1/10"
+                onClick={() => { setShowFubPicker(true); loadFubContacts(); }}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Import from FUB
+              </Button>
+            </motion.div>
+          ) : (
+            <motion.div key="picker" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium flex items-center gap-1.5">
+                  <RefreshCw className="h-3 w-3 text-chart-1" /> Select FUB Contact
+                </Label>
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => setShowFubPicker(false)}>
+                  Manual Entry
+                </Button>
+              </div>
+              {loadingFub ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-chart-1" />
+                  <span className="text-xs text-muted-foreground ml-2">Loading FUB contacts…</span>
+                </div>
+              ) : fubContacts.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-3">No FUB-imported contacts found.</p>
+              ) : (
+                <>
+                  {fubContacts.length > 5 && (
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        value={fubSearch}
+                        onChange={e => setFubSearch(e.target.value)}
+                        placeholder="Search contacts…"
+                        className="pl-8 h-8 text-sm"
+                      />
+                    </div>
+                  )}
+                  <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg border bg-background/50 p-1">
+                    {filteredFubContacts.map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className="w-full flex items-center gap-2.5 p-2 rounded-md hover:bg-chart-1/10 transition-colors text-left"
+                        onClick={() => handleImportFromFub(c)}
+                      >
+                        <div className="h-7 w-7 rounded-full bg-chart-1/15 flex items-center justify-center text-[10px] font-bold text-chart-1 shrink-0">
+                          {c.name[0]?.toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate">{c.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{c.email || c.phone || c.source}</p>
+                        </div>
+                        <Badge variant="outline" className="text-[9px] shrink-0">FUB</Badge>
+                      </button>
+                    ))}
+                    {filteredFubContacts.length === 0 && fubSearch && (
+                      <p className="text-[10px] text-muted-foreground text-center py-2">No matches</p>
+                    )}
+                  </div>
+                </>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <Separator />
+
         <div className="grid grid-cols-2 gap-2">
           <div>
             <Label className="text-xs">First Name</Label>
