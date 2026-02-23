@@ -95,6 +95,18 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Resolve FUB user ID for assignedTo — fetch current user from FUB
+      let fubUserId: number | null = null;
+      try {
+        const meRes = await fetch("https://api.followupboss.com/v1/me", {
+          headers: { Authorization: fubAuth, Accept: "application/json" },
+        });
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          fubUserId = meData?.id || null;
+        }
+      } catch { /* non-critical */ }
+
       if (action === "create") {
         fubEndpoint = "https://api.followupboss.com/v1/tasks";
         fubMethod = "POST";
@@ -102,6 +114,7 @@ Deno.serve(async (req) => {
           name: task.title,
           dueDate: task.due_at ? new Date(task.due_at).toISOString().split("T")[0] : undefined,
           ...(fubPersonId ? { personId: fubPersonId } : {}),
+          ...(fubUserId ? { assignedTo: fubUserId } : {}),
           ...(fields || {}),
         };
       } else if (action === "complete" && fields?.fub_task_id) {
