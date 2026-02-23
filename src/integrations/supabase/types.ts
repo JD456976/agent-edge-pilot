@@ -1344,6 +1344,196 @@ export type Database = {
         }
         Relationships: []
       }
+      open_house_fields: {
+        Row: {
+          created_at: string
+          field_key: string
+          field_label: string
+          field_type: string
+          id: string
+          is_default: boolean
+          is_required: boolean
+          open_house_id: string
+          options: Json | null
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          field_key: string
+          field_label: string
+          field_type?: string
+          id?: string
+          is_default?: boolean
+          is_required?: boolean
+          open_house_id: string
+          options?: Json | null
+          sort_order?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          field_key?: string
+          field_label?: string
+          field_type?: string
+          id?: string
+          is_default?: boolean
+          is_required?: boolean
+          open_house_id?: string
+          options?: Json | null
+          sort_order?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "open_house_fields_open_house_id_fkey"
+            columns: ["open_house_id"]
+            isOneToOne: false
+            referencedRelation: "open_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      open_house_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          fields: Json
+          form_settings: Json
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          fields?: Json
+          form_settings?: Json
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          fields?: Json
+          form_settings?: Json
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      open_house_visitors: {
+        Row: {
+          created_at: string
+          email: string | null
+          follow_up_status: string
+          fub_contact_id: string | null
+          fub_match_status: string | null
+          full_name: string
+          id: string
+          is_existing_contact: boolean
+          open_house_id: string
+          phone: string | null
+          responses: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          follow_up_status?: string
+          fub_contact_id?: string | null
+          fub_match_status?: string | null
+          full_name: string
+          id?: string
+          is_existing_contact?: boolean
+          open_house_id: string
+          phone?: string | null
+          responses?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          follow_up_status?: string
+          fub_contact_id?: string | null
+          fub_match_status?: string | null
+          full_name?: string
+          id?: string
+          is_existing_contact?: boolean
+          open_house_id?: string
+          phone?: string | null
+          responses?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "open_house_visitors_open_house_id_fkey"
+            columns: ["open_house_id"]
+            isOneToOne: false
+            referencedRelation: "open_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      open_houses: {
+        Row: {
+          agent_email: string | null
+          agent_name: string | null
+          agent_phone: string | null
+          brokerage: string | null
+          created_at: string
+          event_date: string | null
+          form_settings: Json
+          id: string
+          intake_token: string
+          notes: string | null
+          property_address: string
+          status: string
+          template_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_email?: string | null
+          agent_name?: string | null
+          agent_phone?: string | null
+          brokerage?: string | null
+          created_at?: string
+          event_date?: string | null
+          form_settings?: Json
+          id?: string
+          intake_token?: string
+          notes?: string | null
+          property_address: string
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_email?: string | null
+          agent_name?: string | null
+          agent_phone?: string | null
+          brokerage?: string | null
+          created_at?: string
+          event_date?: string | null
+          form_settings?: Json
+          id?: string
+          intake_token?: string
+          notes?: string | null
+          property_address?: string
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       organization_intelligence_summary: {
         Row: {
           activity_distribution: Json

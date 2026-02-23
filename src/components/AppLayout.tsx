@@ -1,5 +1,5 @@
 import { ReactNode, useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Home } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush, Bell } from 'lucide-react';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -39,6 +39,7 @@ type NavItem = { label: string; icon: React.ElementType } & (
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
   { workspace: 'work', label: 'Tasks', icon: Briefcase },
+  { workspace: 'openhouse', label: 'Open House', icon: Home },
   { workspace: 'sync', label: 'CRM', icon: RefreshCw },
   { workspace: 'insights', label: 'Reports', icon: BarChart3 },
   { workspace: 'settings', label: 'Settings', icon: Settings },
