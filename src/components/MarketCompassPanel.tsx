@@ -559,34 +559,36 @@ function AnalysisDisplay({ analysis, updatedAt, onRefresh, refreshing, clientNam
         </div>
       )}
 
-      {/* Big CTA buttons */}
+      {/* Action buttons */}
       <div className="flex gap-2 pt-1">
         <Button
           className="flex-1 gap-2 bg-gradient-to-r from-chart-1 to-chart-2 hover:from-chart-1/90 hover:to-chart-2/90 text-white border-0"
           onClick={() => {
-            const params = new URLSearchParams({
-              client: clientName,
-              email: clientEmail,
-              type: analysis.client_type || '',
-              stage: analysis.readiness_stage || '',
-            });
-            window.open(`${MARKET_COMPASS_URL}?${params.toString()}`, '_blank');
+            const text = buildPlainTextReport(analysis, clientName);
+            navigator.clipboard.writeText(text);
+            toast({ title: 'Report copied!', description: 'Paste it into an email, text, or notes to share with your client.' });
           }}
         >
-          <ExternalLink className="h-4 w-4" />
-          Open Full Report in Market Compass
+          <ClipboardCopy className="h-4 w-4" />
+          Copy Full Report
         </Button>
         <Button
           variant="outline"
           className="gap-1.5 shrink-0"
           onClick={() => {
             const text = buildPlainTextReport(analysis, clientName);
-            navigator.clipboard.writeText(text);
-            toast({ title: 'Report copied!', description: 'Paste it into an email, text, or notes.' });
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${clientName.replace(/\s+/g, '_')}_Client_Report.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast({ title: 'Report downloaded!' });
           }}
         >
-          <ClipboardCopy className="h-4 w-4" />
-          Copy
+          <FileText className="h-4 w-4" />
+          Export
         </Button>
       </div>
 
