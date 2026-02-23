@@ -41,7 +41,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
   { workspace: 'work', label: 'Tasks', icon: Briefcase },
   { workspace: 'openhouse', label: 'Open House', icon: Home },
-  { workspace: 'marketcompass', label: 'Compass', icon: Compass },
+  { workspace: 'marketcompass', label: 'Market Compass', icon: Compass },
   { workspace: 'sync', label: 'CRM', icon: RefreshCw },
   { workspace: 'insights', label: 'Reports', icon: BarChart3 },
   { workspace: 'settings', label: 'Settings', icon: Settings },
@@ -176,6 +176,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <nav className="flex-1 py-4 px-2 space-y-1">
           {items.map(item => {
             const key = item.workspace ?? item.path ?? 'home';
+            const isMarketCompass = item.workspace === 'marketcompass';
             return (
               <Tooltip key={key}>
                 <TooltipTrigger asChild>
@@ -183,18 +184,28 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     onClick={() => handleNavClick(item)}
                     className={cn(
                       'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left',
-                      isActive(item)
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                      isMarketCompass && !isActive(item) && 'bg-gradient-to-r from-chart-1/10 to-chart-2/10 text-chart-1 hover:from-chart-1/20 hover:to-chart-2/20 border border-chart-1/20',
+                      isMarketCompass && isActive(item) && 'bg-gradient-to-r from-chart-1/20 to-chart-2/20 text-chart-1 border border-chart-1/40 shadow-sm shadow-chart-1/10',
+                      !isMarketCompass && isActive(item) && 'bg-primary/10 text-primary',
+                      !isMarketCompass && !isActive(item) && 'text-muted-foreground hover:bg-accent hover:text-foreground'
                     )}
                   >
                     <div className="relative">
-                      <item.icon className="h-4 w-4" />
+                      {isMarketCompass ? (
+                        <div className="h-5 w-5 rounded-md bg-gradient-to-br from-chart-1 to-chart-2 flex items-center justify-center">
+                          <item.icon className="h-3 w-3 text-white" />
+                        </div>
+                      ) : (
+                        <item.icon className="h-4 w-4" />
+                      )}
                       {item.workspace && urgentCounts[item.workspace] > 0 && (
                         <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-urgent" />
                       )}
                     </div>
                     {item.label}
+                    {isMarketCompass && (
+                      <span className="ml-auto text-[9px] font-bold uppercase tracking-widest text-chart-1/70">App</span>
+                    )}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="text-xs">{item.label}</TooltipContent>
@@ -271,6 +282,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <div className="flex items-center justify-around h-14 px-2">
           {items.slice(0, 4).map(item => {
             const key = item.workspace ?? item.path ?? 'home';
+            const isMarketCompass = item.workspace === 'marketcompass';
             return (
               <button
                 key={key}
@@ -278,11 +290,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 aria-label={item.label}
                 className={cn(
                   'flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg transition-colors min-w-0',
-                  isActive(item) ? 'text-primary' : 'text-muted-foreground'
+                  isMarketCompass && isActive(item) && 'text-chart-1',
+                  isMarketCompass && !isActive(item) && 'text-chart-1/60',
+                  !isMarketCompass && isActive(item) && 'text-primary',
+                  !isMarketCompass && !isActive(item) && 'text-muted-foreground'
                 )}
               >
-                <item.icon className="h-5 w-5" />
-                <span className="text-[10px] font-medium truncate">{item.label.split(' ')[0]}</span>
+                {isMarketCompass ? (
+                  <div className="h-5 w-5 rounded-md bg-gradient-to-br from-chart-1 to-chart-2 flex items-center justify-center">
+                    <item.icon className="h-3 w-3 text-white" />
+                  </div>
+                ) : (
+                  <item.icon className="h-5 w-5" />
+                )}
+                <span className="text-[10px] font-medium truncate">{isMarketCompass ? 'Compass' : item.label.split(' ')[0]}</span>
               </button>
             );
           })}
