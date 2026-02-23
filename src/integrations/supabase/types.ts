@@ -71,6 +71,38 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_clients: {
+        Row: {
+          agent_user_id: string
+          client_identity_id: string
+          created_at: string
+          fub_contact_id: string | null
+          id: string
+        }
+        Insert: {
+          agent_user_id: string
+          client_identity_id: string
+          created_at?: string
+          fub_contact_id?: string | null
+          id?: string
+        }
+        Update: {
+          agent_user_id?: string
+          client_identity_id?: string
+          created_at?: string
+          fub_contact_id?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_clients_client_identity_id_fkey"
+            columns: ["client_identity_id"]
+            isOneToOne: false
+            referencedRelation: "client_identities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_intelligence_profile: {
         Row: {
           active_days_last_30: number
@@ -236,6 +268,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      client_identities: {
+        Row: {
+          created_at: string
+          email_normalized: string
+          email_original: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email_normalized: string
+          email_original?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email_normalized?: string
+          email_original?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       commission_defaults: {
         Row: {
@@ -1753,6 +1818,56 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_share_tokens: {
+        Row: {
+          client_identity_id: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          report_id: string
+          report_type: string
+          revoked_at: string | null
+          share_url: string | null
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          client_identity_id: string
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          id?: string
+          report_id: string
+          report_type?: string
+          revoked_at?: string | null
+          share_url?: string | null
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          client_identity_id?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          report_id?: string
+          report_type?: string
+          revoked_at?: string | null
+          share_url?: string | null
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_share_tokens_client_identity_id_fkey"
+            columns: ["client_identity_id"]
+            isOneToOne: false
+            referencedRelation: "client_identities"
             referencedColumns: ["id"]
           },
         ]
