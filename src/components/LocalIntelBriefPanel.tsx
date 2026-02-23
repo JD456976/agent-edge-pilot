@@ -4,7 +4,7 @@ import {
   RefreshCw, Home, MapPin, DollarSign, Tag, Heart, Phone, Mail, MessageCircle,
   Calendar, ArrowUpRight, ArrowDownLeft, Shield, User, Gauge, Repeat, Timer,
   ChevronDown, Flame, Snowflake, Thermometer, FileText, Users, Compass,
-  ArrowRight, Zap as ZapIcon, Radio, LayoutGrid
+  ArrowRight, Zap as ZapIcon, Radio, LayoutGrid, ExternalLink
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,7 +13,7 @@ import { formatDistanceToNow, differenceInDays, format } from 'date-fns';
 import { callEdgeFunction } from '@/lib/edgeClient';
 import { ExpandableContent } from '@/components/ExpandableContent';
 import {
-  type ActivityEvent, type FubActivity, type FubPersonProfile,
+  type ActivityEvent, type FubActivity, type FubPersonProfile, type PropertyInterest,
   computeEngagementTrend, computeResponseMetrics, computeChannelPreference,
   computeMilestones, computeHealthScore, analyzePropertyInterest,
   computeActivityHeatmap, computeEngagementVelocity, computeCommunicationStyle,
@@ -298,6 +298,9 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
                 <span className="uppercase tracking-wider">Current address:</span> {pi.currentAddress}
               </p>
             )}
+
+            {/* Market Compass Deep Link */}
+            <MarketCompassLink propertyInterest={pi} entityName={entityName} />
           </div>
         )}
 
@@ -835,4 +838,43 @@ function channelIcon(channel: string): string {
     case 'Meeting': return '🤝';
     default: return '📌';
   }
+}
+
+const MARKET_COMPASS_URL = 'https://market-compass.lovable.app';
+
+function MarketCompassLink({ propertyInterest, entityName }: { propertyInterest: PropertyInterest; entityName: string }) {
+  const pi = propertyInterest;
+
+  const buildUrl = () => {
+    const params = new URLSearchParams();
+    params.set('client_name', entityName);
+    if (pi.locations.length > 0) params.set('location', pi.locations[0]);
+    if (pi.priceRange) params.set('price', pi.priceRange);
+    if (pi.propertyTypes.length > 0) {
+      const typeMap: Record<string, string> = {
+        'Single Family': 'SFH', 'Condo': 'Condo', 'Townhouse': 'Condo',
+        'Multi-Family': 'MFH', 'Multi Family': 'MFH',
+      };
+      const mapped = typeMap[pi.propertyTypes[0]] || 'SFH';
+      params.set('property_type', mapped);
+    }
+    // Determine buyer or seller from tags/keywords
+    const isSeller = pi.extractedKeywords.some(k => k.toLowerCase() === 'seller') ||
+      pi.tags.some(t => t.toLowerCase().includes('seller'));
+    const flow = isSeller ? '/seller' : '/buyer';
+    return `${MARKET_COMPASS_URL}${flow}?${params.toString()}`;
+  };
+
+  return (
+    <a
+      href={buildUrl()}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center justify-center gap-2 w-full mt-2 px-3 py-2 rounded-md border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold transition-colors"
+    >
+      <Compass className="h-3.5 w-3.5" />
+      Open in Market Compass
+      <ExternalLink className="h-3 w-3 ml-auto" />
+    </a>
+  );
 }

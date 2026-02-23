@@ -37,8 +37,8 @@ Deno.serve(async (req) => {
 
     const fubAuth = `Basic ${btoa(apiKey + ":")}`;
 
-    // Fetch calls, emails, texts, AND person profile in parallel
-    const [callsRes, emailsRes, textsRes, personRes] = await Promise.all([
+    // Fetch calls, emails, texts, notes, events, AND person profile in parallel
+    const [callsRes, emailsRes, textsRes, personRes, notesRes, eventsRes] = await Promise.all([
       fetch(`https://api.followupboss.com/v1/calls?personId=${fub_person_id}&limit=${limit}&sort=-created`, {
         headers: { Authorization: fubAuth, Accept: "application/json" },
       }),
@@ -51,13 +51,21 @@ Deno.serve(async (req) => {
       fetch(`https://api.followupboss.com/v1/people/${fub_person_id}`, {
         headers: { Authorization: fubAuth, Accept: "application/json" },
       }),
+      fetch(`https://api.followupboss.com/v1/notes?personId=${fub_person_id}&limit=${limit}&sort=-created`, {
+        headers: { Authorization: fubAuth, Accept: "application/json" },
+      }),
+      fetch(`https://api.followupboss.com/v1/events?personId=${fub_person_id}&limit=${limit}&sort=-created`, {
+        headers: { Authorization: fubAuth, Accept: "application/json" },
+      }),
     ]);
 
-    const [calls, emails, texts, personData] = await Promise.all([
+    const [calls, emails, texts, personData, notesData, eventsData] = await Promise.all([
       callsRes.ok ? callsRes.json() : { calls: [] },
       emailsRes.ok ? emailsRes.json() : { emails: [] },
       textsRes.ok ? textsRes.json() : { textmessages: [] },
       personRes.ok ? personRes.json() : null,
+      notesRes.ok ? notesRes.json() : { notes: [] },
+      eventsRes.ok ? eventsRes.json() : { events: [] },
     ]);
 
     // Extract person profile fields useful for property interest analysis
@@ -142,6 +150,32 @@ Deno.serve(async (req) => {
         body_preview: (t.message || t.body || "").slice(0, 500),
         duration_seconds: null,
         occurred_at: t.created || t.dateCreated || new Date().toISOString(),
+      });
+    }
+
+    // Add notes as activity entries (rich context for property interest analysis)
+    for (const n of (notesData.notes || [])) {
+      activities.push({
+        fub_id: n.id?.toString() || "",
+        activity_type: "note",
+        direction: "outbound",
+        subject: n.subject || "Note",
+        body_preview: (n.body || "").slice(0, 500),
+        duration_seconds: null,
+        occurred_at: n.created || n.dateCreated || new Date().toISOString(),
+      });
+    }
+
+    // Add events (property views, showings, etc.)
+    for (const ev of (eventsData.events || [])) {
+      activities.push({
+        fub_id: ev.id?.toString() || "",
+        activity_type: ev.type || "event",
+        direction: "outbound",
+        subject: ev.name || ev.title || ev.type || null,
+        body_preview: (ev.description || ev.body || "").slice(0, 500),
+        duration_seconds: null,
+        occurred_at: ev.created || ev.dateCreated || new Date().toISOString(),
       });
     }
 
