@@ -14,14 +14,70 @@ interface Props {
   entityType: 'lead' | 'deal';
   entityName: string;
   entity: any;
-  fubActivities: FubActivity[];
-  personProfile: FubPersonProfile | null;
+  fubActivities?: FubActivity[];
+  personProfile?: FubPersonProfile | null;
 }
 
-export function ClientPreferencesPanel({ entityId, entityType, entityName, entity, fubActivities, personProfile }: Props) {
-  const { result, loading, saving, recompute, submitFeedback } = usePreferenceProfile({
+export function ClientPreferencesPanel({ entityId, entityType, entityName, entity, fubActivities: externalFubActivities, personProfile: externalPersonProfile }: Props) {
+  // Self-fetch FUB data when not provided externally
+  const [internalFubActivities, setInternalFubActivities] = React.useState<FubActivity[]>([]);
+  const [internalPersonProfile, setInternalPersonProfile] = React.useState<FubPersonProfile | null>(null);
+  const [selfFetching, setSelfFetching] = React.useState(!externalFubActivities);
+
+  const fubActivities = externalFubActivities ?? internalFubActivities;
+  const personProfile = externalPersonProfile ?? internalPersonProfile;
+
+  React.useEffect(() => {
+    if (externalFubActivities) return; // Skip if parent provides data
+    let cancelled = false;
+    (async () => {
+      setSelfFetching(true);
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { callEdgeFunction } = await import('@/lib/edgeClient');
+        // Fetch FUB activity log
+        const { data: fubs } = await supabase
+          .from('fub_activity_log')
+          .select('activity_type, subject, body_preview, direction, occurred_at, duration_seconds')
+          .eq('entity_id', entityId)
+          .order('occurred_at', { ascending: false })
+          .limit(200);
+        if (!cancelled) setInternalFubActivities((fubs as any[]) || []);
+
+        // Fetch person profile from FUB if entity has fub link
+        const importedFrom = entity?.importedFrom || entity?.imported_from;
+        if (importedFrom?.startsWith('fub:')) {
+          const fubPersonId = importedFrom.replace('fub:', '');
+          try {
+            const result = await callEdgeFunction('fub-activity', {
+              fub_person_id: parseInt(fubPersonId),
+              entity_id: entityId,
+              limit: 200,
+            });
+            if (!cancelled && result?.personProfile) {
+              setInternalPersonProfile(result.personProfile as FubPersonProfile);
+            }
+            // Re-fetch activity after sync
+            const { data: updatedFubs } = await supabase
+              .from('fub_activity_log')
+              .select('activity_type, subject, body_preview, direction, occurred_at, duration_seconds')
+              .eq('entity_id', entityId)
+              .order('occurred_at', { ascending: false })
+              .limit(200);
+            if (!cancelled) setInternalFubActivities((updatedFubs as any[]) || []);
+          } catch { /* non-critical */ }
+        }
+      } finally {
+        if (!cancelled) setSelfFetching(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [entityId, entity, externalFubActivities]);
+
+  const { result, loading: profileLoading, saving, recompute, submitFeedback } = usePreferenceProfile({
     entityId, entityType, entity, fubActivities, personProfile,
   });
+  const loading = profileLoading || selfFetching;
   const [showWhySection, setShowWhySection] = useState(false);
   const [showQuestions, setShowQuestions] = useState(false);
 

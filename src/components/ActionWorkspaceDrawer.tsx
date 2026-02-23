@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
+import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
 import type { Deal, Lead, Task, TaskType } from '@/types';
 import type { MoneyModelResult } from '@/lib/moneyModel';
 import type { OpportunityHeatResult } from '@/lib/leadMoneyModel';
@@ -29,7 +30,7 @@ import {
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type WorkspaceTab = 'call' | 'text' | 'email' | 'task' | 'notes' | 'intel';
+type WorkspaceTab = 'call' | 'text' | 'email' | 'task' | 'notes' | 'intel' | 'prefs';
 
 interface Props {
   open: boolean;
@@ -263,6 +264,7 @@ export function ActionWorkspaceDrawer({
 
   const tabs: { key: WorkspaceTab; label: string; icon: typeof Phone; subtitle: string }[] = [
     { key: 'intel', label: 'Intel', icon: Zap, subtitle: 'Data brief' },
+    { key: 'prefs', label: 'Preferences', icon: Target, subtitle: 'Client wants' },
     { key: 'call', label: 'Call', icon: Phone, subtitle: 'Script & outcomes' },
     { key: 'text', label: 'Text', icon: MessageSquare, subtitle: 'SMS templates' },
     { key: 'email', label: 'Email', icon: Mail, subtitle: 'Draft & send' },
@@ -324,6 +326,16 @@ export function ActionWorkspaceDrawer({
             {/* ── INTEL TAB ────────────────────────────────────────── */}
             {activeTab === 'intel' && entity && (
               <LocalIntelBriefPanel
+                entityId={context.entityId}
+                entityType={context.entityType}
+                entityName={context.entityName}
+                entity={entity}
+              />
+            )}
+
+            {/* ── PREFERENCES TAB ─────────────────────────────────── */}
+            {activeTab === 'prefs' && entity && (
+              <ClientPreferencesPanel
                 entityId={context.entityId}
                 entityType={context.entityType}
                 entityName={context.entityName}
