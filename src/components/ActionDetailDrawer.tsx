@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Zap, DollarSign, AlertTriangle, TrendingUp, Eye, Check, Phone } from 'lucide-react';
+import { X, Zap, DollarSign, AlertTriangle, TrendingUp, Eye, Check, Phone, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LogTouchModal } from '@/components/LogTouchModal';
@@ -216,22 +216,39 @@ export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 
         </div>
 
         {/* Actions */}
-        <div className="p-4 border-t border-border flex gap-2">
-          {taskId && onComplete && (
-            <Button size="sm" variant="default" className="flex-1" onClick={() => { onComplete(taskId!); onClose(); }}>
-              <Check className="h-3.5 w-3.5 mr-1.5" />
-              Mark Done
+        <div className="p-4 border-t border-border space-y-2">
+          {/* Open in Market Compass */}
+          {touchEntityType === 'lead' && (
+            <Button
+              size="sm"
+              className="w-full gap-2 bg-gradient-to-r from-chart-1 to-chart-2 hover:from-chart-1/90 hover:to-chart-2/90 text-white border-0"
+              onClick={() => {
+                const leadName = item.kind === 'opportunity' ? item.data.lead.name : title;
+                const params = new URLSearchParams({ client: leadName });
+                window.open(`https://market-compass.lovable.app?${params.toString()}`, '_blank');
+              }}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Open in Market Compass
             </Button>
           )}
-          {touchEntityType && touchEntityId && (
-            <Button size="sm" variant="outline" onClick={() => setShowTouch(true)}>
-              <Phone className="h-3.5 w-3.5 mr-1" />
-              Log Touch
+          <div className="flex gap-2">
+            {taskId && onComplete && (
+              <Button size="sm" variant="default" className="flex-1" onClick={() => { onComplete(taskId!); onClose(); }}>
+                <Check className="h-3.5 w-3.5 mr-1.5" />
+                Mark Done
+              </Button>
+            )}
+            {touchEntityType && touchEntityId && (
+              <Button size="sm" variant="outline" onClick={() => setShowTouch(true)}>
+                <Phone className="h-3.5 w-3.5 mr-1" />
+                Log Touch
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="flex-1" onClick={onClose}>
+              Close
             </Button>
-          )}
-          <Button size="sm" variant="outline" className="flex-1" onClick={onClose}>
-            Close
-          </Button>
+          </div>
         </div>
       </div>
 
