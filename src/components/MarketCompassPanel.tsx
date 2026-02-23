@@ -504,7 +504,7 @@ function AnalysisDisplay({ analysis, updatedAt, onRefresh, refreshing }: {
       )}
 
       <p className="text-[9px] text-muted-foreground text-right">
-        Updated {new Date(updatedAt).toLocaleDateString()} · AI-generated from FUB data
+        Updated {new Date(updatedAt).toLocaleDateString()} · Generated from FUB data
       </p>
     </motion.div>
   );
@@ -611,7 +611,7 @@ function ClientCard({ client, tokens, isExpanded, onToggle, onShareReport, onCop
                   ) : (
                     <>
                       <Brain className="h-4 w-4" />
-                      Generate Client Intelligence Report
+                      Analyze FUB Data
                     </>
                   )}
                 </Button>

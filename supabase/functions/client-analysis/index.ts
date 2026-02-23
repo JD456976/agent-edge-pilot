@@ -6,6 +6,271 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-request-id, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+/** Deterministic client analysis built entirely from FUB activity data – no AI involved. */
+
+interface ActivityRow {
+  activity_type: string;
+  direction: string | null;
+  body_preview: string | null;
+  subject: string | null;
+  occurred_at: string;
+}
+
+function analyzeActivities(activities: ActivityRow[], leadData: any, clientIdentity: any) {
+  const now = Date.now();
+
+  // --- Communication channel breakdown ---
+  const channelCounts: Record<string, number> = { text: 0, email: 0, call: 0, other: 0 };
+  for (const a of activities) {
+    const t = (a.activity_type || "").toLowerCase();
+    if (t.includes("text") || t.includes("sms")) channelCounts.text++;
+    else if (t.includes("email") || t.includes("mail")) channelCounts.email++;
+    else if (t.includes("call") || t.includes("phone")) channelCounts.call++;
+    else channelCounts.other++;
+  }
+  const total = activities.length || 1;
+  const preferred_channel =
+    channelCounts.text >= channelCounts.email && channelCounts.text >= channelCounts.call
+      ? "text"
+      : channelCounts.email >= channelCounts.call
+      ? "email"
+      : "call";
+
+  // --- Responsiveness / cadence ---
+  const timestamps = activities.map((a) => new Date(a.occurred_at).getTime()).sort((a, b) => a - b);
+  const gaps: number[] = [];
+  for (let i = 1; i < timestamps.length; i++) gaps.push(timestamps[i] - timestamps[i - 1]);
+  const avgGapMs = gaps.length ? gaps.reduce((s, g) => s + g, 0) / gaps.length : 0;
+  const avgGapDays = avgGapMs / (1000 * 60 * 60 * 24);
+
+  const inbound = activities.filter((a) => a.direction === "incoming" || a.direction === "inbound");
+  const outbound = activities.filter((a) => a.direction === "outgoing" || a.direction === "outbound");
+  const responsiveness =
+    inbound.length > outbound.length * 1.2
+      ? "very_responsive"
+      : inbound.length > outbound.length * 0.5
+      ? "responsive"
+      : inbound.length > 0
+      ? "slow"
+      : "unknown";
+
+  // --- Keyword extraction from body previews ---
+  const allText = activities
+    .map((a) => `${a.subject || ""} ${a.body_preview || ""}`)
+    .join(" ")
+    .toLowerCase();
+
+  // Property type signals
+  const propertyTypes: string[] = [];
+  if (/\bcondo\b/.test(allText)) propertyTypes.push("condo");
+  if (/\btownho(me|use)\b/.test(allText)) propertyTypes.push("townhouse");
+  if (/\bsingle[- ]?family\b/.test(allText)) propertyTypes.push("single-family");
+  if (/\bmulti[- ]?family\b/.test(allText)) propertyTypes.push("multi-family");
+  if (/\bland\b/.test(allText)) propertyTypes.push("land");
+  if (/\bfarm\b/.test(allText)) propertyTypes.push("farm/ranch");
+  if (propertyTypes.length === 0) propertyTypes.push("not specified");
+
+  // Bedroom signals
+  let bedrooms = "not specified";
+  const bedMatch = allText.match(/(\d)\s*(?:bed|br|bedroom)/);
+  if (bedMatch) bedrooms = `${bedMatch[1]}+`;
+
+  // Budget signals
+  let priceLow: number | null = null;
+  let priceHigh: number | null = null;
+  const priceMatches = allText.match(/\$\s*([\d,.]+)\s*k?/g);
+  if (priceMatches) {
+    const values = priceMatches.map((m) => {
+      let v = parseFloat(m.replace(/[$,]/g, ""));
+      if (v < 1000) v *= 1000; // e.g. $350k
+      return v;
+    }).filter((v) => v >= 50000 && v <= 50000000);
+    if (values.length) {
+      priceLow = Math.min(...values);
+      priceHigh = Math.max(...values);
+    }
+  }
+
+  // Location signals
+  const preferredAreas: string[] = [];
+  // Look for common location patterns: "in <place>", "near <place>", "<place> area"
+  const locationPatterns = allText.match(/(?:in|near|around|looking at)\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/g);
+  if (locationPatterns) {
+    for (const lp of locationPatterns) {
+      const area = lp.replace(/^(?:in|near|around|looking at)\s+/i, "").trim();
+      if (area.length > 2 && !preferredAreas.includes(area)) preferredAreas.push(area);
+    }
+  }
+
+  // Client type
+  const buyerSignals = (allText.match(/\b(buy|purchase|offer|pre-approv|mortgage|loan|looking for|house hunt)/g) || []).length;
+  const sellerSignals = (allText.match(/\b(sell|list|listing|market value|comp|cma|asking price)/g) || []).length;
+  const clientType =
+    buyerSignals > 0 && sellerSignals > 0
+      ? "both"
+      : buyerSignals > sellerSignals
+      ? "buyer"
+      : sellerSignals > 0
+      ? "seller"
+      : "unknown";
+
+  // Readiness
+  const urgentSignals = (allText.match(/\b(asap|urgent|lease expir|relocat|must move|deadline)/g) || []).length;
+  const activeSignals = (allText.match(/\b(showing|tour|open house|visit|walk.?through|schedule)/g) || []).length;
+  const offerSignals = (allText.match(/\b(offer|bid|counter|earnest|escrow|under contract)/g) || []).length;
+  const readinessStage =
+    offerSignals > 0
+      ? "ready_to_offer"
+      : activeSignals > 2
+      ? "actively_searching"
+      : activities.length > 5
+      ? "exploring"
+      : "unknown";
+
+  // Timeline
+  const urgency = urgentSignals > 0 ? "urgent" : activeSignals > 3 ? "moderate" : "relaxed";
+
+  // Key concerns
+  const concerns: string[] = [];
+  if (/interest rate/.test(allText)) concerns.push("Interest rates");
+  if (/bidding war/.test(allText)) concerns.push("Bidding wars / competition");
+  if (/inventory|supply/.test(allText)) concerns.push("Low inventory");
+  if (/school/.test(allText)) concerns.push("School district quality");
+  if (/commute|drive|transit/.test(allText)) concerns.push("Commute / transportation");
+  if (/budget|afford/.test(allText)) concerns.push("Affordability");
+  if (/closing cost/.test(allText)) concerns.push("Closing costs");
+
+  // Pre-approval
+  const preApproved = /pre.?approv/.test(allText) ? "yes" : "unknown";
+  const financingType = /\bfha\b/.test(allText)
+    ? "FHA"
+    : /\bva\b/.test(allText)
+    ? "VA"
+    : /\bcash\b/.test(allText)
+    ? "cash"
+    : /\bconventional\b/.test(allText)
+    ? "conventional"
+    : "not specified";
+
+  // Must-haves & deal-breakers
+  const mustHaves: string[] = [];
+  const dealBreakers: string[] = [];
+  if (/garage/.test(allText)) mustHaves.push("garage");
+  if (/pool/.test(allText)) mustHaves.push("pool");
+  if (/yard|backyard/.test(allText)) mustHaves.push("yard/outdoor space");
+  if (/basement/.test(allText)) mustHaves.push("basement");
+  if (/no hoa|hate hoa/.test(allText)) dealBreakers.push("HOA");
+  if (/no pool/.test(allText)) dealBreakers.push("pool");
+
+  // Recommended next actions
+  const recommendedActions: string[] = [];
+  if (clientType === "unknown") recommendedActions.push("Ask if they are looking to buy, sell, or both");
+  if (priceLow === null) recommendedActions.push("Confirm their budget range");
+  if (preApproved === "unknown" && clientType !== "seller") recommendedActions.push("Ask about pre-approval status");
+  if (preferredAreas.length === 0) recommendedActions.push("Discuss preferred neighborhoods / areas");
+  if (bedrooms === "not specified") recommendedActions.push("Clarify bedroom / bathroom requirements");
+  if (activities.length < 5) recommendedActions.push("Increase touchpoint frequency — limited interaction history");
+  const lastActivity = timestamps.length ? timestamps[timestamps.length - 1] : 0;
+  const daysSinceLast = lastActivity ? (now - lastActivity) / (1000 * 60 * 60 * 24) : 999;
+  if (daysSinceLast > 14) recommendedActions.push(`Re-engage — last interaction was ${Math.round(daysSinceLast)} days ago`);
+
+  // Suggested questions
+  const suggestedQuestions: string[] = [];
+  if (clientType === "buyer" || clientType === "unknown") {
+    suggestedQuestions.push("What's driving your timeline for the move?");
+    suggestedQuestions.push("Are there specific neighborhoods you're most interested in?");
+  }
+  if (clientType === "seller" || clientType === "both") {
+    suggestedQuestions.push("Have you thought about your ideal listing price?");
+    suggestedQuestions.push("Is there a timeline you need to sell by?");
+  }
+  if (preApproved === "unknown") suggestedQuestions.push("Have you started the pre-approval process?");
+  suggestedQuestions.push("What are your absolute must-haves in a home?");
+
+  // Data gaps
+  const dataGaps: string[] = [];
+  if (activities.length < 3) dataGaps.push("Very limited communication history");
+  if (priceLow === null) dataGaps.push("No budget indicators found");
+  if (preferredAreas.length === 0) dataGaps.push("No location preferences detected");
+  if (clientType === "unknown") dataGaps.push("Buyer/seller intent unclear");
+
+  // Evidence quotes
+  const evidenceQuotes: string[] = [];
+  for (const a of activities.slice(0, 50)) {
+    const preview = a.body_preview || "";
+    if (preview.length > 30) {
+      evidenceQuotes.push(`[${a.activity_type}] "${preview.slice(0, 200)}"`);
+      if (evidenceQuotes.length >= 5) break;
+    }
+  }
+
+  const confidence = activities.length > 20 ? "high" : activities.length > 5 ? "medium" : "low";
+
+  // Summary
+  const clientName = [clientIdentity.first_name, clientIdentity.last_name].filter(Boolean).join(" ") || clientIdentity.email_normalized;
+  const summary = `${clientName} is ${clientType === "unknown" ? "a contact" : `a ${clientType}`} with ${activities.length} recorded interactions. ${
+    readinessStage === "ready_to_offer"
+      ? "They appear ready to make an offer."
+      : readinessStage === "actively_searching"
+      ? "They are actively searching for properties."
+      : readinessStage === "exploring"
+      ? "They are in the early exploration phase."
+      : "More engagement is needed to determine their readiness."
+  } Communication is primarily via ${preferred_channel}${avgGapDays > 0 ? `, averaging every ${Math.round(avgGapDays)} days` : ""}.`;
+
+  return {
+    summary,
+    client_type: clientType,
+    readiness_stage: readinessStage,
+    property_preferences: {
+      property_types: propertyTypes,
+      bedrooms,
+      bathrooms: "not specified",
+      must_haves: mustHaves,
+      deal_breakers: dealBreakers,
+      style_preferences: [],
+    },
+    location_preferences: {
+      preferred_areas: preferredAreas,
+      school_district_priority: /school/.test(allText),
+      commute_considerations: /commute|drive|transit/.test(allText) ? "Mentioned commute concerns" : "",
+      urban_suburban: /\burban\b/.test(allText) ? "urban" : /\bsuburb/.test(allText) ? "suburban" : /\brural\b/.test(allText) ? "rural" : "unknown",
+    },
+    budget: {
+      price_range_low: priceLow,
+      price_range_high: priceHigh,
+      pre_approved: preApproved,
+      financing_type: financingType,
+    },
+    timeline: {
+      urgency,
+      target_move_date: "",
+      driving_event: urgentSignals > 0 ? "Detected urgency signals in communication" : "",
+    },
+    communication_insights: {
+      preferred_channel,
+      responsiveness,
+      best_contact_time: "",
+      tone: "",
+      channel_breakdown: {
+        text_pct: Math.round((channelCounts.text / total) * 100),
+        email_pct: Math.round((channelCounts.email / total) * 100),
+        call_pct: Math.round((channelCounts.call / total) * 100),
+      },
+      avg_gap_days: Math.round(avgGapDays * 10) / 10,
+      total_interactions: activities.length,
+      inbound_count: inbound.length,
+      outbound_count: outbound.length,
+    },
+    key_concerns: concerns,
+    recommended_actions: recommendedActions,
+    suggested_questions: suggestedQuestions,
+    evidence_quotes: evidenceQuotes,
+    confidence_level: confidence,
+    data_gaps: dataGaps,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -17,13 +282,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    const encryptionKey = Deno.env.get("FUB_ENCRYPTION_KEY");
 
-    if (!lovableApiKey)
-      return new Response(JSON.stringify({ error: "AI gateway not configured" }), { status: 500, headers: corsHeaders });
-
-    // Auth user
     const anonClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -37,7 +296,7 @@ Deno.serve(async (req) => {
 
     const serviceClient = createClient(supabaseUrl, serviceKey);
 
-    // Check for existing analysis if not forcing refresh
+    // Check cache
     if (!force_refresh) {
       const { data: existing } = await serviceClient
         .from("client_market_analyses")
@@ -47,7 +306,6 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (existing && existing.activity_count > 0) {
-        // Return cached if less than 24h old
         const age = Date.now() - new Date(existing.updated_at).getTime();
         if (age < 24 * 60 * 60 * 1000) {
           return new Response(JSON.stringify({ analysis: existing.analysis_json, cached: true, updated_at: existing.updated_at }), {
@@ -57,7 +315,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Get client identity info
+    // Get client identity
     const { data: clientIdentity } = await serviceClient
       .from("client_identities")
       .select("*")
@@ -67,7 +325,7 @@ Deno.serve(async (req) => {
     if (!clientIdentity)
       return new Response(JSON.stringify({ error: "Client not found" }), { status: 404, headers: corsHeaders });
 
-    // Get agent_client link to find fub_contact_id
+    // Get FUB contact link
     const { data: agentClient } = await serviceClient
       .from("agent_clients")
       .select("fub_contact_id")
@@ -77,9 +335,8 @@ Deno.serve(async (req) => {
 
     const fubContactId = agentClient?.fub_contact_id;
 
-    // Find the lead linked to this FUB contact
     let leadData: any = null;
-    let activityData: any[] = [];
+    let activityData: ActivityRow[] = [];
 
     if (fubContactId) {
       const { data: lead } = await serviceClient
@@ -91,221 +348,35 @@ Deno.serve(async (req) => {
 
       leadData = lead;
 
-      // Get ALL FUB activity for this lead
       if (lead) {
         const { data: activity } = await serviceClient
           .from("fub_activity_log")
-          .select("*")
+          .select("activity_type, direction, body_preview, subject, occurred_at")
           .eq("entity_id", lead.id)
           .eq("user_id", user.id)
           .order("occurred_at", { ascending: false })
           .limit(500);
 
-        activityData = activity || [];
+        activityData = (activity || []) as ActivityRow[];
       }
     }
 
-    // Also try matching by email if no FUB link
+    // Fallback: match by name
     if (!leadData) {
       const { data: lead } = await serviceClient
         .from("leads")
         .select("*")
         .eq("assigned_to_user_id", user.id)
-        .ilike("name", `%${clientIdentity.first_name || ''}%`)
+        .ilike("name", `%${clientIdentity.first_name || ""}%`)
         .limit(1)
         .maybeSingle();
-
       leadData = lead;
     }
 
-    // Get intel brief if exists
-    let intelBrief: any = null;
-    if (leadData) {
-      const { data: brief } = await serviceClient
-        .from("intel_briefs")
-        .select("brief_json")
-        .eq("entity_id", leadData.id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-      intelBrief = brief?.brief_json;
-    }
+    // Build analysis from raw data
+    const analysis = analyzeActivities(activityData, leadData, clientIdentity);
 
-    // Build context for AI
-    const clientName = [clientIdentity.first_name, clientIdentity.last_name].filter(Boolean).join(" ") || clientIdentity.email_normalized;
-
-    const communicationSummary = activityData.map(a => {
-      const dir = a.direction ? ` (${a.direction})` : '';
-      const preview = a.body_preview ? `: ${a.body_preview.slice(0, 300)}` : '';
-      const subj = a.subject ? ` - ${a.subject}` : '';
-      return `[${a.occurred_at}] ${a.activity_type}${dir}${subj}${preview}`;
-    }).join("\n");
-
-    const leadContext = leadData ? `
-Lead Name: ${leadData.name}
-Source: ${leadData.source}
-Temperature: ${leadData.lead_temperature || 'unknown'}
-Status Tags: ${(leadData.status_tags || []).join(', ') || 'none'}
-Notes: ${leadData.notes || 'none'}
-Created: ${leadData.created_at}
-Last Contact: ${leadData.last_contact_at}
-Engagement Score: ${leadData.engagement_score}
-` : 'No lead record found.';
-
-    const intelContext = intelBrief ? `
-Intel Brief Data:
-${JSON.stringify(intelBrief, null, 1).slice(0, 2000)}
-` : '';
-
-    const systemPrompt = `You are a real estate market intelligence analyst working inside "Deal Pilot," a CRM intelligence platform for real estate agents. Your job is to analyze ALL available communication data from Follow Up Boss (FUB) and produce a comprehensive, actionable client profile.
-
-You must return a JSON object using the tool provided. Analyze every communication detail—emails, texts, calls, property inquiries—to extract:
-
-1. **Buyer/Seller Profile**: Are they buying, selling, or both? What stage are they at?
-2. **Property Preferences**: Type (single-family, condo, townhouse), bedrooms, bathrooms, lot size, style preferences, must-haves, deal-breakers
-3. **Location Preferences**: Specific towns/neighborhoods, school districts, commute considerations, urban vs suburban
-4. **Budget & Financial**: Price range, pre-approval status, down payment indicators, financing type
-5. **Timeline & Urgency**: When do they need to move? Lease expiring? Life event driving the move?
-6. **Communication Style**: Preferred channel, response patterns, best times to reach
-7. **Key Concerns**: What worries them? Market conditions, bidding wars, interest rates?
-8. **Recommended Strategy**: Specific talking points, properties to suggest, next steps
-
-Be specific and evidence-based. Quote exact phrases from communications when possible. If data is thin, say so and suggest what questions the agent should ask next.`;
-
-    const userPrompt = `Analyze this client's FUB data and produce a comprehensive market intelligence report.
-
-CLIENT: ${clientName}
-Email: ${clientIdentity.email_normalized}
-Phone: ${clientIdentity.phone || 'unknown'}
-
-${leadContext}
-
-${intelContext}
-
-COMMUNICATION HISTORY (${activityData.length} interactions):
-${communicationSummary || 'No communication history available.'}
-
-Generate the analysis now.`;
-
-    // Call Lovable AI with tool calling for structured output
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "client_market_analysis",
-              description: "Return a structured client market analysis based on FUB communication data.",
-              parameters: {
-                type: "object",
-                properties: {
-                  summary: { type: "string", description: "2-3 sentence executive summary of the client's situation" },
-                  client_type: { type: "string", enum: ["buyer", "seller", "both", "investor", "unknown"], description: "Primary client type" },
-                  readiness_stage: { type: "string", enum: ["exploring", "actively_searching", "ready_to_offer", "under_contract", "unknown"], description: "How ready the client is" },
-                  property_preferences: {
-                    type: "object",
-                    properties: {
-                      property_types: { type: "array", items: { type: "string" }, description: "e.g. single-family, condo, townhouse" },
-                      bedrooms: { type: "string", description: "e.g. '3-4' or '3+'" },
-                      bathrooms: { type: "string", description: "e.g. '2+'" },
-                      must_haves: { type: "array", items: { type: "string" }, description: "Features they must have" },
-                      deal_breakers: { type: "array", items: { type: "string" }, description: "Things they won't accept" },
-                      style_preferences: { type: "array", items: { type: "string" }, description: "e.g. modern, colonial, ranch" },
-                    },
-                  },
-                  location_preferences: {
-                    type: "object",
-                    properties: {
-                      preferred_areas: { type: "array", items: { type: "string" }, description: "Towns, neighborhoods, or areas mentioned" },
-                      school_district_priority: { type: "boolean" },
-                      commute_considerations: { type: "string", description: "Commute-related preferences" },
-                      urban_suburban: { type: "string", enum: ["urban", "suburban", "rural", "flexible", "unknown"] },
-                    },
-                  },
-                  budget: {
-                    type: "object",
-                    properties: {
-                      price_range_low: { type: "number", description: "Low end of budget" },
-                      price_range_high: { type: "number", description: "High end of budget" },
-                      pre_approved: { type: "string", enum: ["yes", "no", "unknown"] },
-                      financing_type: { type: "string", description: "e.g. conventional, FHA, VA, cash" },
-                    },
-                  },
-                  timeline: {
-                    type: "object",
-                    properties: {
-                      urgency: { type: "string", enum: ["urgent", "moderate", "relaxed", "unknown"] },
-                      target_move_date: { type: "string", description: "When they want to move, if mentioned" },
-                      driving_event: { type: "string", description: "Life event driving the move, if any" },
-                    },
-                  },
-                  communication_insights: {
-                    type: "object",
-                    properties: {
-                      preferred_channel: { type: "string", enum: ["text", "email", "call", "mixed"] },
-                      responsiveness: { type: "string", enum: ["very_responsive", "responsive", "slow", "unresponsive", "unknown"] },
-                      best_contact_time: { type: "string", description: "Best time to reach them" },
-                      tone: { type: "string", description: "Their communication style/tone" },
-                    },
-                  },
-                  key_concerns: { type: "array", items: { type: "string" }, description: "Their main worries or concerns" },
-                  recommended_actions: { type: "array", items: { type: "string" }, description: "Specific next steps for the agent" },
-                  suggested_questions: { type: "array", items: { type: "string" }, description: "Questions to ask the client to fill knowledge gaps" },
-                  evidence_quotes: { type: "array", items: { type: "string" }, description: "Direct quotes from communications supporting the analysis" },
-                  confidence_level: { type: "string", enum: ["high", "medium", "low"], description: "How confident the analysis is based on available data" },
-                  data_gaps: { type: "array", items: { type: "string" }, description: "Areas where more information is needed" },
-                },
-                required: ["summary", "client_type", "readiness_stage", "recommended_actions", "confidence_level"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "client_market_analysis" } },
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "AI rate limit exceeded. Please try again in a moment." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits in workspace settings." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
-      return new Response(JSON.stringify({ error: "AI analysis failed" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const aiResult = await aiResponse.json();
-    let analysis: any = {};
-
-    // Extract from tool call
-    const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
-    if (toolCall?.function?.arguments) {
-      try {
-        analysis = JSON.parse(toolCall.function.arguments);
-      } catch {
-        analysis = { summary: "Analysis could not be parsed.", confidence_level: "low" };
-      }
-    }
-
-    // Persist the analysis
+    // Persist
     await serviceClient
       .from("client_market_analyses")
       .upsert({
@@ -313,7 +384,7 @@ Generate the analysis now.`;
         client_identity_id,
         analysis_json: analysis,
         activity_count: activityData.length,
-        model_used: "google/gemini-3-flash-preview",
+        model_used: "deterministic-v1",
         updated_at: new Date().toISOString(),
       }, { onConflict: "agent_user_id,client_identity_id" });
 
