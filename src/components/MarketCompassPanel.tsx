@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const MARKET_COMPASS_URL = 'https://market-compass.lovable.app';
+// Market Compass URL will be configured when the app is deployed
 
 interface ClientIdentity {
   id: string;
@@ -561,30 +561,6 @@ function AnalysisDisplay({ analysis, updatedAt, onRefresh, refreshing, clientNam
 
       {/* Action buttons */}
       <div className="space-y-2 pt-1">
-        <Button
-          className="w-full gap-2 bg-gradient-to-r from-chart-1 to-chart-2 hover:from-chart-1/90 hover:to-chart-2/90 text-white border-0"
-          onClick={() => {
-            const params = new URLSearchParams({
-              client: clientName,
-              email: clientEmail,
-              type: analysis.client_type || '',
-              stage: analysis.readiness_stage || '',
-              urgency: analysis.timeline?.urgency || '',
-              channel: analysis.communication_insights?.preferred_channel || '',
-              preapproved: analysis.budget?.pre_approved || '',
-              ...(analysis.budget?.price_range_low ? { budget_low: String(analysis.budget.price_range_low) } : {}),
-              ...(analysis.budget?.price_range_high ? { budget_high: String(analysis.budget.price_range_high) } : {}),
-              ...(analysis.property_preferences?.bedrooms ? { beds: analysis.property_preferences.bedrooms } : {}),
-              ...(analysis.property_preferences?.property_types?.length ? { prop_types: analysis.property_preferences.property_types.join(',') } : {}),
-              ...(analysis.location_preferences?.preferred_areas?.length ? { areas: analysis.location_preferences.preferred_areas.join(',') } : {}),
-              ...(analysis.budget?.financing_type ? { financing: analysis.budget.financing_type } : {}),
-            });
-            window.open(`${MARKET_COMPASS_URL}?${params.toString()}`, '_blank');
-          }}
-        >
-          <ExternalLink className="h-4 w-4" />
-          Open in Market Compass
-        </Button>
         <div className="flex gap-2">
           <Button
             variant="outline"
