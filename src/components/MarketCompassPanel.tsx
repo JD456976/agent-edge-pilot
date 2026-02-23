@@ -13,7 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Compass, Copy, ExternalLink, Send, User, Clock,
   CheckCircle2, XCircle, Loader2, Plus, Trash2, Search,
-  LinkIcon, Share2, ChevronRight, Sparkles, Users, RefreshCw
+  LinkIcon, Share2, ChevronRight, Sparkles, Users, RefreshCw,
+  Brain, MapPin, DollarSign, Home, Target, MessageSquare, AlertTriangle, TrendingUp, HelpCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -290,6 +291,225 @@ function AddClientForm({ onSave, onCancel, saving }: {
   );
 }
 
+interface ClientAnalysis {
+  summary?: string;
+  client_type?: string;
+  readiness_stage?: string;
+  property_preferences?: {
+    property_types?: string[];
+    bedrooms?: string;
+    bathrooms?: string;
+    must_haves?: string[];
+    deal_breakers?: string[];
+    style_preferences?: string[];
+  };
+  location_preferences?: {
+    preferred_areas?: string[];
+    school_district_priority?: boolean;
+    commute_considerations?: string;
+    urban_suburban?: string;
+  };
+  budget?: {
+    price_range_low?: number;
+    price_range_high?: number;
+    pre_approved?: string;
+    financing_type?: string;
+  };
+  timeline?: {
+    urgency?: string;
+    target_move_date?: string;
+    driving_event?: string;
+  };
+  communication_insights?: {
+    preferred_channel?: string;
+    responsiveness?: string;
+    best_contact_time?: string;
+    tone?: string;
+  };
+  key_concerns?: string[];
+  recommended_actions?: string[];
+  suggested_questions?: string[];
+  evidence_quotes?: string[];
+  confidence_level?: string;
+  data_gaps?: string[];
+}
+
+function AnalysisSection({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+        <Icon className="h-3.5 w-3.5 text-primary" />
+        {title}
+      </div>
+      <div className="text-xs text-muted-foreground leading-relaxed">{children}</div>
+    </div>
+  );
+}
+
+function AnalysisDisplay({ analysis, updatedAt, onRefresh, refreshing }: {
+  analysis: ClientAnalysis;
+  updatedAt: string;
+  onRefresh: () => void;
+  refreshing: boolean;
+}) {
+  const confidenceColor = analysis.confidence_level === 'high' ? 'text-chart-2' : analysis.confidence_level === 'medium' ? 'text-chart-4' : 'text-destructive';
+  const stageLabel: Record<string, string> = {
+    exploring: '🔍 Exploring', actively_searching: '🏠 Actively Searching',
+    ready_to_offer: '📝 Ready to Offer', under_contract: '📋 Under Contract', unknown: '❓ Unknown',
+  };
+
+  const formatPrice = (n?: number) => n ? `$${(n / 1000).toFixed(0)}K` : null;
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Badge className="text-[10px] bg-primary/15 text-primary border-primary/20">
+            {analysis.client_type === 'buyer' ? '🏡 Buyer' : analysis.client_type === 'seller' ? '💰 Seller' : analysis.client_type === 'both' ? '🔄 Buy & Sell' : analysis.client_type === 'investor' ? '📈 Investor' : '❓ Unknown'}
+          </Badge>
+          <Badge variant="outline" className="text-[10px]">
+            {stageLabel[analysis.readiness_stage || 'unknown']}
+          </Badge>
+          <Badge variant="secondary" className={`text-[10px] ${confidenceColor}`}>
+            {analysis.confidence_level} confidence
+          </Badge>
+        </div>
+        <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-[10px]" onClick={onRefresh} disabled={refreshing}>
+          {refreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+          Refresh
+        </Button>
+      </div>
+
+      {/* Summary */}
+      <p className="text-xs leading-relaxed bg-primary/5 border border-primary/10 rounded-lg p-3">
+        {analysis.summary}
+      </p>
+
+      {/* Property Preferences */}
+      {analysis.property_preferences && (
+        <AnalysisSection icon={Home} title="Property Preferences">
+          <div className="flex flex-wrap gap-1.5">
+            {analysis.property_preferences.property_types?.map(t => (
+              <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>
+            ))}
+            {analysis.property_preferences.bedrooms && <Badge variant="secondary" className="text-[10px]">{analysis.property_preferences.bedrooms} bed</Badge>}
+            {analysis.property_preferences.bathrooms && <Badge variant="secondary" className="text-[10px]">{analysis.property_preferences.bathrooms} bath</Badge>}
+          </div>
+          {(analysis.property_preferences.must_haves?.length ?? 0) > 0 && (
+            <div className="mt-1.5">
+              <span className="text-[10px] font-medium text-chart-2">Must-haves: </span>
+              {analysis.property_preferences.must_haves!.join(', ')}
+            </div>
+          )}
+          {(analysis.property_preferences.deal_breakers?.length ?? 0) > 0 && (
+            <div>
+              <span className="text-[10px] font-medium text-destructive">Deal-breakers: </span>
+              {analysis.property_preferences.deal_breakers!.join(', ')}
+            </div>
+          )}
+        </AnalysisSection>
+      )}
+
+      {/* Location */}
+      {analysis.location_preferences && (analysis.location_preferences.preferred_areas?.length ?? 0) > 0 && (
+        <AnalysisSection icon={MapPin} title="Location Preferences">
+          <div className="flex flex-wrap gap-1.5">
+            {analysis.location_preferences.preferred_areas?.map(a => (
+              <Badge key={a} variant="outline" className="text-[10px] border-chart-1/30 text-chart-1">{a}</Badge>
+            ))}
+          </div>
+          {analysis.location_preferences.commute_considerations && (
+            <p className="mt-1">{analysis.location_preferences.commute_considerations}</p>
+          )}
+        </AnalysisSection>
+      )}
+
+      {/* Budget */}
+      {analysis.budget && (analysis.budget.price_range_low || analysis.budget.price_range_high) && (
+        <AnalysisSection icon={DollarSign} title="Budget">
+          <div className="flex items-center gap-2">
+            {formatPrice(analysis.budget.price_range_low) && formatPrice(analysis.budget.price_range_high) && (
+              <Badge className="text-[10px] bg-chart-2/15 text-chart-2 border-chart-2/20">
+                {formatPrice(analysis.budget.price_range_low)} – {formatPrice(analysis.budget.price_range_high)}
+              </Badge>
+            )}
+            {analysis.budget.pre_approved === 'yes' && <Badge variant="secondary" className="text-[10px] text-chart-2">✓ Pre-approved</Badge>}
+            {analysis.budget.financing_type && <Badge variant="outline" className="text-[10px]">{analysis.budget.financing_type}</Badge>}
+          </div>
+        </AnalysisSection>
+      )}
+
+      {/* Timeline */}
+      {analysis.timeline && analysis.timeline.urgency !== 'unknown' && (
+        <AnalysisSection icon={Clock} title="Timeline">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className={`text-[10px] ${analysis.timeline.urgency === 'urgent' ? 'border-destructive/30 text-destructive' : ''}`}>
+              {analysis.timeline.urgency}
+            </Badge>
+            {analysis.timeline.target_move_date && <span>{analysis.timeline.target_move_date}</span>}
+          </div>
+          {analysis.timeline.driving_event && <p className="mt-1">Driving event: {analysis.timeline.driving_event}</p>}
+        </AnalysisSection>
+      )}
+
+      {/* Recommended Actions */}
+      {(analysis.recommended_actions?.length ?? 0) > 0 && (
+        <AnalysisSection icon={Target} title="Recommended Actions">
+          <ul className="space-y-1">
+            {analysis.recommended_actions!.map((a, i) => (
+              <li key={i} className="flex items-start gap-1.5">
+                <ChevronRight className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                <span>{a}</span>
+              </li>
+            ))}
+          </ul>
+        </AnalysisSection>
+      )}
+
+      {/* Key Concerns */}
+      {(analysis.key_concerns?.length ?? 0) > 0 && (
+        <AnalysisSection icon={AlertTriangle} title="Key Concerns">
+          <ul className="space-y-0.5">
+            {analysis.key_concerns!.map((c, i) => <li key={i}>• {c}</li>)}
+          </ul>
+        </AnalysisSection>
+      )}
+
+      {/* Suggested Questions */}
+      {(analysis.suggested_questions?.length ?? 0) > 0 && (
+        <AnalysisSection icon={HelpCircle} title="Questions to Ask">
+          <ul className="space-y-0.5">
+            {analysis.suggested_questions!.map((q, i) => <li key={i}>❓ {q}</li>)}
+          </ul>
+        </AnalysisSection>
+      )}
+
+      {/* Evidence */}
+      {(analysis.evidence_quotes?.length ?? 0) > 0 && (
+        <AnalysisSection icon={MessageSquare} title="Evidence from Communications">
+          <div className="space-y-1">
+            {analysis.evidence_quotes!.slice(0, 3).map((q, i) => (
+              <p key={i} className="italic border-l-2 border-primary/30 pl-2 py-0.5">"{q}"</p>
+            ))}
+          </div>
+        </AnalysisSection>
+      )}
+
+      {/* Data Gaps */}
+      {(analysis.data_gaps?.length ?? 0) > 0 && (
+        <div className="text-[10px] text-muted-foreground bg-muted/30 rounded-lg p-2">
+          <span className="font-medium">Data gaps:</span> {analysis.data_gaps!.join(' · ')}
+        </div>
+      )}
+
+      <p className="text-[9px] text-muted-foreground text-right">
+        Updated {new Date(updatedAt).toLocaleDateString()} · AI-generated from FUB data
+      </p>
+    </motion.div>
+  );
+}
+
 function ClientCard({ client, tokens, isExpanded, onToggle, onShareReport, onCopyLink, onRevokeToken, sharingReportId, setSharingReportId, creatingLink }: {
   client: AgentClient;
   tokens: ShareToken[];
@@ -302,10 +522,39 @@ function ClientCard({ client, tokens, isExpanded, onToggle, onShareReport, onCop
   setSharingReportId: (v: string) => void;
   creatingLink: boolean;
 }) {
+  const { toast } = useToast();
   const ci = client.client_identities;
   const activeCount = tokens.filter(t => getTokenStatus(t) === 'active').length;
   const clientName = getClientName(ci);
   const initial = (ci.first_name?.[0] || ci.email_normalized[0]).toUpperCase();
+
+  const [analysis, setAnalysis] = useState<ClientAnalysis | null>(null);
+  const [analysisUpdatedAt, setAnalysisUpdatedAt] = useState<string>('');
+  const [generating, setGenerating] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
+
+  const generateAnalysis = useCallback(async (forceRefresh = false) => {
+    setGenerating(true);
+    try {
+      const result = await callEdgeFunction<{ analysis: ClientAnalysis; cached: boolean; updated_at: string; activity_count?: number }>('client-analysis', {
+        client_identity_id: client.client_identity_id,
+        force_refresh: forceRefresh,
+      });
+      setAnalysis(result.analysis);
+      setAnalysisUpdatedAt(result.updated_at);
+      setShowAnalysis(true);
+      if (result.cached) {
+        toast({ title: 'Loaded cached analysis', description: 'Click Refresh to regenerate with latest data.' });
+      } else {
+        toast({ title: 'Analysis complete', description: `Generated from ${result.activity_count || 0} FUB interactions.` });
+      }
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to generate analysis';
+      toast({ title: 'Analysis Error', description: msg, variant: 'destructive' });
+    } finally {
+      setGenerating(false);
+    }
+  }, [client.client_identity_id, toast]);
 
   return (
     <motion.div layout className="rounded-xl border bg-card overflow-hidden">
@@ -347,6 +596,36 @@ function ClientCard({ client, tokens, isExpanded, onToggle, onShareReport, onCop
             <div className="px-3 pb-4 space-y-3">
               <Separator />
 
+              {/* AI Analysis */}
+              {!showAnalysis ? (
+                <Button
+                  onClick={() => generateAnalysis(false)}
+                  disabled={generating}
+                  className="w-full gap-2 bg-gradient-to-r from-chart-1 to-chart-2 hover:from-chart-1/90 hover:to-chart-2/90 text-white border-0"
+                >
+                  {generating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Analyzing FUB data…
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="h-4 w-4" />
+                      Generate Client Intelligence Report
+                    </>
+                  )}
+                </Button>
+              ) : analysis ? (
+                <AnalysisDisplay
+                  analysis={analysis}
+                  updatedAt={analysisUpdatedAt}
+                  onRefresh={() => generateAnalysis(true)}
+                  refreshing={generating}
+                />
+              ) : null}
+
+              <Separator />
+
               {/* Share a report */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium flex items-center gap-1.5">
@@ -372,18 +651,6 @@ function ClientCard({ client, tokens, isExpanded, onToggle, onShareReport, onCop
                   From a Market Compass report URL, paste the session ID (e.g. abc-123-def).
                 </p>
               </div>
-
-              {/* Open MC for new analysis */}
-              <a
-                href={`${MARKET_COMPASS_URL}/buyer?client_name=${encodeURIComponent(clientName)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary text-xs font-semibold transition-colors"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                Create New Analysis in Market Compass
-                <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
-              </a>
 
               {/* Existing share links */}
               {tokens.length > 0 && (
