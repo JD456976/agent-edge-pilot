@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow, differenceInDays, format } from 'date-fns';
 import { callEdgeFunction } from '@/lib/edgeClient';
@@ -223,6 +224,16 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
 
         {/* ═══ ENGAGEMENT VELOCITY ═══ */}
         <VelocityIndicator velocity={insights.velocity} />
+
+        {/* ═══ CLIENT PREFERENCES (PREFERENCE INTELLIGENCE) ═══ */}
+        <ClientPreferencesPanel
+          entityId={entityId}
+          entityType={entityType}
+          entityName={entityName}
+          entity={entity}
+          fubActivities={fubActivities}
+          personProfile={personProfile}
+        />
 
         {/* ═══ PROPERTY INTEREST ANALYSIS (PROMINENT) ═══ */}
         {hasPropertyData && (
