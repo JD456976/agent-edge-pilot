@@ -24,6 +24,7 @@ import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 import Install from "@/pages/Install";
 import AppStoreAssets from "@/pages/AppStoreAssets";
+import OpenHouse from "@/pages/OpenHouse";
 import { ReviewPrompt } from "@/components/ReviewPrompt";
 
 const queryClient = new QueryClient();
@@ -90,6 +91,7 @@ function WorkspaceOverlays() {
 
   const WORKSPACE_CONFIG: Record<string, { title: string; subtitle: string; Component: React.ComponentType }> = {
     work: { title: 'Work', subtitle: 'Pipeline and tasks', Component: Work },
+    openhouse: { title: 'Open House Intelligence', subtitle: 'Capture visitors and follow up', Component: OpenHouse },
     sync: { title: 'Sync', subtitle: 'CRM integrations and imports', Component: Sync },
     insights: { title: 'Insights', subtitle: 'Forecast, stability, and review', Component: Insights },
     settings: { title: 'Settings', subtitle: 'Preferences and account', Component: Settings },
@@ -114,11 +116,12 @@ function WorkspaceOverlays() {
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const VisitorIntakeLazy = React.lazy(() => import('@/pages/VisitorIntake'));
   return (
     <Routes>
       <Route path="/login" element={loading ? null : (user ? <Navigate to="/" replace /> : <Login />)} />
       <Route path="/" element={<ProtectedRoute><CommandCenter /></ProtectedRoute>} />
-      {/* Legacy routes redirect to Command Center with workspace param */}
+      <Route path="/visit/:token" element={<React.Suspense fallback={<div className="min-h-screen bg-background" />}><VisitorIntakeLazy /></React.Suspense>} />
       <Route path="/pipeline" element={<Navigate to="/?workspace=work" replace />} />
       <Route path="/tasks" element={<Navigate to="/?workspace=work" replace />} />
       <Route path="/settings" element={<Navigate to="/?workspace=settings" replace />} />
