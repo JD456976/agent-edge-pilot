@@ -26,6 +26,7 @@ import Install from "@/pages/Install";
 import AppStoreAssets from "@/pages/AppStoreAssets";
 import OpenHouse from "@/pages/OpenHouse";
 import { ReviewPrompt } from "@/components/ReviewPrompt";
+import { MarketCompassPanel } from "@/components/MarketCompassPanel";
 
 const queryClient = new QueryClient();
 
@@ -95,6 +96,7 @@ function WorkspaceOverlays() {
     sync: { title: 'Sync', subtitle: 'CRM integrations and imports', Component: Sync },
     insights: { title: 'Insights', subtitle: 'Forecast, stability, and review', Component: Insights },
     settings: { title: 'Settings', subtitle: 'Preferences and account', Component: Settings },
+    marketcompass: { title: 'Market Compass', subtitle: 'Share offer intelligence with clients', Component: MarketCompassPanel },
   };
 
   return (
