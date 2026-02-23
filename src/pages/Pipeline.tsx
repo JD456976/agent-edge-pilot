@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import type { Deal, DealStage, RiskLevel, DealParticipant } from '@/types';
 import { PARTICIPANT_ROLE_LABELS } from '@/types';
 import { ImportSourceBadge } from '@/components/ImportSourceBadge';
+import { FubSyncBadge } from '@/components/FubSyncBadge';
 import { DealCommissionEditor, type DealCommissionState, type ParticipantEdit } from '@/components/DealCommissionEditor';
 import { CommissionDebugPanel } from '@/components/CommissionDebugPanel';
 import { LogTouchModal } from '@/components/LogTouchModal';
@@ -65,6 +66,7 @@ function DealCard({ deal, onClick }: DealCardProps) {
           {new Date(deal.closeDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
         </div>
         <div className="flex items-center gap-1.5">
+          {deal.importedFrom?.startsWith('fub:') && <FubSyncBadge entityId={deal.id} />}
           {deal.importedFrom && <ImportSourceBadge importedFrom={deal.importedFrom} compact />}
           <Badge variant={riskVariant[deal.riskLevel]} className="text-[10px] px-1.5 py-0">
             {deal.riskLevel === 'red' ? 'Risk' : deal.riskLevel === 'yellow' ? 'Watch' : 'Good'}
