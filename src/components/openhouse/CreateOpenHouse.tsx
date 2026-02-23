@@ -10,8 +10,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ChevronRight, ChevronLeft, GripVertical, Plus, X, Save, Sparkles } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ChevronRight, ChevronLeft, GripVertical, Plus, X, Save, Sparkles, Eye, MapPin, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface FieldConfig {
   key: string;
@@ -52,12 +54,66 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
   const [address, setAddress] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [agentRole, setAgentRole] = useState<'listing_agent' | 'facilitator'>('listing_agent');
   const [selectedFields, setSelectedFields] = useState<FieldConfig[]>([...DEFAULT_FIELDS]);
   const [optionalEnabled, setOptionalEnabled] = useState<Record<string, boolean>>({ phone: true });
   const [customFields, setCustomFields] = useState<FieldConfig[]>([]);
   const [requireAll, setRequireAll] = useState(false);
   const [allowAnonymous, setAllowAnonymous] = useState(true);
   const [showContactCard, setShowContactCard] = useState(true);
+
+  // Load existing open house for editing
+  const { data: editingData } = useQuery({
+    queryKey: ['open-house-edit', editingId],
+    queryFn: async () => {
+      if (!editingId) return null;
+      const [ohRes, fieldsRes] = await Promise.all([
+        supabase.from('open_houses').select('*').eq('id', editingId).single(),
+        supabase.from('open_house_fields').select('*').eq('open_house_id', editingId).order('sort_order'),
+      ]);
+      if (ohRes.error) throw ohRes.error;
+      return { oh: ohRes.data, fields: fieldsRes.data || [] };
+    },
+    enabled: !!editingId,
+  });
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editingData) {
+      const { oh, fields } = editingData;
+      setAddress(oh.property_address);
+      setEventDate(oh.event_date ? new Date(oh.event_date).toISOString().slice(0, 16) : '');
+      setNotes(oh.notes || '');
+      setAgentRole((oh as any).agent_role || 'listing_agent');
+      const settings = oh.form_settings as any;
+      setRequireAll(settings?.require_all ?? false);
+      setAllowAnonymous(settings?.allow_anonymous ?? true);
+      setShowContactCard(settings?.show_contact_card ?? true);
+
+      // Restore field selections
+      const optEn: Record<string, boolean> = {};
+      const customs: FieldConfig[] = [];
+      fields.forEach((f: any) => {
+        const isDefaultRequired = DEFAULT_FIELDS.some(d => d.key === f.field_key);
+        const isOptional = OPTIONAL_FIELDS.some(o => o.key === f.field_key);
+        if (isOptional) {
+          optEn[f.field_key] = true;
+        } else if (!isDefaultRequired) {
+          customs.push({
+            key: f.field_key,
+            label: f.field_label,
+            type: f.field_type as any,
+            required: f.is_required,
+            isDefault: false,
+            options: f.options as any,
+          });
+        }
+      });
+      setOptionalEnabled(optEn);
+      setCustomFields(customs);
+      setStep(1);
+    }
+  }, [editingData]);
 
   // Templates
   const { data: templates = [] } = useQuery({
@@ -94,48 +150,83 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
 
   const getAllFields = (): FieldConfig[] => {
     const optional = OPTIONAL_FIELDS.filter(f => optionalEnabled[f.key]);
-    return [...DEFAULT_FIELDS, ...optional, ...customFields].map((f, i) => ({ ...f, required: requireAll ? true : f.required }));
+    return [...DEFAULT_FIELDS, ...optional, ...customFields].map((f) => ({ ...f, required: requireAll ? true : f.required }));
   };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Not authenticated');
-      const { data: oh, error: ohError } = await supabase
-        .from('open_houses')
-        .insert({
+
+      if (editingId) {
+        // UPDATE existing
+        const { error: ohError } = await supabase
+          .from('open_houses')
+          .update({
+            property_address: address,
+            event_date: eventDate || null,
+            notes: notes || null,
+            agent_role: agentRole,
+            form_settings: { require_all: requireAll, allow_anonymous: allowAnonymous, show_contact_card: showContactCard } as any,
+          })
+          .eq('id', editingId);
+        if (ohError) throw ohError;
+
+        // Replace fields
+        await supabase.from('open_house_fields').delete().eq('open_house_id', editingId);
+        const fields = getAllFields().map((f, i) => ({
+          open_house_id: editingId,
           user_id: user.id,
-          property_address: address,
-          event_date: eventDate || null,
-          notes: notes || null,
-          form_settings: { require_all: requireAll, allow_anonymous: allowAnonymous, show_contact_card: showContactCard },
-        })
-        .select()
-        .single();
-      if (ohError) throw ohError;
+          field_key: f.key,
+          field_label: f.label,
+          field_type: f.type,
+          is_required: f.required,
+          is_default: f.isDefault,
+          sort_order: i,
+          options: f.options ? f.options : null,
+        }));
+        if (fields.length > 0) {
+          const { error: fError } = await supabase.from('open_house_fields').insert(fields);
+          if (fError) throw fError;
+        }
+        return { id: editingId };
+      } else {
+        // INSERT new
+        const { data: oh, error: ohError } = await supabase
+          .from('open_houses')
+          .insert({
+            user_id: user.id,
+            property_address: address,
+            event_date: eventDate || null,
+            notes: notes || null,
+            agent_role: agentRole,
+            form_settings: { require_all: requireAll, allow_anonymous: allowAnonymous, show_contact_card: showContactCard } as any,
+          })
+          .select()
+          .single();
+        if (ohError) throw ohError;
 
-      const fields = getAllFields().map((f, i) => ({
-        open_house_id: oh.id,
-        user_id: user.id,
-        field_key: f.key,
-        field_label: f.label,
-        field_type: f.type,
-        is_required: f.required,
-        is_default: f.isDefault,
-        sort_order: i,
-        options: f.options ? f.options : null,
-      }));
-
-      if (fields.length > 0) {
-        const { error: fError } = await supabase.from('open_house_fields').insert(fields);
-        if (fError) throw fError;
+        const fields = getAllFields().map((f, i) => ({
+          open_house_id: oh.id,
+          user_id: user.id,
+          field_key: f.key,
+          field_label: f.label,
+          field_type: f.type,
+          is_required: f.required,
+          is_default: f.isDefault,
+          sort_order: i,
+          options: f.options ? f.options : null,
+        }));
+        if (fields.length > 0) {
+          const { error: fError } = await supabase.from('open_house_fields').insert(fields);
+          if (fError) throw fError;
+        }
+        return oh;
       }
-
-      return oh;
     },
-    onSuccess: (oh) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['open-houses'] });
-      toast.success('Open house created! QR code is ready.');
-      onCreated(oh.id);
+      toast.success(editingId ? 'Open house updated!' : 'Open house created! QR code is ready.');
+      onCreated(result.id);
       resetForm();
     },
     onError: (err: any) => toast.error(err.message),
@@ -163,6 +254,7 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
     setAddress('');
     setEventDate('');
     setNotes('');
+    setAgentRole('listing_agent');
     setOptionalEnabled({ phone: true });
     setCustomFields([]);
     setRequireAll(false);
@@ -193,16 +285,29 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
     toast.success(`Template "${t.name}" loaded`);
   };
 
+  // Preview flyer URL (mock for preview)
+  const previewUrl = `${window.location.origin}/visit/preview`;
+
+  const totalSteps = 4; // Added preview step
+
   return (
     <div className="max-w-2xl mx-auto space-y-4">
+      {/* Edit mode banner */}
+      {editingId && (
+        <div className="flex items-center justify-between bg-primary/10 border border-primary/20 rounded-lg p-3">
+          <span className="text-sm font-medium text-primary">✏️ Editing Open House</span>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={resetForm}>Cancel Edit</Button>
+        </div>
+      )}
+
       {/* Step indicator */}
       <div className="flex items-center justify-center gap-2 mb-2">
-        {[1, 2, 3].map(s => (
+        {[1, 2, 3, 4].map(s => (
           <div key={s} className="flex items-center gap-1">
             <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${s === step ? 'bg-primary text-primary-foreground' : s < step ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
-              {s}
+              {s === 4 ? <Eye className="h-3.5 w-3.5" /> : s}
             </div>
-            {s < 3 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+            {s < 4 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
           </div>
         ))}
       </div>
@@ -243,6 +348,28 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
               <Label htmlFor="notes">Notes (internal)</Label>
               <Textarea id="notes" placeholder="Any notes for yourself..." value={notes} onChange={e => setNotes(e.target.value)} className="mt-1" rows={2} />
             </div>
+
+            {/* Agent Role Toggle */}
+            <div className="border border-border rounded-lg p-4 space-y-3">
+              <Label className="text-sm font-semibold">Your Role at This Open House</Label>
+              <RadioGroup value={agentRole} onValueChange={(v) => setAgentRole(v as any)} className="space-y-2">
+                <div className="flex items-start gap-3 p-3 rounded-lg border border-border hover:border-primary/30 transition-colors cursor-pointer">
+                  <RadioGroupItem value="listing_agent" id="role-listing" className="mt-0.5" />
+                  <div>
+                    <Label htmlFor="role-listing" className="text-sm font-medium cursor-pointer">Listing Agent</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">You represent the seller and are hosting this open house for your listing.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 rounded-lg border border-border hover:border-primary/30 transition-colors cursor-pointer">
+                  <RadioGroupItem value="facilitator" id="role-facilitator" className="mt-0.5" />
+                  <div>
+                    <Label htmlFor="role-facilitator" className="text-sm font-medium cursor-pointer">Facilitator / Buyer's Agent</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">You're hosting on behalf of another agent or prospecting for buyer leads at someone else's listing.</p>
+                  </div>
+                </div>
+              </RadioGroup>
+            </div>
+
             <Button onClick={() => setStep(2)} disabled={!address.trim()} className="w-full">
               Next: Configure Fields <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
@@ -257,7 +384,6 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
             <CardTitle className="text-base">Step 2: Form Fields</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Default required */}
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Required Fields</p>
               {DEFAULT_FIELDS.map(f => (
@@ -269,7 +395,6 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
               ))}
             </div>
 
-            {/* Optional toggles */}
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Optional Fields</p>
               {OPTIONAL_FIELDS.map(f => (
@@ -280,7 +405,6 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
               ))}
             </div>
 
-            {/* Custom fields */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Custom Fields</p>
@@ -354,12 +478,11 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
               <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
                 <ChevronLeft className="h-4 w-4 mr-1" /> Back
               </Button>
-              <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="flex-1">
-                {saveMutation.isPending ? 'Creating...' : 'Create & Generate QR'}
+              <Button onClick={() => setStep(4)} className="flex-1">
+                Next: Preview <Eye className="h-4 w-4 ml-1" />
               </Button>
             </div>
 
-            {/* Save as template */}
             <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
               const name = prompt('Template name:');
               if (name) saveTemplateMutation.mutate(name);
@@ -368,6 +491,103 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* Step 4 — Preview */}
+      {step === 4 && (
+        <div className="space-y-4">
+          {/* Flyer Preview */}
+          <Card className="border-primary/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Eye className="h-4 w-4 text-primary" />
+                Flyer & QR Preview
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="border-2 border-dashed border-border rounded-xl p-6 bg-card text-center space-y-4 max-w-sm mx-auto">
+                <p className="text-[10px] uppercase tracking-[3px] text-muted-foreground">Welcome to Our Open House</p>
+                <h2 className="text-xl font-bold leading-tight">{address}</h2>
+                {eventDate && (
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(eventDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                    {' at '}
+                    {new Date(eventDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                  </p>
+                )}
+                <div className="inline-block p-4 border-2 border-border rounded-2xl">
+                  <QRCodeSVG
+                    value={previewUrl}
+                    size={160}
+                    level="H"
+                    includeMargin
+                    bgColor="transparent"
+                    fgColor="currentColor"
+                    className="text-foreground"
+                  />
+                </div>
+                <p className="text-sm font-semibold">📱 Scan to Sign In</p>
+                <p className="text-xs text-muted-foreground">Receive updates on similar homes in your area</p>
+                <div className="border-t border-border pt-4 mt-2">
+                  <p className="text-sm font-semibold">{user?.email || 'Agent Name'}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {agentRole === 'listing_agent' ? 'Listing Agent' : 'Facilitator'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Form Fields Preview */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Form Fields Preview ({getAllFields().length} fields)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-w-sm mx-auto">
+                {getAllFields().map(f => (
+                  <div key={f.key} className="flex items-center justify-between text-sm py-1.5 px-3 bg-muted/30 rounded">
+                    <span>{f.label}</span>
+                    <div className="flex gap-1">
+                      <Badge variant="outline" className="text-[9px]">{f.type}</Badge>
+                      {f.required && <Badge variant="secondary" className="text-[9px]">Required</Badge>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Agent Role Summary */}
+          <Card className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className={`h-10 w-10 rounded-full flex items-center justify-center ${agentRole === 'listing_agent' ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-600'}`}>
+                  {agentRole === 'listing_agent' ? '🏠' : '🤝'}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">
+                    {agentRole === 'listing_agent' ? 'Hosting as Listing Agent' : 'Hosting as Facilitator'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {agentRole === 'listing_agent'
+                      ? 'You represent the seller for this property.'
+                      : 'You\'re prospecting or hosting on behalf of another agent.'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
+              <ChevronLeft className="h-4 w-4 mr-1" /> Back
+            </Button>
+            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="flex-1">
+              {saveMutation.isPending ? 'Saving...' : editingId ? 'Update Open House' : 'Create & Generate QR'}
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );
