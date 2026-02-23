@@ -560,36 +560,63 @@ function AnalysisDisplay({ analysis, updatedAt, onRefresh, refreshing, clientNam
       )}
 
       {/* Action buttons */}
-      <div className="flex gap-2 pt-1">
+      <div className="space-y-2 pt-1">
         <Button
-          className="flex-1 gap-2 bg-gradient-to-r from-chart-1 to-chart-2 hover:from-chart-1/90 hover:to-chart-2/90 text-white border-0"
+          className="w-full gap-2 bg-gradient-to-r from-chart-1 to-chart-2 hover:from-chart-1/90 hover:to-chart-2/90 text-white border-0"
           onClick={() => {
-            const text = buildPlainTextReport(analysis, clientName);
-            navigator.clipboard.writeText(text);
-            toast({ title: 'Report copied!', description: 'Paste it into an email, text, or notes to share with your client.' });
+            const params = new URLSearchParams({
+              client: clientName,
+              email: clientEmail,
+              type: analysis.client_type || '',
+              stage: analysis.readiness_stage || '',
+              urgency: analysis.timeline?.urgency || '',
+              channel: analysis.communication_insights?.preferred_channel || '',
+              preapproved: analysis.budget?.pre_approved || '',
+              ...(analysis.budget?.price_range_low ? { budget_low: String(analysis.budget.price_range_low) } : {}),
+              ...(analysis.budget?.price_range_high ? { budget_high: String(analysis.budget.price_range_high) } : {}),
+              ...(analysis.property_preferences?.bedrooms ? { beds: analysis.property_preferences.bedrooms } : {}),
+              ...(analysis.property_preferences?.property_types?.length ? { prop_types: analysis.property_preferences.property_types.join(',') } : {}),
+              ...(analysis.location_preferences?.preferred_areas?.length ? { areas: analysis.location_preferences.preferred_areas.join(',') } : {}),
+              ...(analysis.budget?.financing_type ? { financing: analysis.budget.financing_type } : {}),
+            });
+            window.open(`${MARKET_COMPASS_URL}?${params.toString()}`, '_blank');
           }}
         >
-          <ClipboardCopy className="h-4 w-4" />
-          Copy Full Report
+          <ExternalLink className="h-4 w-4" />
+          Open in Market Compass
         </Button>
-        <Button
-          variant="outline"
-          className="gap-1.5 shrink-0"
-          onClick={() => {
-            const text = buildPlainTextReport(analysis, clientName);
-            const blob = new Blob([text], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${clientName.replace(/\s+/g, '_')}_Client_Report.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
-            toast({ title: 'Report downloaded!' });
-          }}
-        >
-          <FileText className="h-4 w-4" />
-          Export
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="flex-1 gap-2"
+            onClick={() => {
+              const text = buildPlainTextReport(analysis, clientName);
+              navigator.clipboard.writeText(text);
+              toast({ title: 'Report copied!', description: 'Paste it into an email, text, or notes to share with your client.' });
+            }}
+          >
+            <ClipboardCopy className="h-4 w-4" />
+            Copy Report
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-1.5 shrink-0"
+            onClick={() => {
+              const text = buildPlainTextReport(analysis, clientName);
+              const blob = new Blob([text], { type: 'text/plain' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${clientName.replace(/\s+/g, '_')}_Client_Report.txt`;
+              a.click();
+              URL.revokeObjectURL(url);
+              toast({ title: 'Report downloaded!' });
+            }}
+          >
+            <FileText className="h-4 w-4" />
+            Export
+          </Button>
+        </div>
       </div>
 
       <p className="text-[9px] text-muted-foreground text-right">
