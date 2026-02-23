@@ -22,6 +22,7 @@ import { SmartNumberInsightsPanel } from '@/components/SmartNumberInsightsPanel'
 import { WebhookConfigPanel } from '@/components/WebhookConfigPanel';
 import { FubTagSyncPanel } from '@/components/FubTagSyncPanel';
 import { BulkFubPushModal } from '@/components/BulkFubPushModal';
+import { FubSyncActivityLog } from '@/components/FubSyncActivityLog';
 import { useData } from '@/contexts/DataContext';
 
 interface IntegrationState {
@@ -257,6 +258,11 @@ export default function Sync() {
 
       {/* Import Matching Rules */}
       <ImportMatchingRules />
+
+      {/* Sync Activity Log */}
+      <PanelErrorBoundary>
+        <FubSyncActivityLog />
+      </PanelErrorBoundary>
 
       {/* Webhook Configuration */}
       <PanelErrorBoundary>
