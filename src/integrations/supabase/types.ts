@@ -302,6 +302,47 @@ export type Database = {
         }
         Relationships: []
       }
+      client_market_analyses: {
+        Row: {
+          activity_count: number
+          agent_user_id: string
+          analysis_json: Json
+          client_identity_id: string
+          created_at: string
+          id: string
+          model_used: string | null
+          updated_at: string
+        }
+        Insert: {
+          activity_count?: number
+          agent_user_id: string
+          analysis_json?: Json
+          client_identity_id: string
+          created_at?: string
+          id?: string
+          model_used?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activity_count?: number
+          agent_user_id?: string
+          analysis_json?: Json
+          client_identity_id?: string
+          created_at?: string
+          id?: string
+          model_used?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_market_analyses_client_identity_id_fkey"
+            columns: ["client_identity_id"]
+            isOneToOne: false
+            referencedRelation: "client_identities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commission_defaults: {
         Row: {
           created_at: string
