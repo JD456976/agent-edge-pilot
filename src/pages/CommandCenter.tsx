@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, EyeOff, Plus, Phone, Undo2, Upload, Settings2, RefreshCw } from 'lucide-react';
+import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, EyeOff, Plus, Phone, Undo2, Upload, Settings2, RefreshCw, BarChart3 } from 'lucide-react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { cn } from '@/lib/utils';
@@ -68,6 +68,7 @@ import { SelfOptNudges } from '@/components/SelfOptNudges';
 import { PanelCustomizer } from '@/components/PanelCustomizer';
 import { MorningBriefCard } from '@/components/MorningBriefCard';
 import { WhatThisMeansPanel } from '@/components/WhatThisMeansPanel';
+import { CollapsiblePanel } from '@/components/CollapsiblePanel';
 import { IncomeControlMeter } from '@/components/IncomeControlMeter';
 import { FocusModeSelector, isPanelVisibleInMode } from '@/components/FocusModeSelector';
 import { useUserMaturity, type UserLevel } from '@/hooks/useUserMaturity';
@@ -1192,6 +1193,7 @@ export default function CommandCenter() {
       )}
 
       {/* Daily Intelligence Briefing */}
+      <CollapsiblePanel id="daily-briefing" label="Daily Intelligence Briefing" icon={<Sparkles className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('daily-briefing')} onToggleCollapse={() => toggleCollapse('daily-briefing')}>
       <div className="rounded-lg border border-border bg-card p-4 space-y-2">
         {/* Import highlight banner */}
         {showImportBadge && (
@@ -1238,8 +1240,10 @@ export default function CommandCenter() {
           {currentMode === 'morning' ? 'Good morning' : currentMode === 'midday' ? 'Good afternoon' : 'Good evening'}, {user?.name?.split(' ')[0]}
         </span>
       </div>
+      </CollapsiblePanel>
 
       {/* Control Status & Progress */}
+      <CollapsiblePanel id="control-status" label="Control Status & Progress" icon={<TrendingUp className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('control-status')} onToggleCollapse={() => toggleCollapse('control-status')}>
       <ControlStatusBar
         controlStatus={controlStatus}
         progressItems={progressItems}
@@ -1247,6 +1251,7 @@ export default function CommandCenter() {
         stressReductionDismissed={stressReductionDismissed}
         onDismissStressReduction={() => setStressReductionDismissed(true)}
       />
+      </CollapsiblePanel>
 
       {/* Self-Optimizing Nudges */}
       {selfOptAnalysis.nudges.length > 0 && (
@@ -1277,6 +1282,7 @@ export default function CommandCenter() {
       )}
 
       {/* What This Means Today */}
+      <CollapsiblePanel id="what-this-means" label="What This Means Today" icon={<Info className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('what-this-means')} onToggleCollapse={() => toggleCollapse('what-this-means')}>
       <WhatThisMeansPanel
         deals={deals}
         leads={leads}
@@ -1286,8 +1292,10 @@ export default function CommandCenter() {
         stabilityResult={stabilityResult}
         totalMoneyAtRisk={totalMoneyAtRisk}
       />
+      </CollapsiblePanel>
 
       {/* Daily Flight Plan */}
+      <CollapsiblePanel id="daily-flight-plan" label="Daily Flight Plan" icon={<Zap className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('daily-flight-plan')} onToggleCollapse={() => toggleCollapse('daily-flight-plan')}>
       <PanelErrorBoundary>
         <DailyFlightPlan
           deals={deals}
@@ -1315,8 +1323,10 @@ export default function CommandCenter() {
           onOpenExecution={handleOpenExecution}
         />
       </PanelErrorBoundary>
+      </CollapsiblePanel>
 
       {/* Strategic Overview */}
+      <CollapsiblePanel id="strategic-overview" label="Strategic Overview" icon={<BarChart3 className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('strategic-overview')} onToggleCollapse={() => toggleCollapse('strategic-overview')}>
       <PanelErrorBoundary>
         <StrategicOverviewPanel
           overview={strategicOverview}
@@ -1324,6 +1334,7 @@ export default function CommandCenter() {
           hasBudget={hasUserSetBudget(user?.id)}
         />
       </PanelErrorBoundary>
+      </CollapsiblePanel>
 
       {/* ── Sortable Panels ────────────────────────────────────── */}
       <div data-tour="panel-area">
@@ -1388,6 +1399,7 @@ export default function CommandCenter() {
       )}
 
       {/* 4-Panel Grid + Pipeline Watch */}
+      <CollapsiblePanel id="priority-grid" label="Priority Actions, Deals at Risk & Speed Alerts" icon={<Zap className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('priority-grid')} onToggleCollapse={() => toggleCollapse('priority-grid')}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Priority Actions */}
         <PanelErrorBoundary>
@@ -1513,9 +1525,11 @@ export default function CommandCenter() {
         </div>
         </PanelErrorBoundary>
       </div>
+      </CollapsiblePanel>
 
       {/* Pipeline Watch */}
       {pipelineWatch.length > 0 && (
+        <CollapsiblePanel id="pipeline-watch" label="Pipeline Watch" icon={<Eye className="h-3.5 w-3.5 text-muted-foreground" />} isCollapsed={isCollapsed('pipeline-watch')} onToggleCollapse={() => toggleCollapse('pipeline-watch')}>
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-center gap-2 mb-3">
             <Eye className="h-4 w-4 text-muted-foreground" />
@@ -1531,10 +1545,12 @@ export default function CommandCenter() {
             ))}
           </div>
         </div>
+        </CollapsiblePanel>
       )}
 
       {/* FUB Drift Detection + Watchlist */}
       {hasFubIntegration && (
+        <CollapsiblePanel id="fub-drift-watchlist" label="CRM Drift & Watchlist" icon={<RefreshCw className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('fub-drift-watchlist')} onToggleCollapse={() => toggleCollapse('fub-drift-watchlist')}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <PanelErrorBoundary>
             <FubDriftCard
@@ -1546,6 +1562,7 @@ export default function CommandCenter() {
             <FubWatchlistPanel hasIntegration={hasFubIntegration} />
           </PanelErrorBoundary>
         </div>
+        </CollapsiblePanel>
       )}
 
       {/* Detail Drawer */}
