@@ -20,11 +20,13 @@ interface AutoSyncResult {
   total_checked: { leads: number; deals: number };
 }
 
-export function useAutoSync() {
+export function useAutoSync(onSyncComplete?: () => void) {
   const [syncing, setSyncing] = useState(false);
   const [conflicts, setConflicts] = useState<SyncConflict[]>([]);
   const [lastResult, setLastResult] = useState<AutoSyncResult | null>(null);
   const hasRunRef = useRef(false);
+  const onSyncCompleteRef = useRef(onSyncComplete);
+  onSyncCompleteRef.current = onSyncComplete;
 
   const runSync = useCallback(async (silent = false) => {
     setSyncing(true);
@@ -55,6 +57,9 @@ export function useAutoSync() {
       if (syncResult.conflicts.length > 0) {
         setConflicts(syncResult.conflicts);
       }
+
+      // Refresh local data so UI reflects imported/updated records
+      onSyncCompleteRef.current?.();
     } catch (err: any) {
       if (!silent) {
         toast({ description: 'Sync failed — will retry next launch', variant: 'destructive' });
@@ -102,6 +107,8 @@ export function useAutoSync() {
     // Remove from conflicts list
     setConflicts(prev => prev.filter(c => !(c.entity_id === conflict.entity_id && c.fub_id === conflict.fub_id)));
     toast({ description: `${conflict.entity_name}: kept ${choice === 'keep_fub' ? 'FUB' : 'Deal Pilot'} version` });
+    // Refresh local data to reflect resolution
+    onSyncCompleteRef.current?.();
   }, []);
 
   const dismissConflict = useCallback((conflict: SyncConflict) => {
