@@ -68,19 +68,26 @@ export default function Sync() {
 
   useEffect(() => { loadIntegration(); }, [loadIntegration]);
 
-  const handleSaveKey = async () => {
+  const handleSaveAndValidate = async () => {
     if (!apiKeyInput.trim()) return;
     setSaving(true);
     setLastError(null);
     try {
       await callEdgeFunction('fub-save-key', { api_key: apiKeyInput.trim() });
       setApiKeyInput('');
-      await loadIntegration();
       await logAdminAction('integration_saved', { provider: 'follow_up_boss' });
-      toast({ title: 'API key saved securely' });
+      // Auto-validate after save
+      const data = await callEdgeFunction<{ valid: boolean; account?: { name: string } }>('fub-validate');
+      await loadIntegration();
+      await logAdminAction(data.valid ? 'integration_validated_success' : 'integration_validated_failed', { provider: 'follow_up_boss' });
+      toast({
+        title: data.valid ? 'Connected!' : 'Invalid key',
+        description: data.valid ? `Connected as ${data.account?.name || 'Unknown'}` : 'Please check your API key.',
+        variant: data.valid ? 'default' : 'destructive',
+      });
     } catch (err: any) {
       if (err?.kind) setLastError(err);
-      toast({ title: 'Error', description: err?.message || 'Failed to save key', variant: 'destructive' });
+      toast({ title: 'Error', description: err?.message || 'Failed to save or validate key', variant: 'destructive' });
     } finally { setSaving(false); }
   };
 
@@ -90,7 +97,6 @@ export default function Sync() {
     try {
       const data = await callEdgeFunction<{ valid: boolean; account?: { name: string } }>('fub-validate');
       await loadIntegration();
-      await logAdminAction(data.valid ? 'integration_validated_success' : 'integration_validated_failed', { provider: 'follow_up_boss' });
       toast({
         title: data.valid ? 'Connection valid!' : 'Invalid key',
         description: data.valid ? `Connected as ${data.account?.name || 'Unknown'}` : 'Please check your API key.',
@@ -159,11 +165,11 @@ export default function Sync() {
             <Label className="text-xs text-muted-foreground">API Key</Label>
             <div className="flex gap-2 mt-1">
               <Input type="password" placeholder="Paste your FUB API key" value={apiKeyInput} onChange={(e) => setApiKeyInput(e.target.value)} className="text-sm" />
-              <Button size="sm" onClick={handleSaveKey} disabled={saving || !apiKeyInput.trim()}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+              <Button size="sm" onClick={handleSaveAndValidate} disabled={saving || !apiKeyInput.trim()}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connect'}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Encrypted server-side. Never stored in browser.</p>
+            <p className="text-xs text-muted-foreground mt-1">Saves & validates in one step. Encrypted server-side.</p>
           </div>
           <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" onClick={handleValidate} disabled={validating || (integration.status === 'disconnected' && !integration.last4)}>
