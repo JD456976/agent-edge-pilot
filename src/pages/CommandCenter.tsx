@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, EyeOff, Plus, Phone, Undo2, Upload, Settings2 } from 'lucide-react';
+import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, EyeOff, Plus, Phone, Undo2, Upload, Settings2, RefreshCw } from 'lucide-react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { cn } from '@/lib/utils';
@@ -1063,6 +1063,9 @@ export default function CommandCenter() {
 
           {/* Desktop: full controls */}
           <div className="hidden md:flex items-center gap-2 flex-wrap justify-end shrink-0">
+            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5" onClick={() => refreshData()}>
+              <RefreshCw className="h-3 w-3" /> Sync
+            </Button>
             <AutoSaveIndicator status={saveStatus} />
             <NotificationBell alerts={alerts} />
             <PanelDensityToggle density={density} onToggle={toggleDensity} />

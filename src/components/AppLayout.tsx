@@ -22,6 +22,8 @@ import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcutsDialog';
 import { GuidedTour } from '@/components/GuidedTour';
 import { WhatsNewModal } from '@/components/WhatsNewModal';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
+import { SyncConflictDrawer } from '@/components/SyncConflictDrawer';
+import { useAutoSync } from '@/hooks/useAutoSync';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { usePushNotifications, checkOverdueTasks } from '@/hooks/usePushNotifications';
 import { KeyboardShortcutHint } from '@/components/KeyboardShortcutHint';
@@ -94,6 +96,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { tasks, deals, alerts, hasSeededData } = useData();
   const { canWrite, entitlementState } = useEntitlement();
   const [showPaywall, setShowPaywall] = useState(false);
+  const [showConflicts, setShowConflicts] = useState(false);
+  const { syncing, conflicts, runSync, resolveConflict, dismissConflict } = useAutoSync();
+
+  // Auto-open conflict drawer when conflicts arrive
+  useEffect(() => {
+    if (conflicts.length > 0) setShowConflicts(true);
+  }, [conflicts.length]);
 
   // Compute urgency dots for sidebar
   const urgentCounts = useMemo(() => {
@@ -200,7 +209,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <SyncStatusIndicator />
+        <SyncStatusIndicator onManualSync={() => runSync(false)} syncing={syncing} />
         <CollapsibleUtilities toggleTheme={toggleTheme} theme={theme} handleLogout={handleLogout} />
       </aside>
 
@@ -369,6 +378,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
             setShowNotifPrompt(false);
             localStorage.setItem('dp-notif-prompt-dismissed', Date.now().toString());
           }}
+        />
+      )}
+
+      {/* Sync Conflict Drawer */}
+      {showConflicts && conflicts.length > 0 && (
+        <SyncConflictDrawer
+          conflicts={conflicts}
+          onResolve={resolveConflict}
+          onDismiss={dismissConflict}
+          onClose={() => setShowConflicts(false)}
         />
       )}
     </div>
