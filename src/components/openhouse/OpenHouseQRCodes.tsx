@@ -59,48 +59,65 @@ export function OpenHouseQRCodes() {
 
   const printFlyer = useCallback((oh: any) => {
     const url = getIntakeUrl(oh.intake_token);
-    const win = window.open('', '_blank');
-    if (!win) return;
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Open House Sign-In</title>
-        <style>
-          @page { size: letter; margin: 0.5in; }
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; text-align: center; padding: 40px; color: #1a1a1a; }
-          .header { font-size: 14px; letter-spacing: 3px; text-transform: uppercase; color: #666; margin-bottom: 24px; }
-          .address { font-size: 28px; font-weight: 700; margin-bottom: 32px; line-height: 1.3; }
-          .qr-container { display: inline-block; padding: 24px; border: 3px solid #e0e0e0; border-radius: 16px; margin-bottom: 32px; }
-          .scan-text { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-          .scan-sub { font-size: 14px; color: #666; margin-bottom: 40px; }
-          .agent-info { border-top: 2px solid #e0e0e0; padding-top: 24px; margin-top: 20px; }
-          .agent-name { font-size: 20px; font-weight: 600; }
-          .agent-detail { font-size: 14px; color: #666; margin-top: 4px; }
-          .brokerage { font-size: 12px; color: #999; margin-top: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">Welcome to Our Open House</div>
-        <div class="address">${oh.property_address}</div>
-        <div class="qr-container">
-          <img src="${document.getElementById(`qr-${oh.intake_token}`)?.querySelector('image')?.getAttribute('href') || ''}" width="250" height="250" onerror="this.style.display='none'" />
-          <div style="font-size:10px;color:#999;margin-top:8px;">${url}</div>
-        </div>
-        <div class="scan-text">📱 Scan to Sign In</div>
-        <div class="scan-sub">Receive updates on similar homes in your area</div>
-        ${oh.agent_name || user?.name ? `
-        <div class="agent-info">
-          <div class="agent-name">${oh.agent_name || user?.name || ''}</div>
-          ${oh.agent_phone ? `<div class="agent-detail">${oh.agent_phone}</div>` : ''}
-          ${oh.agent_email || user?.email ? `<div class="agent-detail">${oh.agent_email || user?.email}</div>` : ''}
-          ${oh.brokerage ? `<div class="brokerage">${oh.brokerage}</div>` : ''}
-        </div>` : ''}
-      </body>
-      </html>
-    `);
-    win.document.close();
-    setTimeout(() => win.print(), 500);
+
+    // Render the QR SVG to a data URL first
+    const svgEl = document.getElementById(`qr-${oh.intake_token}`);
+    if (!svgEl) return;
+    const svgData = new XMLSerializer().serializeToString(svgEl);
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+    const img = new Image();
+    img.onload = () => {
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, 512, 512);
+      ctx.drawImage(img, 0, 0, 512, 512);
+      const qrDataUrl = canvas.toDataURL('image/png');
+
+      const win = window.open('', '_blank');
+      if (!win) return;
+      win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Open House Sign-In</title>
+          <style>
+            @page { size: letter; margin: 0.5in; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; text-align: center; padding: 40px; color: #1a1a1a; }
+            .header { font-size: 14px; letter-spacing: 3px; text-transform: uppercase; color: #666; margin-bottom: 24px; }
+            .address { font-size: 28px; font-weight: 700; margin-bottom: 32px; line-height: 1.3; }
+            .qr-container { display: inline-block; padding: 24px; border: 3px solid #e0e0e0; border-radius: 16px; margin-bottom: 32px; }
+            .scan-text { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+            .scan-sub { font-size: 14px; color: #666; margin-bottom: 40px; }
+            .agent-info { border-top: 2px solid #e0e0e0; padding-top: 24px; margin-top: 20px; }
+            .agent-name { font-size: 20px; font-weight: 600; }
+            .agent-detail { font-size: 14px; color: #666; margin-top: 4px; }
+            .brokerage { font-size: 12px; color: #999; margin-top: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">Welcome to Our Open House</div>
+          <div class="address">${oh.property_address}</div>
+          <div class="qr-container">
+            <img src="${qrDataUrl}" width="250" height="250" />
+          </div>
+          <div class="scan-text">📱 Scan to Sign In</div>
+          <div class="scan-sub">Receive updates on similar homes in your area</div>
+          ${oh.agent_name || user?.name ? `
+          <div class="agent-info">
+            <div class="agent-name">${oh.agent_name || user?.name || ''}</div>
+            ${oh.agent_phone ? `<div class="agent-detail">${oh.agent_phone}</div>` : ''}
+            ${oh.agent_email || user?.email ? `<div class="agent-detail">${oh.agent_email || user?.email}</div>` : ''}
+            ${oh.brokerage ? `<div class="brokerage">${oh.brokerage}</div>` : ''}
+          </div>` : ''}
+        </body>
+        </html>
+      `);
+      win.document.close();
+      setTimeout(() => win.print(), 500);
+    };
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
   }, [user]);
 
   if (isLoading) return <div className="h-40 bg-muted/50 rounded-lg animate-pulse" />;
