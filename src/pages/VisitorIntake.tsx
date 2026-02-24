@@ -185,10 +185,12 @@ export default function VisitorIntake() {
             <p className="text-sm text-muted-foreground">We appreciate you signing in. You'll hear from us soon!</p>
             {settings?.show_contact_card && openHouse && (
               <div className="border-t border-border pt-4 mt-4">
-                <div className="flex items-center gap-2 justify-center mb-2">
-                  <User className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">{openHouse.agent_name || 'Your Agent'}</span>
-                </div>
+                {openHouse.agent_name && (
+                  <div className="flex items-center gap-2 justify-center mb-2">
+                    <User className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">{openHouse.agent_name}</span>
+                  </div>
+                )}
                 {openHouse.agent_phone && <p className="text-xs text-muted-foreground">{openHouse.agent_phone}</p>}
                 {openHouse.agent_email && <p className="text-xs text-muted-foreground">{openHouse.agent_email}</p>}
                 {openHouse.brokerage && <p className="text-[10px] text-muted-foreground mt-1">{openHouse.brokerage}</p>}

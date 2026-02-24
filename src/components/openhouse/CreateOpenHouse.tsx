@@ -61,6 +61,27 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
   const [requireAll, setRequireAll] = useState(false);
   const [allowAnonymous, setAllowAnonymous] = useState(true);
   const [showContactCard, setShowContactCard] = useState(true);
+  const [agentName, setAgentName] = useState('');
+  const [agentEmail, setAgentEmail] = useState('');
+  const [agentPhone, setAgentPhone] = useState('');
+
+  // Auto-populate agent info from profile
+  const { data: profile } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('profiles').select('name, email').eq('user_id', user!.id).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    if (profile && !editingId && !agentName) {
+      setAgentName(profile.name || '');
+      setAgentEmail(profile.email || user?.email || '');
+    }
+  }, [profile, editingId]);
 
   // Load existing open house for editing
   const { data: editingData } = useQuery({
@@ -85,6 +106,9 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
       setEventDate(oh.event_date ? new Date(oh.event_date).toISOString().slice(0, 16) : '');
       setNotes(oh.notes || '');
       setAgentRole((oh as any).agent_role || 'listing_agent');
+      setAgentName(oh.agent_name || '');
+      setAgentEmail(oh.agent_email || '');
+      setAgentPhone(oh.agent_phone || '');
       const settings = oh.form_settings as any;
       setRequireAll(settings?.require_all ?? false);
       setAllowAnonymous(settings?.allow_anonymous ?? true);
@@ -166,6 +190,9 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
             event_date: eventDate || null,
             notes: notes || null,
             agent_role: agentRole,
+            agent_name: agentName || null,
+            agent_email: agentEmail || null,
+            agent_phone: agentPhone || null,
             form_settings: { require_all: requireAll, allow_anonymous: allowAnonymous, show_contact_card: showContactCard } as any,
           })
           .eq('id', editingId);
@@ -199,6 +226,9 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
             event_date: eventDate || null,
             notes: notes || null,
             agent_role: agentRole,
+            agent_name: agentName || null,
+            agent_email: agentEmail || null,
+            agent_phone: agentPhone || null,
             form_settings: { require_all: requireAll, allow_anonymous: allowAnonymous, show_contact_card: showContactCard } as any,
           })
           .select()
@@ -255,6 +285,9 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
     setEventDate('');
     setNotes('');
     setAgentRole('listing_agent');
+    setAgentName(profile?.name || '');
+    setAgentEmail(profile?.email || user?.email || '');
+    setAgentPhone('');
     setOptionalEnabled({ phone: true });
     setCustomFields([]);
     setRequireAll(false);
@@ -370,7 +403,24 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
               </RadioGroup>
             </div>
 
-            <Button onClick={() => setStep(2)} disabled={!address.trim()} className="w-full">
+            {/* Agent Contact Info */}
+            <div className="border border-border rounded-lg p-4 space-y-3">
+              <Label className="text-sm font-semibold">Your Contact Info (shown to visitors)</Label>
+              <div>
+                <Label htmlFor="agentName" className="text-xs">Name *</Label>
+                <Input id="agentName" placeholder="Your full name" value={agentName} onChange={e => setAgentName(e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <Label htmlFor="agentEmail" className="text-xs">Email</Label>
+                <Input id="agentEmail" type="email" placeholder="you@example.com" value={agentEmail} onChange={e => setAgentEmail(e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <Label htmlFor="agentPhone" className="text-xs">Phone</Label>
+                <Input id="agentPhone" type="tel" placeholder="(555) 123-4567" value={agentPhone} onChange={e => setAgentPhone(e.target.value)} className="mt-1" />
+              </div>
+            </div>
+
+            <Button onClick={() => setStep(2)} disabled={!address.trim() || !agentName.trim()} className="w-full">
               Next: Configure Fields <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </CardContent>
@@ -529,7 +579,9 @@ export function CreateOpenHouse({ onCreated, editingId, onClearEdit }: Props) {
                 <p className="text-sm font-semibold">📱 Scan to Sign In</p>
                 <p className="text-xs text-muted-foreground">Receive updates on similar homes in your area</p>
                 <div className="border-t border-border pt-4 mt-2">
-                  <p className="text-sm font-semibold">{user?.email || 'Agent Name'}</p>
+                  <p className="text-sm font-semibold">{agentName || 'Agent Name'}</p>
+                  {agentPhone && <p className="text-[10px] text-muted-foreground mt-0.5">{agentPhone}</p>}
+                  {agentEmail && <p className="text-[10px] text-muted-foreground mt-0.5">{agentEmail}</p>}
                   <p className="text-[10px] text-muted-foreground mt-0.5">
                     {agentRole === 'listing_agent' ? 'Listing Agent' : 'Facilitator'}
                   </p>
