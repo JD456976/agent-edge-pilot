@@ -1,9 +1,8 @@
 import { useState, useCallback } from 'react';
-import type { PanelId } from '@/hooks/useCommandCenterLayout';
 
 const STORAGE_KEY = 'dp-collapsed-panels';
 
-function readCollapsed(): Set<PanelId> {
+function readCollapsed(): Set<string> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return new Set();
@@ -13,16 +12,16 @@ function readCollapsed(): Set<PanelId> {
   }
 }
 
-function writeCollapsed(set: Set<PanelId>) {
+function writeCollapsed(set: Set<string>) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
   } catch {}
 }
 
 export function usePanelCollapse() {
-  const [collapsed, setCollapsed] = useState<Set<PanelId>>(readCollapsed);
+  const [collapsed, setCollapsed] = useState<Set<string>>(readCollapsed);
 
-  const toggleCollapse = useCallback((panelId: PanelId) => {
+  const toggleCollapse = useCallback((panelId: string) => {
     setCollapsed(prev => {
       const next = new Set(prev);
       if (next.has(panelId)) next.delete(panelId);
@@ -32,7 +31,7 @@ export function usePanelCollapse() {
     });
   }, []);
 
-  const isCollapsed = useCallback((panelId: PanelId) => collapsed.has(panelId), [collapsed]);
+  const isCollapsed = useCallback((panelId: string) => collapsed.has(panelId), [collapsed]);
 
   return { isCollapsed, toggleCollapse };
 }
