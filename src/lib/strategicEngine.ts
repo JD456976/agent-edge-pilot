@@ -80,6 +80,17 @@ export const DEFAULT_STRATEGIC_SETTINGS: StrategicSettings = {
 
 const STORAGE_KEY = 'dp-strategic-settings';
 
+export function hasUserSetBudget(userId?: string): boolean {
+  try {
+    const raw = localStorage.getItem(`${STORAGE_KEY}-${userId || 'default'}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return parsed.weeklyTarget !== undefined || parsed.monthlyTarget !== undefined;
+    }
+  } catch {}
+  return false;
+}
+
 export function loadStrategicSettings(userId?: string): StrategicSettings {
   try {
     const raw = localStorage.getItem(`${STORAGE_KEY}-${userId || 'default'}`);

@@ -54,7 +54,7 @@ import { StrategicOverviewPanel } from '@/components/StrategicOverviewPanel';
 import { WeeklyPlanningAssistant } from '@/components/WeeklyPlanningAssistant';
 import { useStrategicSettings } from '@/hooks/useStrategicSettings';
 import { useSelfOptimizing } from '@/hooks/useSelfOptimizing';
-import { computeStrategicOverview } from '@/lib/strategicEngine';
+import { computeStrategicOverview, hasUserSetBudget } from '@/lib/strategicEngine';
 import { NetworkBenchmarksPanel } from '@/components/NetworkBenchmarksPanel';
 import { CohortPlaybooksPanel } from '@/components/CohortPlaybooksPanel';
 import { AgentProfilePanel } from '@/components/AgentProfilePanel';
@@ -1321,6 +1321,7 @@ export default function CommandCenter() {
         <StrategicOverviewPanel
           overview={strategicOverview}
           onOpenPlanner={() => setShowWeeklyPlanner(true)}
+          hasBudget={hasUserSetBudget(user?.id)}
         />
       </PanelErrorBoundary>
 

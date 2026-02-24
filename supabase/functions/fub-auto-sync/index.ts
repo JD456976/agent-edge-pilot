@@ -68,15 +68,17 @@ Deno.serve(async (req) => {
     if (!apiKey) throw new Error("No API key found");
 
     // Fetch recent FUB data (limit 100 each for speed)
-    const [rawPeople, rawDeals] = await Promise.all([
+    const [rawPeople, rawDeals, rawTasks] = await Promise.all([
       fetchFubPage(apiKey, "people", 100),
       fetchFubPage(apiKey, "deals", 50),
+      fetchFubPage(apiKey, "tasks", 100),
     ]);
 
     // Load existing local data
-    const [{ data: existingLeads }, { data: existingDeals }] = await Promise.all([
+    const [{ data: existingLeads }, { data: existingDeals }, { data: existingTasks }] = await Promise.all([
       svc.from("leads").select("id, name, source, imported_from, last_modified_at, lead_temperature, notes").eq("assigned_to_user_id", userId),
       svc.from("deals").select("id, title, price, stage, close_date, imported_from, last_modified_at").eq("assigned_to_user_id", userId),
+      svc.from("tasks").select("id, title, completed_at, due_at, imported_from, type").eq("assigned_to_user_id", userId),
     ]);
 
     // Build lookup maps by FUB ID
@@ -92,6 +94,12 @@ Deno.serve(async (req) => {
         dealsByFubId.set(d.imported_from.replace("fub:", ""), d);
       }
     }
+    const tasksByFubId = new Map<string, any>();
+    for (const t of (existingTasks || [])) {
+      if (t.imported_from?.startsWith("fub:")) {
+        tasksByFubId.set(t.imported_from.replace("fub:", ""), t);
+      }
+    }
 
     // Also build lookup by name for new item dedup
     const leadsByName = new Map<string, any>();
@@ -103,7 +111,7 @@ Deno.serve(async (req) => {
       dealsByTitle.set(d.title?.toLowerCase()?.trim(), d);
     }
 
-    const autoImported = { leads: 0, deals: 0 };
+    const autoImported = { leads: 0, deals: 0, tasks_synced: 0 };
     const conflicts: any[] = [];
 
     // Process people
@@ -236,6 +244,28 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Process tasks — sync completion status from FUB
+    for (const t of rawTasks) {
+      const fubId = String(t.id);
+      const existing = tasksByFubId.get(fubId);
+
+      if (existing) {
+        // If FUB task is completed but DP isn't, sync the completion
+        const fubCompleted = t.completed || t.isCompleted || t.status === 'completed';
+        if (fubCompleted && !existing.completed_at) {
+          await svc.from("tasks").update({
+            completed_at: t.completedAt || t.updatedAt || new Date().toISOString(),
+          }).eq("id", existing.id);
+          autoImported.tasks_synced++;
+        }
+        // If FUB task is NOT completed but DP shows completed, un-complete it
+        if (!fubCompleted && existing.completed_at) {
+          await svc.from("tasks").update({ completed_at: null }).eq("id", existing.id);
+          autoImported.tasks_synced++;
+        }
+      }
+    }
+
     // Update sync state
     await svc.from("fub_sync_state").upsert({
       user_id: userId,
@@ -247,7 +277,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         auto_imported: autoImported,
         conflicts,
-        total_checked: { leads: rawPeople.length, deals: rawDeals.length },
+        total_checked: { leads: rawPeople.length, deals: rawDeals.length, tasks: rawTasks.length },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
