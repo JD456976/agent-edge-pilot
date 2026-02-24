@@ -93,11 +93,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const { activeWorkspace, openWorkspace, closeWorkspace } = useWorkspace();
   const { requestOpenEntity } = useEntityNavigation();
-  const { tasks, deals, alerts, hasSeededData } = useData();
+  const { tasks, deals, alerts, hasSeededData, refreshData } = useData();
   const { canWrite, entitlementState } = useEntitlement();
   const [showPaywall, setShowPaywall] = useState(false);
   const [showConflicts, setShowConflicts] = useState(false);
-  const { syncing, conflicts, runSync, resolveConflict, dismissConflict } = useAutoSync();
+  const { syncing, conflicts, runSync, resolveConflict, dismissConflict } = useAutoSync(refreshData);
 
   // Auto-open conflict drawer when conflicts arrive
   useEffect(() => {
