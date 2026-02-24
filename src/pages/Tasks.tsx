@@ -9,8 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ListChecks, Check, Plus, X, ChevronDown, CheckCheck } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
+import { ListChecks, Check, Plus, X, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { relativeTime } from '@/lib/relativeTime';
@@ -31,8 +30,6 @@ export default function Tasks() {
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newType, setNewType] = useState<TaskType>('call');
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const batchMode = selectedIds.size > 0;
 
   const now = new Date();
   const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
@@ -85,25 +82,6 @@ export default function Tasks() {
     setShowCreate(false);
   };
 
-  const toggleSelect = useCallback((id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  }, []);
-
-  const handleBatchComplete = useCallback(async () => {
-    const count = selectedIds.size;
-    for (const id of selectedIds) {
-      await completeTask(id);
-    }
-    setSelectedIds(new Set());
-    toast({
-      description: `${count} task${count > 1 ? 's' : ''} completed`,
-      duration: 3000,
-    });
-  }, [selectedIds, completeTask]);
 
   // ESC key to close create modal
   useEffect(() => {
@@ -138,21 +116,7 @@ export default function Tasks() {
           <h1 className="text-xl font-bold">Tasks</h1>
           <p className="text-sm text-muted-foreground">Your action items</p>
         </div>
-        <div className="flex items-center gap-2">
-          {batchMode && (
-            <Button size="sm" variant="outline" onClick={handleBatchComplete}>
-              <CheckCheck className="h-4 w-4 mr-1" /> Complete {selectedIds.size}
-            </Button>
-          )}
-          {batchMode && (
-            <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
-              Clear
-            </Button>
-          )}
-          {!batchMode && (
-            <Button size="sm" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-1" /> New Task</Button>
-          )}
-        </div>
+        <Button size="sm" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-1" /> New Task</Button>
       </div>
 
       {/* Tabs */}
@@ -191,11 +155,6 @@ export default function Tasks() {
             return (
               <div key={task.id}>
                 <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors">
-                  <Checkbox
-                    checked={selectedIds.has(task.id)}
-                    onCheckedChange={() => toggleSelect(task.id)}
-                    className="shrink-0"
-                  />
                   <button
                     onClick={() => done ? uncompleteTask(task.id) : completeTask(task.id)}
                     className={cn('h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors', done ? 'bg-primary border-primary' : 'border-muted-foreground/30 hover:border-primary')}
