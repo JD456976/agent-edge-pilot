@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Compass, TrendingUp, Shield, Activity, Flame, AlertTriangle, Target, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
+import { Compass, TrendingUp, Shield, Activity, Flame, AlertTriangle, Target, BarChart3, ChevronDown, ChevronUp, DollarSign } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import type { StrategicOverview } from '@/lib/strategicEngine';
 interface Props {
   overview: StrategicOverview;
   onOpenPlanner: () => void;
+  hasBudget?: boolean;
 }
 
 const MODE_ICON: Record<string, typeof Shield> = {
@@ -51,11 +52,36 @@ function formatCurrency(n: number) {
   return n >= 1000 ? `$${(n / 1000).toFixed(1)}K` : `$${n}`;
 }
 
-export function StrategicOverviewPanel({ overview, onOpenPlanner }: Props) {
+export function StrategicOverviewPanel({ overview, onOpenPlanner, hasBudget = true }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   const ModeIcon = MODE_ICON[overview.mode] || Compass;
   const alignConfig = ALIGNMENT_CONFIG[overview.alignment];
+
+  // Show empty state if no budget has been configured
+  if (!hasBudget) {
+    return (
+      <div className="rounded-lg border bg-card p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <Compass className="h-4 w-4 text-primary" />
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Strategic Overview</p>
+        </div>
+        <div className="flex flex-col items-center text-center py-6 space-y-3">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <DollarSign className="h-5 w-5 text-primary" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium">No income targets set</p>
+            <p className="text-xs text-muted-foreground">Set your weekly and monthly goals to unlock strategic insights, gap analysis, and personalized recommendations.</p>
+          </div>
+          <Button size="sm" onClick={onOpenPlanner} className="mt-1">
+            <Target className="h-3.5 w-3.5 mr-1.5" />
+            Create Your Budget
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-lg border bg-card p-5 space-y-4">
