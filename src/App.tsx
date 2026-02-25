@@ -26,6 +26,7 @@ import Install from "@/pages/Install";
 import AppStoreAssets from "@/pages/AppStoreAssets";
 import OpenHouse from "@/pages/OpenHouse";
 import { ReviewPrompt } from "@/components/ReviewPrompt";
+import { PWAUpdatePrompt } from "@/components/PWAUpdatePrompt";
 
 const queryClient = new QueryClient();
 
@@ -147,6 +148,7 @@ const App = () => (
                   <EntityNavigationProvider>
                     <AppRoutes />
                     <ReviewPrompt />
+                    <PWAUpdatePrompt />
                   </EntityNavigationProvider>
                 </WorkspaceProvider>
               </BrowserRouter>
