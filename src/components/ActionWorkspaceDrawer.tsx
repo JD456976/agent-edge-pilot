@@ -11,6 +11,9 @@ import { cn } from '@/lib/utils';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
 import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
 import type { Deal, Lead, Task, TaskType } from '@/types';
 import type { MoneyModelResult } from '@/lib/moneyModel';
 import type { OpportunityHeatResult } from '@/lib/leadMoneyModel';
@@ -254,11 +257,40 @@ export function ActionWorkspaceDrawer({
     setTaskCreated(true);
   }, [context, taskTitle, taskType, taskDueAt, smartDueDate, onCreateTask]);
 
-  const handleLogNote = useCallback(() => {
-    if (!context || !noteText.trim()) return;
-    onLogTouch?.(context.entityType, context.entityId, context.entityName, 'note', noteText);
-    setNoteLogged(true);
-  }, [context, noteText, onLogTouch]);
+  const { user } = useAuth();
+
+  const handleLogNote = useCallback(async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!context || !noteText.trim() || !user?.id) return;
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
+      const orgId = profile?.organization_id || user.id;
+
+      const { error } = await supabase.from('activity_events').insert({
+        user_id: user.id,
+        organization_id: orgId,
+        entity_type: context.entityType,
+        entity_id: context.entityId,
+        touch_type: 'note',
+        note: noteText.trim(),
+      });
+      if (error) throw error;
+
+      await supabase.from(context.entityType === 'deal' ? 'deals' : 'leads')
+        .update({ last_touched_at: new Date().toISOString() } as any)
+        .eq('id', context.entityId);
+
+      setNoteLogged(true);
+      toast({ description: 'Note saved' });
+    } catch (err) {
+      console.error('Note save error:', err);
+      toast({ description: 'Could not save note', variant: 'destructive' });
+    }
+  }, [context, noteText, user?.id]);
 
   if (!entity || !context || !draft) return null;
 
@@ -631,7 +663,7 @@ export function ActionWorkspaceDrawer({
                     <div className="text-[10px] text-muted-foreground">
                       Linked to: <span className="font-medium">{context.entityName}</span> ({context.entityType})
                     </div>
-                    <Button size="sm" className="w-full text-xs" onClick={handleLogNote} disabled={!noteText.trim()}>
+                    <Button size="sm" className="w-full text-xs" onClick={(e) => handleLogNote(e)} disabled={!noteText.trim()}>
                       <StickyNote className="h-3.5 w-3.5 mr-1.5" />
                       Save Note
                     </Button>
