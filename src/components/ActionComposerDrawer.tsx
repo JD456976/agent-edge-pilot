@@ -4,7 +4,7 @@
  * Enhanced for the "Default Interface" layer.
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Phone, MessageSquare, Mail, ListTodo, StickyNote,
   Copy, Check, Shield, ChevronDown, ChevronUp,
@@ -310,7 +310,27 @@ export function ActionComposerDrawer({
   const [taskDueAt, setTaskDueAt] = useState('');
   const [taskCreated, setTaskCreated] = useState(false);
   const [noteText, setNoteText] = useState('');
-  const [noteLogged, setNoteLogged] = useState(false);
+  const [savedNotes, setSavedNotes] = useState<Array<{ id: string; note: string; created_at: string }>>([]);
+
+  const loadNotes = useCallback(async (eType: string, eId: string) => {
+    const { data } = await supabase
+      .from('activity_events')
+      .select('id, note, created_at')
+      .eq('entity_type', eType)
+      .eq('entity_id', eId)
+      .eq('touch_type', 'note')
+      .not('note', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    setSavedNotes((data || []) as any);
+  }, []);
+
+  useEffect(() => {
+    if (entity && entityType && open) {
+      const eId = entityType === 'deal' ? (entity as Deal).id : (entity as Lead).id;
+      loadNotes(entityType, eId);
+    }
+  }, [entity, entityType, open, loadNotes]);
 
   const context = useMemo((): ExecutionContext | null => {
     if (!entity) return null;
@@ -361,7 +381,7 @@ export function ActionComposerDrawer({
     setTaskDueAt('');
     setTaskCreated(false);
     setNoteText('');
-    setNoteLogged(false);
+    setSavedNotes([]);
     setShowObjections(false);
     setCopiedField(null);
     onClose();
@@ -413,9 +433,10 @@ export function ActionComposerDrawer({
         .update({ last_touched_at: new Date().toISOString() } as any)
         .eq('id', context.entityId);
 
-      setNoteLogged(true);
-      setShowPostAction(true);
+      setNoteText('');
       toast({ description: 'Note saved' });
+      // Reload notes
+      loadNotes(context.entityType, context.entityId);
     } catch (err) {
       console.error('Note save error:', err);
       toast({ description: 'Could not save note', variant: 'destructive' });
@@ -677,20 +698,25 @@ export function ActionComposerDrawer({
                 {/* NOTES */}
                 {activeTab === 'notes' && (
                   <div className="space-y-3">
-                    {!noteLogged ? (
-                      <>
-                        <div>
-                          <Label className="text-xs">Quick Note</Label>
-                          <Textarea value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Capture key points..." className="mt-1 min-h-[100px] text-xs" />
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">Notes linked to {context.entityName} and influence recommendations.</p>
-                        <Button size="sm" onClick={(e) => handleLogNote(e)} disabled={!noteText.trim()}>
-                          <StickyNote className="h-3 w-3 mr-1" /> Save Note
-                        </Button>
-                      </>
-                    ) : (
-                      <div className="rounded-md bg-opportunity/5 border border-opportunity/20 p-2.5 text-xs text-opportunity flex items-center gap-2">
-                        <Check className="h-3.5 w-3.5" /> Note saved
+                    <div>
+                      <Label className="text-xs">Quick Note</Label>
+                      <Textarea value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Capture key points..." className="mt-1 min-h-[80px] text-xs" />
+                    </div>
+                    <Button size="sm" onClick={(e) => handleLogNote(e)} disabled={!noteText.trim()}>
+                      <StickyNote className="h-3 w-3 mr-1" /> Save Note
+                    </Button>
+
+                    {savedNotes.length > 0 && (
+                      <div className="space-y-2 pt-2 border-t border-border">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Saved Notes</p>
+                        {savedNotes.map(n => (
+                          <div key={n.id} className="text-xs p-2.5 rounded-md border border-border bg-muted/30">
+                            <p className="text-foreground whitespace-pre-wrap">{n.note}</p>
+                            <p className="text-muted-foreground text-[10px] mt-1">
+                              {new Date(n.created_at).toLocaleDateString()} {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>

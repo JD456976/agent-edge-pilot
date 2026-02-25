@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -168,13 +168,33 @@ export function ActionWorkspaceDrawer({
 
   // Notes tab state
   const [noteText, setNoteText] = useState('');
-  const [noteLogged, setNoteLogged] = useState(false);
+  const [savedNotes, setSavedNotes] = useState<Array<{ id: string; note: string; created_at: string }>>([]);
+
+  const loadNotes = useCallback(async (eType: string, eId: string) => {
+    const { data } = await supabase
+      .from('activity_events')
+      .select('id, note, created_at')
+      .eq('entity_type', eType)
+      .eq('entity_id', eId)
+      .eq('touch_type', 'note')
+      .not('note', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    setSavedNotes((data || []) as any);
+  }, []);
 
   // Derived data
   const context = useMemo((): ExecutionContext | null => {
     if (!entity) return null;
     return buildExecutionContext(entity, entityType, moneyResult, oppResult, tasks);
   }, [entity, entityType, moneyResult, oppResult, tasks]);
+
+  useEffect(() => {
+    if (entity && context && open) {
+      loadNotes(context.entityType, context.entityId);
+    }
+  }, [entity, open, context, loadNotes]);
+
 
   const draft = useMemo((): CommunicationDraft | null => {
     if (!context) return null;
@@ -231,7 +251,7 @@ export function ActionWorkspaceDrawer({
     setTaskDueAt('');
     setTaskCreated(false);
     setNoteText('');
-    setNoteLogged(false);
+    setSavedNotes([]);
     setShowObjections(false);
     setCopiedField(null);
     onClose();
@@ -284,8 +304,10 @@ export function ActionWorkspaceDrawer({
         .update({ last_touched_at: new Date().toISOString() } as any)
         .eq('id', context.entityId);
 
-      setNoteLogged(true);
+      setNoteText('');
       toast({ description: 'Note saved' });
+      // Reload notes
+      loadNotes(context.entityType, context.entityId);
     } catch (err) {
       console.error('Note save error:', err);
       toast({ description: 'Could not save note', variant: 'destructive' });
@@ -646,28 +668,29 @@ export function ActionWorkspaceDrawer({
             {activeTab === 'notes' && (
               <div className="space-y-4">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Quick Note</p>
+                <Textarea
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  placeholder={`Add a note about ${context.entityName}...`}
+                  className="min-h-[80px] text-sm"
+                />
+                <Button size="sm" className="w-full text-xs" onClick={(e) => handleLogNote(e)} disabled={!noteText.trim()}>
+                  <StickyNote className="h-3.5 w-3.5 mr-1.5" />
+                  Save Note
+                </Button>
 
-                {noteLogged ? (
-                  <div className="flex items-center gap-2 text-sm text-opportunity p-4 rounded-md border border-opportunity/20 bg-opportunity/5">
-                    <Check className="h-4 w-4" />
-                    <span>Note logged for {context.entityName}</span>
+                {savedNotes.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-border">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Saved Notes</p>
+                    {savedNotes.map(n => (
+                      <div key={n.id} className="text-xs p-2.5 rounded-md border border-border bg-muted/30">
+                        <p className="text-foreground whitespace-pre-wrap">{n.note}</p>
+                        <p className="text-muted-foreground text-[10px] mt-1">
+                          {new Date(n.created_at).toLocaleDateString()} {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <>
-                    <Textarea
-                      value={noteText}
-                      onChange={(e) => setNoteText(e.target.value)}
-                      placeholder={`Add a note about ${context.entityName}...`}
-                      className="min-h-[120px] text-sm"
-                    />
-                    <div className="text-[10px] text-muted-foreground">
-                      Linked to: <span className="font-medium">{context.entityName}</span> ({context.entityType})
-                    </div>
-                    <Button size="sm" className="w-full text-xs" onClick={(e) => handleLogNote(e)} disabled={!noteText.trim()}>
-                      <StickyNote className="h-3.5 w-3.5 mr-1.5" />
-                      Save Note
-                    </Button>
-                  </>
                 )}
               </div>
             )}
