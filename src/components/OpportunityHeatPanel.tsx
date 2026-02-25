@@ -58,6 +58,8 @@ function OpportunityDrawer({ result, lead, onClose, onStartAction }: {
   const [showTouch, setShowTouch] = useState(false);
   const heat = HEAT_BADGE[result.heatLevel];
 
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
+
   return (
     <>
       <div className="fixed inset-0 bg-background/60 backdrop-blur-sm z-40" onClick={onClose} />
@@ -156,7 +158,7 @@ function OpportunityDrawer({ result, lead, onClose, onStartAction }: {
             </div>
 
             {/* Activity Trail */}
-            <ActivityTrail entityType="lead" entityId={lead.id} />
+            <ActivityTrail entityType="lead" entityId={lead.id} refreshKey={activityRefreshKey} />
           </div>
         </ScrollArea>
 
@@ -182,6 +184,7 @@ function OpportunityDrawer({ result, lead, onClose, onStartAction }: {
         entityType="lead"
         entityId={lead.id}
         entityTitle={lead.name}
+        onTouchLogged={() => setActivityRefreshKey(k => k + 1)}
       />
     </>
   );

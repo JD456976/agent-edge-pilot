@@ -29,56 +29,60 @@ interface Props {
   entityType: 'lead' | 'deal';
   entityId: string;
   fubPersonId?: string | null;
+  refreshKey?: number;
 }
 
-export function ActivityTrail({ entityType, entityId, fubPersonId }: Props) {
+export function ActivityTrail({ entityType, entityId, fubPersonId, refreshKey = 0 }: Props) {
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncingFub, setSyncingFub] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      // Load local activity events
-      const { data: localData } = await (supabase
-        .from('activity_events' as any)
-        .select('id, touch_type, note, created_at')
-        .eq('entity_type', entityType)
-        .eq('entity_id', entityId)
-        .order('created_at', { ascending: false })
-        .limit(10) as any);
+  const loadEvents = useCallback(async () => {
+    setLoading(true);
+    // Load local activity events
+    const { data: localData } = await (supabase
+      .from('activity_events' as any)
+      .select('id, touch_type, note, created_at')
+      .eq('entity_type', entityType)
+      .eq('entity_id', entityId)
+      .order('created_at', { ascending: false })
+      .limit(10) as any);
 
-      const localEvents: ActivityEvent[] = (localData || []).map((e: any) => ({
-        ...e,
-        source: 'local' as const,
-      }));
+    const localEvents: ActivityEvent[] = (localData || []).map((e: any) => ({
+      ...e,
+      source: 'local' as const,
+    }));
 
-      // Load FUB activity if available
-      const { data: fubData } = await (supabase
-        .from('fub_activity_log' as any)
-        .select('id, activity_type, body_preview, occurred_at, direction, duration_seconds')
-        .eq('entity_id', entityId)
-        .order('occurred_at', { ascending: false })
-        .limit(10) as any);
+    // Load FUB activity if available
+    const { data: fubData } = await (supabase
+      .from('fub_activity_log' as any)
+      .select('id, activity_type, body_preview, occurred_at, direction, duration_seconds')
+      .eq('entity_id', entityId)
+      .order('occurred_at', { ascending: false })
+      .limit(10) as any);
 
-      const fubEvents: ActivityEvent[] = (fubData || []).map((e: any) => ({
-        id: e.id,
-        touch_type: e.activity_type,
-        note: e.body_preview,
-        created_at: e.occurred_at,
-        source: 'fub' as const,
-        direction: e.direction,
-        duration_seconds: e.duration_seconds,
-      }));
+    const fubEvents: ActivityEvent[] = (fubData || []).map((e: any) => ({
+      id: e.id,
+      touch_type: e.activity_type,
+      note: e.body_preview,
+      created_at: e.occurred_at,
+      source: 'fub' as const,
+      direction: e.direction,
+      duration_seconds: e.duration_seconds,
+    }));
 
-      // Merge and sort
-      const merged = [...localEvents, ...fubEvents]
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 10);
+    // Merge and sort
+    const merged = [...localEvents, ...fubEvents]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 10);
 
-      setEvents(merged);
-      setLoading(false);
-    })();
+    setEvents(merged);
+    setLoading(false);
   }, [entityType, entityId]);
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents, refreshKey]);
 
   const syncFubActivity = useCallback(async () => {
     if (!fubPersonId) return;
