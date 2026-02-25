@@ -18,6 +18,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
 import { ActivityTrail } from '@/components/ActivityTrail';
 import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
 import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
@@ -293,6 +296,7 @@ export function ActionComposerDrawer({
   moneyResult, oppResult, tasks,
   onCreateTask, onLogTouch, onCompleteTask, onCreateFollowUp,
 }: Props) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('call');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showObjections, setShowObjections] = useState(false);
@@ -384,12 +388,39 @@ export function ActionComposerDrawer({
     setTaskCreated(true);
   }, [context, taskTitle, taskType, taskDueAt, smartDueDate, onCreateTask]);
 
-  const handleLogNote = useCallback(() => {
-    if (!context || !noteText.trim()) return;
-    onLogTouch?.(context.entityType, context.entityId, context.entityName, 'note', noteText);
-    setNoteLogged(true);
-    setShowPostAction(true);
-  }, [context, noteText, onLogTouch]);
+  const handleLogNote = useCallback(async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!context || !noteText.trim() || !user?.id) return;
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
+      const orgId = profile?.organization_id || user.id;
+
+      const { error } = await supabase.from('activity_events').insert({
+        user_id: user.id,
+        organization_id: orgId,
+        entity_type: context.entityType,
+        entity_id: context.entityId,
+        touch_type: 'note',
+        note: noteText.trim(),
+      });
+      if (error) throw error;
+
+      await supabase.from(context.entityType === 'deal' ? 'deals' : 'leads')
+        .update({ last_touched_at: new Date().toISOString() } as any)
+        .eq('id', context.entityId);
+
+      setNoteLogged(true);
+      setShowPostAction(true);
+      toast({ description: 'Note saved' });
+    } catch (err) {
+      console.error('Note save error:', err);
+      toast({ description: 'Could not save note', variant: 'destructive' });
+    }
+  }, [context, noteText, user?.id]);
 
   const handlePostActionFollowUp = useCallback(() => {
     if (!context || !entity) return;
@@ -653,7 +684,7 @@ export function ActionComposerDrawer({
                           <Textarea value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Capture key points..." className="mt-1 min-h-[100px] text-xs" />
                         </div>
                         <p className="text-[10px] text-muted-foreground">Notes linked to {context.entityName} and influence recommendations.</p>
-                        <Button size="sm" onClick={handleLogNote} disabled={!noteText.trim()}>
+                        <Button size="sm" onClick={(e) => handleLogNote(e)} disabled={!noteText.trim()}>
                           <StickyNote className="h-3 w-3 mr-1" /> Save Note
                         </Button>
                       </>
