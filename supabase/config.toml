@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.client-analysis]
 verify_jwt = false
+
+[functions.federation-api]
+verify_jwt = false
