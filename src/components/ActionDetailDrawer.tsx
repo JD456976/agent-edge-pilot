@@ -86,6 +86,7 @@ function ExplanationList({ explanation }: { explanation: string[] }) {
 
 export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 }: Props) {
   const [showTouch, setShowTouch] = useState(false);
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const { toast } = useToast();
   if (!item) return null;
 
@@ -212,7 +213,7 @@ export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 
 
           {/* Activity Trail */}
           {touchEntityType && touchEntityId && (
-            <ActivityTrail entityType={touchEntityType} entityId={touchEntityId} />
+            <ActivityTrail entityType={touchEntityType} entityId={touchEntityId} refreshKey={activityRefreshKey} />
           )}
         </div>
 
@@ -245,6 +246,7 @@ export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 
           entityType={touchEntityType}
           entityId={touchEntityId}
           entityTitle={title}
+          onTouchLogged={() => setActivityRefreshKey(k => k + 1)}
         />
       )}
 

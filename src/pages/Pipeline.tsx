@@ -153,6 +153,7 @@ function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAd
   const [showOutcomeNote, setShowOutcomeNote] = useState(false);
   const [outcomeNote, setOutcomeNote] = useState('');
   const [markingOutcome, setMarkingOutcome] = useState(false);
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [showTouch, setShowTouch] = useState(false);
 
   const handleOutcome = async (type: 'closed' | 'cancelled') => {
@@ -253,7 +254,7 @@ function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAd
         </div>
 
         {/* Activity Trail */}
-        <ActivityTrail entityType="deal" entityId={deal.id} />
+        <ActivityTrail entityType="deal" entityId={deal.id} refreshKey={activityRefreshKey} />
 
         {tasks.length > 0 && (
           <div className="mt-4 pt-4 border-t border-border">
@@ -273,6 +274,7 @@ function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAd
         entityType="deal"
         entityId={deal.id}
         entityTitle={deal.title}
+        onTouchLogged={() => setActivityRefreshKey(k => k + 1)}
       />
     </div>
   );

@@ -40,6 +40,7 @@ function RiskBar({ label, value, maxValue = 100 }: { label: string; value: numbe
 
 export function MoneyRiskDrawer({ result, deal, onClose, onStartAction }: Props) {
   const [showTouch, setShowTouch] = useState(false);
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
 
   if (!result || !deal) return null;
 
@@ -133,7 +134,7 @@ export function MoneyRiskDrawer({ result, deal, onClose, onStartAction }: Props)
           </div>
 
           {/* Activity Trail */}
-          <ActivityTrail entityType="deal" entityId={deal.id} />
+          <ActivityTrail entityType="deal" entityId={deal.id} refreshKey={activityRefreshKey} />
         </div>
 
         {/* Actions */}
@@ -158,6 +159,7 @@ export function MoneyRiskDrawer({ result, deal, onClose, onStartAction }: Props)
         entityType="deal"
         entityId={deal.id}
         entityTitle={deal.title}
+        onTouchLogged={() => setActivityRefreshKey(k => k + 1)}
       />
     </>
   );
