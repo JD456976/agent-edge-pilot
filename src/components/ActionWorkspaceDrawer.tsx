@@ -683,8 +683,20 @@ export function ActionWorkspaceDrawer({
                   <div className="space-y-2 pt-2 border-t border-border">
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Saved Notes</p>
                     {savedNotes.map(n => (
-                      <div key={n.id} className="text-xs p-2.5 rounded-md border border-border bg-muted/30">
-                        <p className="text-foreground whitespace-pre-wrap">{n.note}</p>
+                      <div key={n.id} className="text-xs p-2.5 rounded-md border border-border bg-muted/30 group/note">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-foreground whitespace-pre-wrap flex-1">{n.note}</p>
+                          <button
+                            onClick={async () => {
+                              await supabase.from('activity_events').delete().eq('id', n.id);
+                              setSavedNotes(prev => prev.filter(x => x.id !== n.id));
+                            }}
+                            className="opacity-0 group-hover/note:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0 mt-0.5"
+                            aria-label="Delete note"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
                         <p className="text-muted-foreground text-[10px] mt-1">
                           {new Date(n.created_at).toLocaleDateString()} {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
