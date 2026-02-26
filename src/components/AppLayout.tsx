@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { ChevronDown, Home, MoreHorizontal } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush, Bell } from 'lucide-react';
+import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush, Bell, CalendarDays } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { NotificationBell } from '@/components/NotificationBell';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -42,6 +42,7 @@ type NavItem = { label: string; icon: React.ElementType } & (
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
   { workspace: 'work', label: 'Tasks', icon: Briefcase },
+  { workspace: 'calendar', label: 'Calendar', icon: CalendarDays },
   { workspace: 'openhouse', label: 'Open House', icon: Home },
   { workspace: 'sync', label: 'CRM', icon: RefreshCw },
   { workspace: 'insights', label: 'Reports', icon: BarChart3 },

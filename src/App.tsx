@@ -21,6 +21,7 @@ import Work from "@/pages/Work";
 import Sync from "@/pages/Sync";
 import Insights from "@/pages/Insights";
 import Settings from "@/pages/Settings";
+import CalendarPage from "@/pages/CalendarPage";
 import NotFound from "@/pages/NotFound";
 import Install from "@/pages/Install";
 import AppStoreAssets from "@/pages/AppStoreAssets";
@@ -92,6 +93,7 @@ function WorkspaceOverlays() {
 
   const WORKSPACE_CONFIG: Record<string, { title: string; subtitle: string; Component: React.ComponentType }> = {
     work: { title: 'Work', subtitle: 'Pipeline and tasks', Component: Work },
+    calendar: { title: 'Calendar', subtitle: 'Appointments, tasks & milestones', Component: CalendarPage },
     openhouse: { title: 'Open House Intelligence', subtitle: 'Capture visitors and follow up', Component: OpenHouse },
     sync: { title: 'Sync', subtitle: 'CRM integrations and imports', Component: Sync },
     insights: { title: 'Insights', subtitle: 'Forecast, stability, and review', Component: Insights },
