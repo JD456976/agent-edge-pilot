@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, EyeOff, Plus, Phone, Undo2, Upload, Settings2, RefreshCw, BarChart3 } from 'lucide-react';
+import { DollarSign, AlertTriangle, TrendingUp, Zap, Check, Info, ChevronRight, Sparkles, Eye, EyeOff, Plus, Phone, Undo2, Upload, Settings2, RefreshCw, BarChart3, Rows3, Rows4 } from 'lucide-react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { cn } from '@/lib/utils';
@@ -1069,7 +1069,10 @@ export default function CommandCenter() {
             </Button>
             <AutoSaveIndicator status={saveStatus} />
             <NotificationBell alerts={alerts} />
-            <PanelDensityToggle density={density} onToggle={toggleDensity} />
+            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5" onClick={toggleDensity} aria-label={density === 'comfortable' ? 'Switch to compact view' : 'Switch to comfortable view'}>
+              {density === 'comfortable' ? <Rows4 className="h-3 w-3" /> : <Rows3 className="h-3 w-3" />}
+              {density === 'comfortable' ? 'Compact' : 'Comfortable'}
+            </Button>
             <ExportSnapshotButton
               totalRevenue={totalRevenue}
               totalMoneyAtRisk={totalMoneyAtRisk}
