@@ -292,7 +292,7 @@ export function MobileSearchOverlay({ open, onClose, onOpenEntity, onCreateTask,
                   <button
                     key={r.id}
                     onClick={() => handleSelect(r)}
-                    className="flex items-center gap-3 w-full px-4 py-3 text-left active:bg-muted/60 transition-colors"
+                    className="flex items-center gap-3 w-full px-4 py-3 text-left active:bg-muted/60 transition-colors overflow-hidden"
                   >
                     {/* Type Icon */}
                     <div className={cn(
@@ -309,14 +309,14 @@ export function MobileSearchOverlay({ open, onClose, onOpenEntity, onCreateTask,
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 overflow-hidden">
                       <p className="text-sm font-medium truncate text-foreground">
                         {query ? highlightMatch(r.title, query) : r.title}
                       </p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="flex items-center gap-1.5 mt-0.5 overflow-hidden">
                         <span className="text-xs text-muted-foreground truncate">{r.subtitle}</span>
                         {r.price && r.price > 0 && (
-                          <span className="text-[10px] text-muted-foreground/70 font-medium">{formatPrice(r.price)}</span>
+                          <span className="text-[10px] text-muted-foreground/70 font-medium shrink-0">{formatPrice(r.price)}</span>
                         )}
                       </div>
                     </div>

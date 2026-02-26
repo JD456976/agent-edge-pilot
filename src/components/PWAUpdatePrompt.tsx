@@ -35,9 +35,15 @@ export function PWAUpdatePrompt() {
           altText="Update now"
           onClick={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             updateServiceWorker(true);
           }}
-          className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors border-0"
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            updateServiceWorker(true);
+          }}
+          className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors border-0 touch-manipulation"
         >
           Update Now
         </ToastAction>
