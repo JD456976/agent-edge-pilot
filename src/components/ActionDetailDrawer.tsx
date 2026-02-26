@@ -6,6 +6,7 @@ import { LogTouchModal } from '@/components/LogTouchModal';
 import { ActivityTrail } from '@/components/ActivityTrail';
 import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
 import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
+import { FubContextStrip } from '@/components/FubContextStrip';
 import { useToast } from '@/hooks/use-toast';
 import type { ScoredEntity, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
@@ -165,6 +166,18 @@ export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 
               {confidence}
             </span>
           </div>
+
+          {/* FUB Context: Stage, Timeframe, Lender, AT A GLANCE */}
+          {touchEntityType && touchEntityId && (
+            <FubContextStrip
+              entityId={touchEntityId}
+              entity={
+                item.kind === 'deal' ? item.data.deal :
+                item.kind === 'opportunity' ? item.data.lead :
+                null as any
+              }
+            />
+          )}
 
           <ScoresSection scores={scores!} isOpportunity={isOpportunity} />
 

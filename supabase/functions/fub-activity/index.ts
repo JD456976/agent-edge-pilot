@@ -91,6 +91,15 @@ Deno.serve(async (req) => {
       personProfile.preApprovalAmount = personData.preApprovalAmount || null;
       personProfile.assignedTo = personData.assignedTo || null;
       personProfile.background = personData.background || null;
+      // Lender info
+      personProfile.lenderName = personData.lenderName || personData.lender || null;
+      personProfile.lenderEmail = personData.lenderEmail || null;
+      personProfile.lenderPhone = personData.lenderPhone || null;
+      // Collaborators
+      personProfile.collaborators = personData.collaborators || [];
+      // Contacted / last contacted
+      personProfile.contacted = personData.contacted || null;
+      personProfile.lastContacted = personData.lastContacted || null;
       // Custom fields
       if (personData.customFields && Array.isArray(personData.customFields)) {
         personProfile.customFields = personData.customFields;

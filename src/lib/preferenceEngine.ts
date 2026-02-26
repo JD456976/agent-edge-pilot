@@ -245,6 +245,22 @@ export function computePreferences(
         townScores[addr.city] = (townScores[addr.city] || 0) + 6;
         signals.push({ signal: 'FUB address', weight: 6, evidence: addr.city });
       }
+      // Use zip codes as area indicators (AT A GLANCE data)
+      if (addr.code) {
+        const zipLabel = addr.city ? `${addr.city} (${addr.code})` : addr.code;
+        townScores[zipLabel] = (townScores[zipLabel] || 0) + 5;
+        signals.push({ signal: 'FUB zip code', weight: 5, evidence: zipLabel });
+      }
+    }
+    // Standalone zip code from profile
+    if (personProfile.zipCode) {
+      const zip = personProfile.zipCode;
+      // Only add if not already covered by addresses
+      const alreadyCovered = addresses.some(a => a.code === zip);
+      if (!alreadyCovered) {
+        townScores[zip] = (townScores[zip] || 0) + 5;
+        signals.push({ signal: 'FUB zip code', weight: 5, evidence: zip });
+      }
     }
 
     // Price from profile
@@ -263,12 +279,48 @@ export function computePreferences(
     if (personProfile.bedrooms) bedsHint = personProfile.bedrooms;
     if (personProfile.bathrooms) bathsHint = personProfile.bathrooms;
 
+    // Square footage as must-have hint
+    if (personProfile.squareFeet && personProfile.squareFeet > 0) {
+      const sqftLabel = `${personProfile.squareFeet.toLocaleString()}+ sqft`;
+      mustHaveScores[sqftLabel] = (mustHaveScores[sqftLabel] || 0) + 5;
+      signals.push({ signal: 'FUB sqft', weight: 5, evidence: sqftLabel });
+    }
+
     // Stage-based urgency
     const stage = (personProfile.stage || '').toLowerCase();
-    if (/hot|appt|showing|offer/.test(stage)) {
+    if (/hot|appt|showing|offer|appointment/.test(stage)) {
       urgencyScore += 3;
       urgencyReasons.push(`Stage: ${personProfile.stage}`);
       signals.push({ signal: 'FUB stage', weight: 3, evidence: `${personProfile.stage} → high urgency` });
+    }
+
+    // Timeframe-based urgency
+    if (personProfile.timeFrame) {
+      const tf = personProfile.timeFrame.toLowerCase();
+      if (/0-3|immediate|asap|now|urgent/.test(tf)) {
+        urgencyScore += 3;
+        urgencyReasons.push(`Timeframe: ${personProfile.timeFrame}`);
+      } else if (/3-6|soon/.test(tf)) {
+        urgencyScore += 1;
+        urgencyReasons.push(`Timeframe: ${personProfile.timeFrame}`);
+      }
+    }
+
+    // Custom fields — extract RealScout engagement signals
+    const customFields = personProfile.customFields || [];
+    for (const cf of customFields) {
+      const name = (cf.name || '').toLowerCase();
+      const val = cf.value;
+      // RealScout property views as engagement signal
+      if (name.includes('realscout') && name.includes('prop') && typeof val === 'number' && val > 50) {
+        signals.push({ signal: `Custom: ${cf.name}`, weight: 4, evidence: `${val} properties viewed` });
+        urgencyScore += 1;
+        urgencyReasons.push(`High RealScout engagement (${val} views)`);
+      }
+      // Fello email status
+      if (name.includes('fello') && name.includes('email') && name.includes('sta') && val === 'Valid') {
+        signals.push({ signal: 'Fello email valid', weight: 2, evidence: 'Verified email' });
+      }
     }
   }
 
