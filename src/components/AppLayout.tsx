@@ -216,7 +216,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Main content area */}
       <div className="md:pl-56 min-h-screen flex flex-col">
         {/* Mobile header */}
-        <header className="md:hidden flex items-center justify-between px-3 h-14 border-b border-border bg-card sticky top-0 z-20">
+        <header className="md:hidden flex items-center justify-between px-3 h-14 border-b border-border bg-card sticky top-0 z-20 pt-[env(safe-area-inset-top)]" style={{ height: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
               <LayoutDashboard className="h-3.5 w-3.5 text-primary-foreground" />
@@ -274,7 +274,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </div>
 
       {/* Mobile bottom tabs — show 4 primary + More menu */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 border-t border-border bg-card z-50 safe-area-bottom" style={{ position: 'fixed' }}>
+      <nav className="md:hidden fixed bottom-0 inset-x-0 border-t border-border bg-card z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-center justify-around h-14 px-2">
           {items.slice(0, 4).map(item => {
             const key = item.workspace ?? item.path ?? 'home';
