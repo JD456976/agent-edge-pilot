@@ -279,7 +279,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         )}
 
         {/* Page content */}
-        <main className="flex-1 p-4 pb-24 lg:pb-6">
+        <main className="flex-1 p-4 pb-24 lg:pb-6" style={{ paddingLeft: `max(1rem, env(safe-area-inset-left, 0px))`, paddingRight: `max(1rem, env(safe-area-inset-right, 0px))` }}>
           {children}
         </main>
       </div>
