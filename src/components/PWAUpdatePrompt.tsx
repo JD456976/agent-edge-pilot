@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 
 export function PWAUpdatePrompt() {
   const { toast } = useToast();
@@ -30,12 +31,16 @@ export function PWAUpdatePrompt() {
       description: 'A new version of Deal Pilot is ready.',
       duration: Infinity,
       action: (
-        <button
-          onClick={() => updateServiceWorker(true)}
-          className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+        <ToastAction
+          altText="Update now"
+          onClick={(e) => {
+            e.preventDefault();
+            updateServiceWorker(true);
+          }}
+          className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors border-0"
         >
           Update Now
-        </button>
+        </ToastAction>
       ),
     });
   }, [needRefresh, toast, updateServiceWorker]);
