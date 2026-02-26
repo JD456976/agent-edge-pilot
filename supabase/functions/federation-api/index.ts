@@ -83,22 +83,42 @@ async function handleSearchClients(
 
   const limit = Math.min(params.limit || 20, 50);
 
+  // Split query into words for multi-term fuzzy matching (e.g. "John Smith")
+  const words = query.split(/\s+/).filter(w => w.length >= 2);
+
+  // Build OR filters for each word against first_name, last_name, email
+  const orParts = words.flatMap(w => [
+    `email_normalized.ilike.%${w}%`,
+    `first_name.ilike.%${w}%`,
+    `last_name.ilike.%${w}%`,
+    `email_original.ilike.%${w}%`,
+  ]);
+  // Also match the full query as-is for email searches like "john@example"
+  orParts.push(`email_normalized.ilike.%${query}%`);
+  orParts.push(`email_original.ilike.%${query}%`);
+
+  // Deduplicate
+  const uniqueOrParts = [...new Set(orParts)];
+
+  // Build lead name filters — match each word
+  const leadOrParts = words.map(w => `name.ilike.%${w}%`);
+  leadOrParts.push(`name.ilike.%${query}%`);
+  const uniqueLeadOrParts = [...new Set(leadOrParts)];
+
   // Search across client_identities linked to this agent + leads
   const [identitiesRes, leadsRes] = await Promise.all([
-    // Search client identities by normalized email or name
     client
       .from('agent_clients')
       .select('client_identity_id, fub_contact_id, client_identities!inner(id, first_name, last_name, email_normalized, email_original, phone)')
       .eq('agent_user_id', agentUserId)
-      .or(`email_normalized.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%`, { referencedTable: 'client_identities' })
+      .or(uniqueOrParts.join(','), { referencedTable: 'client_identities' })
       .limit(limit),
 
-    // Also search leads by name
     client
       .from('leads')
       .select('id, name, source, engagement_score, lead_temperature, last_contact_at, status_tags')
       .eq('assigned_to_user_id', agentUserId)
-      .ilike('name', `%${query}%`)
+      .or(uniqueLeadOrParts.join(','))
       .limit(limit),
   ]);
 
