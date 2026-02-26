@@ -38,6 +38,13 @@ export interface FubPersonProfile {
   cities?: string | string[] | null;
   state?: string | null;
   zipCode?: string | null;
+  assignedTo?: string | null;
+  lenderName?: string | null;
+  lenderEmail?: string | null;
+  lenderPhone?: string | null;
+  collaborators?: Array<{ id?: string; name?: string }>;
+  contacted?: string | null;
+  lastContacted?: string | null;
 }
 
 // ── 1. Engagement Trend (weekly buckets for sparkline) ──────────────

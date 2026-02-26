@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
 import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
+import { FubContextStrip } from '@/components/FubContextStrip';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -351,6 +352,15 @@ export function ActionWorkspaceDrawer({
               </div>
             </div>
             <p className="text-xs text-muted-foreground">{context.confidence.reason}</p>
+            {/* FUB Context: Stage, Timeframe, Lender, AT A GLANCE */}
+            {entity && (
+              <div className="mt-2">
+                <FubContextStrip
+                  entityId={context.entityId}
+                  entity={entity}
+                />
+              </div>
+            )}
           </div>
 
           {/* Tab selector */}
