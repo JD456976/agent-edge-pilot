@@ -189,7 +189,7 @@ export function MobileSearchOverlay({ open, onClose, onOpenEntity, onCreateTask,
           exit={{ opacity: 0, y: 30 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
           className="fixed inset-0 z-[110] bg-background flex flex-col"
-          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingLeft: 'env(safe-area-inset-left, 0px)', paddingRight: 'env(safe-area-inset-right, 0px)' }}
         >
           {/* Search Header */}
           <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border/50">
