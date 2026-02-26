@@ -1,5 +1,5 @@
 import { ReactNode, useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import { ChevronDown, Home, MoreHorizontal } from 'lucide-react';
+import { ChevronDown, Home, MoreHorizontal, Search } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush, Bell, CalendarDays } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -31,6 +31,7 @@ import { TrialBanner, RestrictedModeBanner } from '@/components/TrialBanner';
 import { useEntitlement } from '@/contexts/EntitlementContext';
 import { NotificationPermissionPrompt } from '@/components/NotificationPermissionPrompt';
 import { DemoBanner } from '@/components/DemoBanner';
+import { MobileSearchOverlay } from '@/components/MobileSearchOverlay';
 
 const PaywallLazy = lazy(() => import('@/pages/Paywall'));
 
@@ -120,6 +121,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const isMobile = useIsMobile();
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
   useSwipeNavigation(isMobile);
   const { permission, requestPermission, sendNotification } = usePushNotifications();
   const lastCheckedRef = useRef<Set<string>>(new Set());
@@ -229,6 +231,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <span className="font-bold text-sm">Deal Pilot</span>
             </div>
             <div className="flex items-center gap-0.5">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowMobileSearch(true)} aria-label="Search">
+                <Search className="h-4 w-4" />
+              </Button>
               <NotificationBell alerts={alerts} />
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
                 {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -340,6 +345,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <CommandPalette
         onOpenEntity={(entityId, entityType) => {
           // Navigate to Command Center, close workspace, and request entity open
+          closeWorkspace();
+          if (location.pathname !== '/') navigate('/');
+          requestOpenEntity(entityId, entityType);
+        }}
+        onCreateTask={() => setShowQuickAdd(true)}
+        onLogTouch={() => setShowQuickAdd(true)}
+      />
+
+      {/* Mobile Search Overlay */}
+      <MobileSearchOverlay
+        open={showMobileSearch}
+        onClose={() => setShowMobileSearch(false)}
+        onOpenEntity={(entityId, entityType) => {
           closeWorkspace();
           if (location.pathname !== '/') navigate('/');
           requestOpenEntity(entityId, entityType);
