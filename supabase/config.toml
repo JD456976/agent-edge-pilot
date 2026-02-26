@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.federation-api]
 verify_jwt = false
+
+[functions.calendar-feed]
+verify_jwt = false
