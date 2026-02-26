@@ -1,4 +1,53 @@
 import type { Task, Lead, Deal, PriorityAction } from '@/types';
+import type { FubPersonProfile } from '@/lib/intelAnalyzer';
+
+// ── FUB Tag → Score Calibration ──────────────────────────────────────
+// Agent-curated tags are high-signal intent indicators that should
+// directly influence priority scoring and engagement calibration.
+
+const TAG_SCORE_BOOSTS: Record<string, number> = {
+  'buyer': 10,
+  'seller': 10,
+  'investor': 8,
+  'hot': 15,
+  'warm': 8,
+  'cold': -5,
+  'dp:cold': -5,
+  'dp:hot': 15,
+  'dp:warm': 8,
+  'nurture': 3,
+  'sphere': 5,
+  'past_client': 5,
+  'past client': 5,
+  'first time': 8,
+  'first-time': 8,
+  'relocation': 10,
+  'luxury': 12,
+  'enrich': 5,
+  'vip': 15,
+};
+
+/**
+ * Calculate a score adjustment from FUB tags.
+ * Returns a bonus (positive) or penalty (negative) to add to priority score.
+ */
+export function computeTagScoreAdjustment(tags: string[]): { adjustment: number; matchedTags: string[] } {
+  let adjustment = 0;
+  const matchedTags: string[] = [];
+  
+  for (const tag of tags) {
+    const normalized = tag.toLowerCase().trim();
+    for (const [pattern, boost] of Object.entries(TAG_SCORE_BOOSTS)) {
+      if (normalized === pattern || normalized.includes(pattern)) {
+        adjustment += boost;
+        matchedTags.push(tag);
+        break; // Only match one pattern per tag
+      }
+    }
+  }
+  
+  return { adjustment: Math.max(-10, Math.min(30, adjustment)), matchedTags };
+}
 
 export function calculatePriorityScore(task: Task, lead?: Lead, deal?: Deal): number {
   let score = 0;
