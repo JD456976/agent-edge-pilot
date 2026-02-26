@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
-import { CalendarDays, ChevronDown, Clock, Briefcase, Home, CheckSquare } from 'lucide-react';
+import { useState, useMemo, useTransition, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { CalendarDays, ChevronDown, Clock, Briefcase, Home, CheckSquare, ExternalLink } from 'lucide-react';
 import { format, isAfter, isBefore, addDays, startOfDay, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -57,6 +58,24 @@ interface UpcomingEventsPanelProps {
 
 export function UpcomingEventsPanel({ deals, tasks, appointments, isCollapsed, onToggleCollapse }: UpcomingEventsPanelProps) {
   const [horizon, setHorizon] = useState(7);
+  const [isPending, startTransition] = useTransition();
+  const navigate = useNavigate();
+
+  const handleHorizonChange = useCallback((value: number) => {
+    startTransition(() => {
+      setHorizon(value);
+    });
+  }, []);
+
+  const handleEventClick = useCallback((ev: CalendarEvent) => {
+    if (ev.type === 'task') {
+      navigate('/tasks');
+    } else if (ev.type === 'milestone') {
+      navigate('/pipeline');
+    } else if (ev.type === 'appointment') {
+      navigate('/calendar');
+    }
+  }, [navigate]);
 
   const events = useMemo(() => {
     const now = startOfDay(new Date());
@@ -143,10 +162,10 @@ export function UpcomingEventsPanel({ deals, tasks, appointments, isCollapsed, o
           </div>
           {/* Horizon filter */}
           <div className="flex items-center gap-1">
-            {HORIZON_OPTIONS.map(opt => (
+             {HORIZON_OPTIONS.map(opt => (
               <button
                 key={opt.value}
-                onClick={() => setHorizon(opt.value)}
+                onClick={() => handleHorizonChange(opt.value)}
                 className={cn(
                   'px-2 py-1 rounded text-[10px] font-medium transition-colors',
                   horizon === opt.value
@@ -166,12 +185,17 @@ export function UpcomingEventsPanel({ deals, tasks, appointments, isCollapsed, o
         ) : (
           <div className="space-y-1.5 max-h-64 overflow-y-auto">
             {events.map(ev => (
-              <div key={ev.id} className="flex items-start gap-2.5 px-2 py-2 rounded-md hover:bg-accent/50 transition-colors">
+              <button
+                key={ev.id}
+                onClick={() => handleEventClick(ev)}
+                className="flex items-start gap-2.5 px-2 py-2 rounded-md hover:bg-accent/50 transition-colors w-full text-left group cursor-pointer"
+              >
                 <div className="mt-0.5">{eventIcon(ev.type)}</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium truncate">{ev.title}</span>
                     {eventBadge(ev.type)}
+                    <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Clock className="h-3 w-3 text-muted-foreground" />
@@ -182,7 +206,7 @@ export function UpcomingEventsPanel({ deals, tasks, appointments, isCollapsed, o
                   </div>
                   {ev.detail && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{ev.detail}</p>}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
