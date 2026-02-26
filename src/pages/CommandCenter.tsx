@@ -1064,7 +1064,13 @@ export default function CommandCenter() {
 
           {/* Desktop: full controls */}
           <div className="hidden md:flex items-center gap-2 flex-wrap justify-end shrink-0">
-            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5" onClick={() => refreshData()}>
+            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5" onClick={async () => {
+              const btn = document.activeElement as HTMLButtonElement;
+              btn?.blur();
+              toast({ title: 'Syncing…', description: 'Refreshing your data' });
+              await refreshData();
+              toast({ title: 'Synced', description: 'Dashboard data is up to date' });
+            }}>
               <RefreshCw className="h-3 w-3" /> Sync
             </Button>
             <AutoSaveIndicator status={saveStatus} />
