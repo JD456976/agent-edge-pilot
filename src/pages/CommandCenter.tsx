@@ -107,6 +107,7 @@ import { GettingStartedChecklist } from '@/components/GettingStartedChecklist';
 import { PanelDensityToggle, usePanelDensity } from '@/components/PanelDensityToggle';
 import { AutoSaveIndicator, useAutoSaveIndicator } from '@/components/AutoSaveIndicator';
 import { ConfettiOverlay, useConfetti } from '@/components/ConfettiOverlay';
+import { UpcomingEventsPanel } from '@/components/UpcomingEventsPanel';
 import type { RiskLevel, Deal, Lead, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 const SNOOZE_STORAGE_KEY = 'dp-snooze-counts';
@@ -168,6 +169,7 @@ export default function CommandCenter() {
   const [showWeeklyPlanner, setShowWeeklyPlanner] = useState(false);
   const [panelFilter, setPanelFilter] = useState('');
   const [showCSVImport, setShowCSVImport] = useState(false);
+  const [fubAppointments, setFubAppointments] = useState<any[]>([]);
 
   // Pinned panels
   const { pinnedPanels, togglePin, isPinned, sortWithPins } = usePinnedPanels();
@@ -319,6 +321,21 @@ export default function CommandCenter() {
         .eq('user_id', u.id)
         .maybeSingle() as any);
       setHasFubIntegration(data?.status === 'connected');
+    })();
+  }, []);
+
+  // Fetch FUB appointments for upcoming events panel
+  useEffect(() => {
+    (async () => {
+      const { data: { user: u } } = await supabase.auth.getUser();
+      if (!u) return;
+      const { data } = await (supabase.from('fub_appointments' as any)
+        .select('id, title, start_at, end_at, location, description')
+        .eq('user_id', u.id)
+        .gte('start_at', new Date().toISOString())
+        .order('start_at', { ascending: true })
+        .limit(100) as any);
+      setFubAppointments(data || []);
     })();
   }, []);
 
@@ -1170,6 +1187,15 @@ export default function CommandCenter() {
         totalMoneyAtRisk={totalMoneyAtRisk}
         totalRevenue={totalRevenue}
         overdueCount={overdueTasks.length}
+      />
+
+      {/* Upcoming Events Panel */}
+      <UpcomingEventsPanel
+        deals={deals}
+        tasks={tasks}
+        appointments={fubAppointments}
+        isCollapsed={isCollapsed('upcoming-events')}
+        onToggleCollapse={() => toggleCollapse('upcoming-events')}
       />
 
       {/* Morning Brief (first session of the day) */}
