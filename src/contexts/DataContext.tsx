@@ -351,6 +351,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       metadata: {},
     });
 
+    // Clear all dp-* localStorage keys so cached state doesn't persist
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('dp-')) keysToRemove.push(key);
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+
     await loadData();
   };
 
