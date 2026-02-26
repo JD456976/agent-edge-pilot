@@ -1,6 +1,6 @@
 import { useState, useMemo, useTransition, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { CalendarDays, ChevronDown, Clock, Briefcase, Home, CheckSquare, ExternalLink } from 'lucide-react';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { format, isAfter, isBefore, addDays, startOfDay, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -59,7 +59,7 @@ interface UpcomingEventsPanelProps {
 export function UpcomingEventsPanel({ deals, tasks, appointments, isCollapsed, onToggleCollapse }: UpcomingEventsPanelProps) {
   const [horizon, setHorizon] = useState(7);
   const [isPending, startTransition] = useTransition();
-  const navigate = useNavigate();
+  const { openWorkspace } = useWorkspace();
 
   const handleHorizonChange = useCallback((value: number) => {
     startTransition(() => {
@@ -69,13 +69,13 @@ export function UpcomingEventsPanel({ deals, tasks, appointments, isCollapsed, o
 
   const handleEventClick = useCallback((ev: CalendarEvent) => {
     if (ev.type === 'task') {
-      navigate('/tasks');
+      openWorkspace('work');
     } else if (ev.type === 'milestone') {
-      navigate('/pipeline');
+      openWorkspace('work');
     } else if (ev.type === 'appointment') {
-      navigate('/calendar');
+      openWorkspace('calendar');
     }
-  }, [navigate]);
+  }, [openWorkspace]);
 
   const events = useMemo(() => {
     const now = startOfDay(new Date());
