@@ -173,8 +173,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background">
       <OfflineBanner />
       {hasSeededData && <DemoBanner />}
-      {/* Desktop sidebar */}
-      <aside className="hidden md:fixed md:inset-y-0 md:left-0 md:flex md:w-56 md:flex-col border-r border-border bg-sidebar z-30" data-tour="sidebar-nav">
+      {/* Desktop sidebar — lg breakpoint so landscape phones use mobile nav */}
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-56 lg:flex-col border-r border-border bg-sidebar z-30" data-tour="sidebar-nav">
         <div className="flex items-center gap-2.5 px-4 h-14 border-b border-border">
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shadow-sm shadow-primary/20">
             <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
@@ -214,50 +214,55 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Main content area */}
-      <div className="md:pl-56 min-h-screen flex flex-col">
-        {/* Mobile header */}
-        <header className="md:hidden flex items-center justify-between px-3 h-14 border-b border-border bg-card sticky top-0 z-20 pt-[env(safe-area-inset-top)]" style={{ height: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
-          <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-              <LayoutDashboard className="h-3.5 w-3.5 text-primary-foreground" />
+      <div className="lg:pl-56 min-h-screen flex flex-col">
+        {/* Mobile header — safe-area spacer + content row to keep icons below notch */}
+        <header className="lg:hidden flex flex-col border-b border-border bg-card sticky top-0 z-20">
+          {/* Safe-area spacer — pushes everything below the notch/status bar */}
+          <div className="w-full" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
+          {/* Actual header content */}
+          <div className="flex items-center justify-between px-3 h-14">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
+                <LayoutDashboard className="h-3.5 w-3.5 text-primary-foreground" />
+              </div>
+              <span className="font-bold text-sm">Deal Pilot</span>
             </div>
-            <span className="font-bold text-sm">Deal Pilot</span>
-          </div>
-          <div className="flex items-center gap-0.5">
-            <NotificationBell alerts={alerts} />
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors" aria-label="Account menu">
-                  <User className="h-4 w-4 text-primary" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                {user?.email && (
-                  <>
-                    <div className="px-2 py-1.5">
-                      <p className="text-sm font-medium truncate">{user.email}</p>
-                    </div>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-                <DropdownMenuItem onClick={() => { closeWorkspace(); openWorkspace('settings'); }}>
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { closeWorkspace(); openWorkspace('settings'); }}>
-                  <Paintbrush className="h-4 w-4 mr-2" />
-                  Appearance
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-0.5">
+              <NotificationBell alerts={alerts} />
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors" aria-label="Account menu">
+                    <User className="h-4 w-4 text-primary" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {user?.email && (
+                    <>
+                      <div className="px-2 py-1.5">
+                        <p className="text-sm font-medium truncate">{user.email}</p>
+                      </div>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  <DropdownMenuItem onClick={() => { closeWorkspace(); openWorkspace('settings'); }}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { closeWorkspace(); openWorkspace('settings'); }}>
+                    <Paintbrush className="h-4 w-4 mr-2" />
+                    Appearance
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </header>
 
@@ -268,13 +273,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
         )}
 
         {/* Page content */}
-        <main className="flex-1 p-4 pb-24 md:pb-6">
+        <main className="flex-1 p-4 pb-24 lg:pb-6">
           {children}
         </main>
       </div>
 
       {/* Mobile bottom tabs — show 4 primary + More menu */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 border-t border-border bg-card z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 border-t border-border bg-card z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-center justify-around h-14 px-2">
           {items.slice(0, 4).map(item => {
             const key = item.workspace ?? item.path ?? 'home';
