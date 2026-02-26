@@ -9,6 +9,7 @@
 
 import type { Lead } from '@/types';
 import { clampNumber } from '@/lib/commissionResolver';
+import { computeTagScoreAdjustment } from '@/lib/scoring';
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -44,9 +45,15 @@ export interface OpportunityHeatResult {
 
 // ── Lead Commission Estimate ─────────────────────────────────────────
 
+/**
+ * Estimate commission for a lead. If a FUB preApprovalAmount is provided,
+ * it's used as a stronger price signal than generic defaults — a pre-approved
+ * buyer has bank-verified purchasing power.
+ */
 export function estimateLeadCommission(
   lead: Lead,
   userDefaults?: UserCommissionDefaults,
+  fubPreApprovalAmount?: number | null,
 ): LeadCommissionEstimate {
   const warnings: string[] = [];
   let confidence: LeadConfidence = 'HIGH';
@@ -54,10 +61,15 @@ export function estimateLeadCommission(
   let assumedRate: number | undefined;
   let assumedSplit: number | undefined;
 
-  // Determine price
+  // Determine price — priority: explicit > preApproval > userDefault
   const explicitPrice = (lead as any).estimatedPrice ?? (lead as any).priceRangeMid ?? null;
   if (explicitPrice && explicitPrice > 0) {
     assumedPrice = explicitPrice;
+  } else if (fubPreApprovalAmount && fubPreApprovalAmount > 0) {
+    // Pre-approval is a bank-verified price signal — stronger than user defaults
+    assumedPrice = fubPreApprovalAmount;
+    confidence = 'MEDIUM';
+    warnings.push(`Using FUB pre-approval amount ($${Math.round(fubPreApprovalAmount / 1000)}K)`);
   } else if (userDefaults?.typicalPriceMid && userDefaults.typicalPriceMid > 0) {
     assumedPrice = userDefaults.typicalPriceMid;
     confidence = 'MEDIUM';
@@ -140,6 +152,15 @@ export function computeOpportunityHeatScore(
   } else if (lead.leadTemperature === 'warm') {
     score += w.warm;
     reasons.push(`Warm lead (+${w.warm})`);
+  }
+
+  // FUB tag-based intent boost (if tags available on lead via statusTags)
+  if (lead.statusTags && lead.statusTags.length > 0) {
+    const { adjustment, matchedTags } = computeTagScoreAdjustment(lead.statusTags);
+    if (adjustment !== 0) {
+      score += adjustment;
+      reasons.push(`FUB tags: ${matchedTags.join(', ')} (${adjustment > 0 ? '+' : ''}${adjustment})`);
+    }
   }
 
   // Intent: new lead
