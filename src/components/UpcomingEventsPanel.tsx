@@ -1,7 +1,7 @@
 import { useState, useMemo, useTransition, useCallback } from 'react';
 import { CalendarDays, ChevronDown, Clock, Briefcase, Home, CheckSquare, ExternalLink } from 'lucide-react';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { format, isAfter, isBefore, addDays, startOfDay, parseISO } from 'date-fns';
+import { format, isAfter, isBefore, addDays, startOfDay, parseISO, formatISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { CollapsiblePanel } from '@/components/CollapsiblePanel';
@@ -23,6 +23,44 @@ interface CalendarEvent {
   endDate?: Date;
   type: 'appointment' | 'task' | 'milestone';
   detail?: string;
+}
+
+function toICSDate(d: Date): string {
+  return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+}
+
+function generateICS(ev: CalendarEvent): string {
+  const start = toICSDate(ev.date);
+  const end = ev.endDate
+    ? toICSDate(ev.endDate)
+    : toICSDate(new Date(ev.date.getTime() + 60 * 60 * 1000)); // default 1hr
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//DealPilot//EN',
+    'BEGIN:VEVENT',
+    `DTSTART:${start}`,
+    `DTEND:${end}`,
+    `SUMMARY:${ev.title.replace(/,/g, '\\,')}`,
+    ...(ev.detail ? [`LOCATION:${ev.detail.replace(/,/g, '\\,')}`] : []),
+    `UID:${ev.id}@dealpilot`,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ];
+  return lines.join('\r\n');
+}
+
+function downloadICS(ev: CalendarEvent) {
+  const ics = generateICS(ev);
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${ev.title.replace(/[^a-zA-Z0-9]/g, '_')}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 const HORIZON_OPTIONS = [
@@ -68,14 +106,8 @@ export function UpcomingEventsPanel({ deals, tasks, appointments, isCollapsed, o
   }, []);
 
   const handleEventClick = useCallback((ev: CalendarEvent) => {
-    if (ev.type === 'task') {
-      openWorkspace('work');
-    } else if (ev.type === 'milestone') {
-      openWorkspace('work');
-    } else if (ev.type === 'appointment') {
-      openWorkspace('calendar');
-    }
-  }, [openWorkspace]);
+    downloadICS(ev);
+  }, []);
 
   const events = useMemo(() => {
     const now = startOfDay(new Date());
