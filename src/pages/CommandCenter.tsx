@@ -1055,15 +1055,15 @@ export default function CommandCenter() {
   return (
     <div className="max-w-5xl mx-auto space-y-4">
       {/* Sticky Header */}
-        <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] md:top-0 z-10 bg-background/95 backdrop-blur-sm -mx-4 px-4 py-3 border-b border-transparent [&:not(:first-child)]:border-border space-y-2">
+        <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] lg:top-0 z-10 bg-background/95 backdrop-blur-sm -mx-4 px-4 py-3 border-b border-transparent [&:not(:first-child)]:border-border space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <h1 className="text-lg md:text-xl font-bold leading-tight truncate">Command Center</h1>
+              <h1 className="text-lg lg:text-xl font-bold leading-tight truncate">Command Center</h1>
               <p className="text-sm text-muted-foreground truncate">{today}</p>
             </div>
 
             {/* Mobile: minimal controls */}
-            <div className="flex md:hidden items-center gap-1.5 shrink-0">
+            <div className="flex lg:hidden items-center gap-1.5 shrink-0">
               <DailyStreakBadge eodStreak={habitStats.eodStreak} briefStreak={habitStats.briefStreak} />
               <Button size="sm" variant="outline" className="h-9 text-xs" onClick={() => setShowQuickAdd(true)}>
                 <Plus className="h-3.5 w-3.5 mr-1" /> Add
@@ -1071,7 +1071,7 @@ export default function CommandCenter() {
             </div>
 
             {/* Desktop: Quick Add + Import on same row as title */}
-            <div className="hidden md:flex items-center gap-2 shrink-0">
+            <div className="hidden lg:flex items-center gap-2 shrink-0">
               <Button size="sm" variant="outline" onClick={() => setShowCSVImport(true)} aria-label="Import CSV">
                 <Upload className="h-3.5 w-3.5 mr-1" /> Import
               </Button>
@@ -1082,7 +1082,7 @@ export default function CommandCenter() {
           </div>
 
           {/* Desktop: toolbar row */}
-          <div className="hidden md:flex items-center gap-2 flex-wrap">
+          <div className="hidden lg:flex items-center gap-2 flex-wrap">
             <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5" onClick={async () => {
               const btn = document.activeElement as HTMLButtonElement;
               btn?.blur();
@@ -1117,7 +1117,7 @@ export default function CommandCenter() {
           </div>
 
           {/* Mobile: secondary row with key actions */}
-          <div className="flex md:hidden items-center gap-2 overflow-x-auto pb-1 -mb-1">
+          <div className="flex lg:hidden items-center gap-2 overflow-x-auto pb-1 -mb-1">
             <div data-tour="focus-mode">
               <FocusModeSelector mode={focusMode} onModeChange={updateFocusMode} />
             </div>
