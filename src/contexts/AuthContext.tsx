@@ -134,6 +134,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           monthlyTarget: 32000,
         }, user.id);
 
+        // Auto-grant pro access for reviewer accounts (replaces old entitlement bypass)
+        await supabase.from('user_entitlements').upsert({
+          user_id: user.id,
+          is_pro: true,
+          is_trial: false,
+          source: 'admin_grant',
+          expires_at: null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+
         await supabase.from('profiles').update({ onboarding_completed: true } as any).eq('user_id', user.id);
         setOnboardingCompletedState(true);
       } catch (err) {
