@@ -222,6 +222,19 @@
   }
 }
 
+@layer base {
+  @media (hover: none) and (pointer: coarse) {
+    button,
+    [role="button"],
+    a,
+    summary,
+    [data-radix-collection-item] {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+  }
+}
+
 @layer utilities {
   .status-dot {
     @apply inline-block w-2 h-2 rounded-full;
