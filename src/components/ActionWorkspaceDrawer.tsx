@@ -331,10 +331,20 @@ export function ActionWorkspaceDrawer({
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && handleClose()}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto p-0">
+      <SheetContent
+        className="w-full md:max-w-lg overflow-y-auto p-0"
+        style={{
+          paddingLeft: 'env(safe-area-inset-left, 0px)',
+          paddingRight: 'env(safe-area-inset-right, 0px)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
+      >
         <PanelErrorBoundary>
           {/* Header */}
-          <div className="sticky top-0 z-10 bg-card border-b border-border px-5 py-4">
+          <div
+            className="sticky top-0 z-10 bg-card border-b border-border px-5 py-4"
+            style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
+          >
             <div className="flex items-center justify-between mb-2">
               <div className="min-w-0 flex-1">
                 <SheetTitle className="text-base leading-tight">{context.entityName}</SheetTitle>
@@ -349,6 +359,15 @@ export function ActionWorkspaceDrawer({
                     {formatCurrency(context.value)}
                   </span>
                 )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 touch-manipulation"
+                  onClick={handleClose}
+                  aria-label="Close action workspace"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
             </div>
             <p className="text-xs text-muted-foreground">{context.confidence.reason}</p>

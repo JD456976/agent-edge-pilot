@@ -477,10 +477,20 @@ export function ActionComposerDrawer({
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && handleClose()}>
-      <SheetContent className="w-full sm:max-w-2xl lg:max-w-4xl overflow-y-auto p-0">
+      <SheetContent
+        className="w-full md:max-w-2xl lg:max-w-4xl overflow-y-auto p-0"
+        style={{
+          paddingLeft: 'env(safe-area-inset-left, 0px)',
+          paddingRight: 'env(safe-area-inset-right, 0px)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
+      >
         <PanelErrorBoundary>
           {/* Header */}
-          <div className="sticky top-0 z-10 bg-card border-b border-border px-5 py-3">
+          <div
+            className="sticky top-0 z-10 bg-card border-b border-border px-5 py-3"
+            style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}
+          >
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <SheetTitle className="text-base leading-tight">{context.entityName}</SheetTitle>
@@ -497,6 +507,9 @@ export function ActionComposerDrawer({
                     {formatCurrency(context.value)}
                   </span>
                 )}
+                <Button variant="ghost" size="icon" className="h-8 w-8 touch-manipulation" onClick={handleClose} aria-label="Close action composer">
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>
