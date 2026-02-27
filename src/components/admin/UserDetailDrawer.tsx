@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, ShieldCheck, Crown } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Loader2, ShieldCheck, Crown, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { UserRole } from '@/types';
 
@@ -28,6 +29,13 @@ interface UserDetail {
   isProtected: boolean;
   createdAt: string;
   teams: { teamId: string; teamName: string; teamRole: string }[];
+  // Entitlement info
+  isPro: boolean;
+  isTrial: boolean;
+  expiresAt: string | null;
+  trialEndsAt: string | null;
+  source: string | null;
+  stripeSubscriptionId: string | null;
 }
 
 export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props) {
@@ -36,6 +44,7 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Editable fields
   const [name, setName] = useState('');
@@ -60,7 +69,7 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
       supabase.from('user_roles').select('role').eq('user_id', userId).single(),
       supabase.from('team_members').select('team_id, role').eq('user_id', userId),
       supabase.from('teams').select('id, name'),
-      supabase.from('user_entitlements').select('*').eq('user_id', userId).eq('source', 'admin_grant').maybeSingle(),
+      supabase.from('user_entitlements').select('*').eq('user_id', userId).maybeSingle(),
     ]);
 
     // Pro grant state
@@ -89,6 +98,12 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
         isProtected: profile.is_protected,
         createdAt: profile.created_at,
         teams: userTeams,
+        isPro: entitlement?.is_pro ?? false,
+        isTrial: entitlement?.is_trial ?? false,
+        expiresAt: entitlement?.expires_at ?? null,
+        trialEndsAt: entitlement?.trial_ends_at ?? null,
+        source: entitlement?.source ?? null,
+        stripeSubscriptionId: entitlement?.stripe_subscription_id ?? null,
       };
 
       setDetail(d);
@@ -157,7 +172,7 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
           await logAdminAction('pro_access_granted', { userId, expires_at: proExpiresAt || 'never' });
         } else {
           await supabase.from('user_entitlements')
-            .update({ is_pro: false, source: 'admin_revoked', updated_at: new Date().toISOString() })
+            .update({ is_pro: false, is_trial: false, source: 'admin_revoked', updated_at: new Date().toISOString() })
             .eq('user_id', userId);
           await logAdminAction('pro_access_revoked', { userId });
         }
@@ -171,6 +186,24 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
     setSaving(false);
   };
 
+  const handleDeleteUser = async () => {
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+        body: { targetUserId: userId },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+
+      toast({ title: 'User deleted', description: 'Account and all data have been permanently removed.' });
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      toast({ title: 'Delete failed', description: err.message, variant: 'destructive' });
+    }
+    setDeleting(false);
+  };
+
   const toggleTeam = (teamId: string) => {
     setSelectedTeamIds(prev =>
       prev.includes(teamId) ? prev.filter(t => t !== teamId) : [...prev, teamId]
@@ -178,6 +211,18 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
   };
 
   const isSelf = userId === user?.id;
+
+  // Determine subscription status label
+  const getSubscriptionLabel = () => {
+    if (!detail) return null;
+    if (detail.source === 'stripe' && detail.isPro) return { label: 'Stripe Pro', variant: 'default' as const };
+    if (detail.source === 'stripe' && detail.isTrial) return { label: 'Stripe Trial', variant: 'secondary' as const };
+    if (detail.source === 'admin_grant' && detail.isPro) return { label: 'Admin Granted', variant: 'outline' as const };
+    if (detail.source === 'admin_revoked') return { label: 'Revoked', variant: 'destructive' as const };
+    return { label: 'No Subscription', variant: 'secondary' as const };
+  };
+
+  const subLabel = getSubscriptionLabel();
 
   return (
     <Sheet open onOpenChange={onClose}>
@@ -221,7 +266,6 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="agent">Agent</SelectItem>
-                  <SelectItem value="reviewer">Reviewer</SelectItem>
                   <SelectItem value="beta">Beta</SelectItem>
                 </SelectContent>
               </Select>
@@ -259,32 +303,56 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
               </div>
             )}
 
-            {/* Pro Access Grant */}
+            {/* Subscription Status */}
             <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
-              <div className="flex items-center gap-2">
-                <Crown className="h-4 w-4 text-primary" />
-                <Label className="text-xs font-semibold">Pro Access</Label>
-              </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm">Grant free Pro access</span>
-                <Switch
-                  checked={hasProGrant}
-                  onCheckedChange={setHasProGrant}
-                  disabled={isReviewer}
-                />
+                <div className="flex items-center gap-2">
+                  <Crown className="h-4 w-4 text-primary" />
+                  <Label className="text-xs font-semibold">Subscription</Label>
+                </div>
+                {subLabel && <Badge variant={subLabel.variant} className="text-[10px]">{subLabel.label}</Badge>}
               </div>
-              {hasProGrant && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Expires (optional, leave blank for indefinite)</Label>
-                  <Input
-                    type="date"
-                    value={proExpiresAt}
-                    onChange={e => setProExpiresAt(e.target.value)}
+
+              {/* Show current subscription details */}
+              {detail.expiresAt && (
+                <p className="text-xs text-muted-foreground">
+                  {detail.isPro ? 'Pro' : detail.isTrial ? 'Trial' : 'Access'} expires: {new Date(detail.expiresAt).toLocaleDateString()}
+                </p>
+              )}
+              {detail.trialEndsAt && detail.isTrial && (
+                <p className="text-xs text-muted-foreground">
+                  Trial ends: {new Date(detail.trialEndsAt).toLocaleDateString()}
+                </p>
+              )}
+              {detail.stripeSubscriptionId && (
+                <p className="text-[10px] text-muted-foreground font-mono">
+                  Stripe: {detail.stripeSubscriptionId.slice(0, 20)}…
+                </p>
+              )}
+
+              <div className="border-t border-primary/10 pt-2 mt-2">
+                <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wide">Admin Override</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Grant Pro access</span>
+                  <Switch
+                    checked={hasProGrant}
+                    onCheckedChange={setHasProGrant}
                     disabled={isReviewer}
-                    min={new Date().toISOString().slice(0, 10)}
                   />
                 </div>
-              )}
+                {hasProGrant && (
+                  <div className="space-y-1.5 mt-2">
+                    <Label className="text-xs text-muted-foreground">Expiration date (blank = indefinite)</Label>
+                    <Input
+                      type="date"
+                      value={proExpiresAt}
+                      onChange={e => setProExpiresAt(e.target.value)}
+                      disabled={isReviewer}
+                      min={new Date().toISOString().slice(0, 10)}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Created date */}
@@ -299,6 +367,37 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
                 {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
                 Save Changes
               </Button>
+            )}
+
+            {/* Delete User */}
+            {!isReviewer && !detail.isProtected && !isSelf && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" className="w-full" size="sm">
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete User
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Permanently delete this user?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently remove <strong>{detail.name}</strong> ({detail.email}) and all their data including leads, deals, tasks, activity history, and settings. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteUser}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={deleting}
+                    >
+                      {deleting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                      Delete Permanently
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
           </div>
         )}

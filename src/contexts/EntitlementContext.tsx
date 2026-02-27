@@ -30,7 +30,7 @@ const DEFAULT_STATE: EntitlementState = {
 const EntitlementContext = createContext<EntitlementContextType | undefined>(undefined);
 
 export function EntitlementProvider({ children }: { children: React.ReactNode }) {
-  const { isReviewer, user } = useAuth();
+  const { user } = useAuth();
   const [state, setState] = useState<EntitlementState>(DEFAULT_STATE);
   const [loading, setLoading] = useState(true);
   const mountedRef = useRef(true);
@@ -105,7 +105,7 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
-  const canWrite = isReviewer || state.isPro || state.isTrial;
+  const canWrite = state.isPro || state.isTrial;
 
   return (
     <EntitlementContext.Provider value={{ entitlementState: state, loading, canWrite, startCheckout, manageSubscription, refresh }}>
