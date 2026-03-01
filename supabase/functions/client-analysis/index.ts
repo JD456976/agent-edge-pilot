@@ -271,6 +271,129 @@ function analyzeActivities(activities: ActivityRow[], leadData: any, clientIdent
   };
 }
 
+function computeClientFit(analysis: any, totalActivities: number, daysSinceLast: number): object {
+  let difficulty = 0;
+  const red_flags: string[] = [];
+  const positive_signals: string[] = [];
+
+  // RESPONSIVENESS
+  if (analysis.communication_insights.responsiveness === 'slow') {
+    difficulty += 20;
+    red_flags.push('Low response rate — agent initiates most contact');
+  }
+  if (analysis.communication_insights.responsiveness === 'very_responsive') {
+    positive_signals.push('Highly responsive communicator');
+  }
+
+  // INBOUND/OUTBOUND RATIO
+  const inbound = analysis.communication_insights.inbound_count;
+  const outbound = analysis.communication_insights.outbound_count;
+  const total = analysis.communication_insights.total_interactions;
+  if (total >= 5 && outbound > 0 && inbound / outbound < 0.3) {
+    difficulty += 25;
+    red_flags.push('Agent initiating 70%+ of contact — client not engaging');
+  } else if (total >= 5 && inbound >= outbound) {
+    positive_signals.push('Client initiates contact regularly');
+  }
+
+  // STAGNATION
+  if (total >= 10 && analysis.readiness_stage === 'exploring') {
+    difficulty += 15;
+    red_flags.push(`${total} interactions but still in early exploration — possible tire-kicker`);
+  }
+  if (total >= 15 && analysis.readiness_stage === 'unknown') {
+    difficulty += 20;
+    red_flags.push('Extensive contact history but intent remains unclear');
+  }
+
+  // RECENCY
+  if (daysSinceLast > 30 && total >= 5) {
+    difficulty += 15;
+    red_flags.push(`No contact in ${Math.round(daysSinceLast)} days despite prior engagement`);
+  } else if (daysSinceLast > 14 && total >= 5) {
+    difficulty += 8;
+    red_flags.push(`Contact gap widening — last interaction ${Math.round(daysSinceLast)} days ago`);
+  }
+
+  // DATA GAPS
+  const gapCount = analysis.data_gaps.length;
+  if (total >= 8 && gapCount >= 3) {
+    difficulty += 15;
+    red_flags.push('Client withholding key info (budget, location, intent) despite many interactions');
+  }
+
+  // PRE-APPROVAL
+  if (analysis.client_type === 'buyer' && analysis.budget.pre_approved === 'unknown' && total >= 8) {
+    difficulty += 10;
+    red_flags.push('Buyer has not discussed pre-approval after 8+ interactions');
+  }
+
+  // BUDGET UNKNOWN
+  if (total >= 6 && analysis.budget.price_range_low === null && analysis.client_type !== 'seller') {
+    difficulty += 8;
+    red_flags.push('No budget indicators detected after multiple interactions');
+  }
+
+  // POSITIVE SIGNALS
+  if (analysis.readiness_stage === 'ready_to_offer') positive_signals.push('Ready to make an offer');
+  if (analysis.readiness_stage === 'actively_searching') positive_signals.push('Actively searching — high intent');
+  if (analysis.budget.pre_approved === 'yes') positive_signals.push('Pre-approved for financing');
+  if (analysis.timeline.urgency === 'urgent') positive_signals.push('Motivated by deadline or life event');
+  if (analysis.budget.price_range_low !== null) positive_signals.push('Has shared budget parameters');
+
+  // CADENCE
+  const avgGap = analysis.communication_insights.avg_gap_days;
+  if (avgGap > 14 && total >= 5) {
+    difficulty += 8;
+    red_flags.push(`Slow communication cadence — averaging ${avgGap} days between contacts`);
+  } else if (avgGap > 0 && avgGap < 5 && total >= 5) {
+    positive_signals.push('Tight, consistent communication cadence');
+  }
+
+  difficulty = Math.min(100, Math.max(0, difficulty));
+
+  const agent_recommendation =
+    difficulty <= 25 ? 'take' :
+    difficulty <= 55 ? 'nurture' :
+    'pass';
+
+  const time_investment_estimate =
+    difficulty <= 25 ? 'low' :
+    difficulty <= 55 ? 'medium' :
+    'high';
+
+  const commission_likelihood =
+    analysis.readiness_stage === 'ready_to_offer' && difficulty <= 40 ? 'high' :
+    analysis.readiness_stage === 'actively_searching' && difficulty <= 55 ? 'medium' :
+    difficulty > 55 ? 'low' :
+    'medium';
+
+  let reasoning = '';
+  if (total < 3) {
+    reasoning = 'Insufficient interaction history to evaluate client fit. Continue building rapport before assessing.';
+  } else if (agent_recommendation === 'take') {
+    reasoning = `${analysis.communication_insights.responsiveness === 'very_responsive' ? 'Strong communicator' : 'Engaged client'} with ${total} interactions${positive_signals.length ? ' and clear positive signals' : ''}. Low risk to take on.`;
+  } else if (agent_recommendation === 'nurture') {
+    reasoning = `Some positive indicators but ${red_flags.length} concern${red_flags.length > 1 ? 's' : ''} noted. Continue qualifying before investing significant time.`;
+  } else {
+    reasoning = `High difficulty score driven by ${red_flags.slice(0, 2).join(' and ').toLowerCase()}. Carefully consider time investment before committing.`;
+  }
+
+  const insufficient_data = total < 3;
+
+  return {
+    difficulty_score: insufficient_data ? null : difficulty,
+    time_investment_estimate: insufficient_data ? null : time_investment_estimate,
+    commission_likelihood: insufficient_data ? null : commission_likelihood,
+    agent_recommendation: insufficient_data ? null : agent_recommendation,
+    red_flags,
+    positive_signals,
+    reasoning,
+    insufficient_data,
+    scored_at: new Date().toISOString(),
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -375,6 +498,14 @@ Deno.serve(async (req) => {
 
     // Build analysis from raw data
     const analysis = analyzeActivities(activityData, leadData, clientIdentity);
+
+    // Compute deterministic client fit scoring
+    const cfNow = Date.now();
+    const cfLastActivity = activityData.length
+      ? new Date(activityData[0].occurred_at).getTime()
+      : 0;
+    const cfDaysSinceLast = cfLastActivity ? (cfNow - cfLastActivity) / (1000 * 60 * 60 * 24) : 999;
+    (analysis as any).client_fit = computeClientFit(analysis, activityData.length, cfDaysSinceLast);
 
     // Persist
     await serviceClient

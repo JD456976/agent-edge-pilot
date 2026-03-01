@@ -25,6 +25,20 @@ const TAG_SCORE_BOOSTS: Record<string, number> = {
   'luxury': 12,
   'enrich': 5,
   'vip': 15,
+  'high_maintenance': -12,
+  'tire_kicker': -15,
+  'difficult': -10,
+  'unrealistic': -10,
+  'price_sensitive': -6,
+  'not_motivated': -8,
+  'low_budget': -5,
+  'motivated': 12,
+  'serious': 10,
+  'relocating': 12,
+  'pre_approved': 15,
+  'cash_buyer': 18,
+  'repeat_client': 10,
+  'referral': 8,
 };
 
 /**
