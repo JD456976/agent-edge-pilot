@@ -9,6 +9,7 @@ import {
   Phone, MessageSquare, Mail, ListTodo, StickyNote,
   Copy, Check, Shield, ChevronDown, ChevronUp,
   Clock, AlertTriangle, TrendingUp, Target, X,
+  Send, Loader2, ArrowUpRight, ArrowDownLeft,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -16,10 +17,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFubSend } from '@/hooks/useFubSend';
 import { toast } from '@/hooks/use-toast';
 import { ActivityTrail } from '@/components/ActivityTrail';
 import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
@@ -312,6 +315,46 @@ export function ActionComposerDrawer({
   const [noteText, setNoteText] = useState('');
   const [savedNotes, setSavedNotes] = useState<Array<{ id: string; note: string; created_at: string }>>([]);
 
+  // FUB send state
+  const [fubPersonId, setFubPersonId] = useState<number | null>(null);
+  const [quickSendMode, setQuickSendMode] = useState(false);
+  const [textSent, setTextSent] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [recentFubActivities, setRecentFubActivities] = useState<Array<{ activity_type: string; direction?: string; body_preview?: string; subject?: string; occurred_at: string; duration_seconds?: number }>>([]);
+
+  // Derive FUB person ID
+  useEffect(() => {
+    if (!entity) { setFubPersonId(null); return; }
+    const importedFrom = (entity as any)?.importedFrom || (entity as any)?.imported_from;
+    if (importedFrom?.startsWith('fub:')) {
+      setFubPersonId(parseInt(importedFrom.replace('fub:', '')));
+    } else {
+      setFubPersonId(null);
+    }
+  }, [entity]);
+
+  // Load FUB activities
+  useEffect(() => {
+    if (!entity || !open || !fubPersonId) {
+      setRecentFubActivities([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { callEdgeFunction } = await import('@/lib/edgeClient');
+        const result = await callEdgeFunction('fub-activity', {
+          fub_person_id: fubPersonId,
+          entity_id: (entity as any).id,
+          limit: 25,
+        });
+        if (!cancelled && result?.activities) setRecentFubActivities(result.activities);
+      } catch { /* non-critical */ }
+    })();
+    return () => { cancelled = true; };
+  }, [entity, open, fubPersonId]);
+
+
   const loadNotes = useCallback(async (eType: string, eId: string) => {
     const { data } = await supabase
       .from('activity_events')
@@ -336,6 +379,13 @@ export function ActionComposerDrawer({
     if (!entity) return null;
     return buildExecutionContext(entity, entityType, moneyResult, oppResult, tasks);
   }, [entity, entityType, moneyResult, oppResult, tasks]);
+
+  // FUB send hook (after context is defined)
+  const fubSendOptions = useMemo(() => {
+    if (!fubPersonId || !context) return null;
+    return { fubPersonId, entityId: context.entityId, entityType: context.entityType };
+  }, [fubPersonId, context]);
+  const { sendText, sendEmail, sending } = useFubSend(fubSendOptions);
 
   const draft = useMemo((): CommunicationDraft | null => {
     if (!context) return null;
@@ -384,6 +434,9 @@ export function ActionComposerDrawer({
     setSavedNotes([]);
     setShowObjections(false);
     setCopiedField(null);
+    setTextSent(false);
+    setEmailSent(false);
+    setQuickSendMode(false);
     onClose();
   }, [onClose]);
 
@@ -618,13 +671,42 @@ export function ActionComposerDrawer({
                         <Check className="h-3.5 w-3.5" /> Outcome logged
                       </div>
                     )}
+                    {/* Call History */}
+                    {(() => {
+                      const callHistory = recentFubActivities.filter(a =>
+                        ['call', 'calls'].includes(a.activity_type)
+                      );
+                      if (callHistory.length === 0) return null;
+                      return (
+                        <div className="border-t border-border pt-3 space-y-2">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Call History</p>
+                          {callHistory.slice(0, 8).map((a, i) => (
+                            <div key={i} className="flex items-start gap-2 text-xs p-2 rounded-md bg-muted/30">
+                              {a.direction === 'inbound' ? <ArrowDownLeft className="h-3 w-3 text-opportunity shrink-0 mt-0.5" /> : <ArrowUpRight className="h-3 w-3 text-primary shrink-0 mt-0.5" />}
+                              <div className="min-w-0 flex-1">
+                                <p className="text-muted-foreground">{a.direction === 'inbound' ? 'Incoming call' : 'Outgoing call'}{a.duration_seconds ? ` · ${Math.ceil(a.duration_seconds / 60)}m` : ''}</p>
+                                <p className="text-[10px] text-muted-foreground/60 mt-0.5">{new Date(a.occurred_at).toLocaleDateString()} {new Date(a.occurred_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
                 {/* TEXT */}
                 {activeTab === 'text' && (
                   <div className="space-y-3">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Templates</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Templates</p>
+                      {fubPersonId && (
+                        <div className="flex items-center gap-2">
+                          <Label className="text-[10px] text-muted-foreground">Quick Send</Label>
+                          <Switch checked={quickSendMode} onCheckedChange={setQuickSendMode} className="scale-75" />
+                        </div>
+                      )}
+                    </div>
                     {smsVariants.map((v, i) => (
                       <button key={i} onClick={() => setSelectedSmsIndex(i)}
                         className={cn('w-full text-left rounded-md border p-2.5 transition-colors', i === selectedSmsIndex ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30')}>
@@ -632,10 +714,56 @@ export function ActionComposerDrawer({
                         <p className="text-xs">{v.text}</p>
                       </button>
                     ))}
-                    <Button size="sm" variant="outline" className="text-xs" onClick={() => handleCopy(smsVariants[selectedSmsIndex]?.text || '', 'sms')}>
-                      {copiedField === 'sms' ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-                      {copiedField === 'sms' ? 'Copied' : 'Copy Text'}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="text-xs" onClick={() => handleCopy(smsVariants[selectedSmsIndex]?.text || '', 'sms')}>
+                        {copiedField === 'sms' ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                        {copiedField === 'sms' ? 'Copied' : 'Copy Text'}
+                      </Button>
+                      {textSent ? (
+                        <div className="flex items-center gap-1.5 text-xs text-opportunity px-2">
+                          <Check className="h-3.5 w-3.5" /> Sent via FUB
+                        </div>
+                      ) : fubPersonId ? (
+                        <Button size="sm" className="text-xs" disabled={sending} onClick={async () => {
+                          const msg = smsVariants[selectedSmsIndex]?.text || '';
+                          if (!msg) return;
+                          if (quickSendMode) {
+                            const ok = await sendText(msg);
+                            if (ok) setTextSent(true);
+                          } else {
+                            if (confirm(`Send this text via FUB?\n\n"${msg.slice(0, 120)}${msg.length > 120 ? '...' : ''}"`)) {
+                              const ok = await sendText(msg);
+                              if (ok) setTextSent(true);
+                            }
+                          }
+                        }}>
+                          {sending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                          Send via FUB
+                        </Button>
+                      ) : null}
+                    </div>
+
+                    {/* Text History */}
+                    {(() => {
+                      const textHistory = recentFubActivities.filter(a =>
+                        ['text', 'sms', 'textMessage', 'textMessages'].includes(a.activity_type)
+                      );
+                      if (textHistory.length === 0) return null;
+                      return (
+                        <div className="border-t border-border pt-3 space-y-2">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Text History</p>
+                          {textHistory.slice(0, 8).map((a, i) => (
+                            <div key={i} className="flex items-start gap-2 text-xs p-2 rounded-md bg-muted/30">
+                              {a.direction === 'inbound' ? <ArrowDownLeft className="h-3 w-3 text-opportunity shrink-0 mt-0.5" /> : <ArrowUpRight className="h-3 w-3 text-primary shrink-0 mt-0.5" />}
+                              <div className="min-w-0 flex-1">
+                                <p className="text-muted-foreground truncate">{a.body_preview || 'No preview'}</p>
+                                <p className="text-[10px] text-muted-foreground/60 mt-0.5">{new Date(a.occurred_at).toLocaleDateString()} {new Date(a.occurred_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -663,10 +791,50 @@ export function ActionComposerDrawer({
                       </div>
                       <Textarea value={displayEmail} onChange={e => setEditedEmail(e.target.value)} className="min-h-[180px] text-xs" />
                     </div>
-                    <Button size="sm" variant="outline" className="text-xs" onClick={() => handleCopy(displayEmail, 'email')}>
-                      {copiedField === 'email' ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-                      {copiedField === 'email' ? 'Copied' : 'Copy Email'}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="text-xs" onClick={() => handleCopy(displayEmail, 'email')}>
+                        {copiedField === 'email' ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                        {copiedField === 'email' ? 'Copied' : 'Copy Email'}
+                      </Button>
+                      {emailSent ? (
+                        <div className="flex items-center gap-1.5 text-xs text-opportunity px-2">
+                          <Check className="h-3.5 w-3.5" /> Sent via FUB
+                        </div>
+                      ) : fubPersonId ? (
+                        <Button size="sm" className="text-xs" disabled={sending} onClick={async () => {
+                          if (confirm(`Send this email via FUB?\n\nSubject: ${draft.email.subject}`)) {
+                            const ok = await sendEmail(draft.email.subject, displayEmail);
+                            if (ok) setEmailSent(true);
+                          }
+                        }}>
+                          {sending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                          Send via FUB
+                        </Button>
+                      ) : null}
+                    </div>
+
+                    {/* Email History */}
+                    {(() => {
+                      const emailHistory = recentFubActivities.filter(a =>
+                        ['email', 'emails'].includes(a.activity_type)
+                      );
+                      if (emailHistory.length === 0) return null;
+                      return (
+                        <div className="border-t border-border pt-3 space-y-2">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Email History</p>
+                          {emailHistory.slice(0, 8).map((a, i) => (
+                            <div key={i} className="flex items-start gap-2 text-xs p-2 rounded-md bg-muted/30">
+                              {a.direction === 'inbound' ? <ArrowDownLeft className="h-3 w-3 text-opportunity shrink-0 mt-0.5" /> : <ArrowUpRight className="h-3 w-3 text-primary shrink-0 mt-0.5" />}
+                              <div className="min-w-0 flex-1">
+                                {a.subject && <p className="font-medium text-foreground truncate">{a.subject}</p>}
+                                <p className="text-muted-foreground truncate">{a.body_preview || 'No preview'}</p>
+                                <p className="text-[10px] text-muted-foreground/60 mt-0.5">{new Date(a.occurred_at).toLocaleDateString()} {new Date(a.occurred_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 

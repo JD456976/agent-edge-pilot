@@ -1632,6 +1632,15 @@ export default function CommandCenter() {
           completeTask(taskId);
           showPostActionToast('handled');
         }}
+        onWorkEntity={(entityType, entityId) => {
+          if (entityType === 'deal') {
+            const deal = deals.find(d => d.id === entityId);
+            if (deal) setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: moneyResults.find(r => r.dealId === entityId) || null });
+          } else {
+            const lead = leads.find(l => l.id === entityId);
+            if (lead) setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: opportunityResults.find(r => r.leadId === entityId) || null });
+          }
+        }}
         snoozeCount={selectedItem ? getSnoozeCount(selectedItem.kind === 'action' ? selectedItem.data.id : '') : 0}
       />
 

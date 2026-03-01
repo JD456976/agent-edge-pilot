@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Zap, DollarSign, AlertTriangle, TrendingUp, Eye, Check, Phone } from 'lucide-react';
+import { X, Zap, DollarSign, AlertTriangle, TrendingUp, Eye, Check, Phone, Briefcase } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LogTouchModal } from '@/components/LogTouchModal';
@@ -20,6 +20,7 @@ interface Props {
   item: DetailItem | null;
   onClose: () => void;
   onComplete?: (taskId: string) => void;
+  onWorkEntity?: (entityType: 'deal' | 'lead', entityId: string) => void;
   snoozeCount?: number;
 }
 
@@ -85,7 +86,7 @@ function ExplanationList({ explanation }: { explanation: string[] }) {
   );
 }
 
-export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 }: Props) {
+export function ActionDetailDrawer({ item, onClose, onComplete, onWorkEntity, snoozeCount = 0 }: Props) {
   const [showTouch, setShowTouch] = useState(false);
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const { toast } = useToast();
@@ -245,7 +246,13 @@ export function ActionDetailDrawer({ item, onClose, onComplete, snoozeCount = 0 
                 Log Touch
               </Button>
             )}
-            <Button size="sm" variant="outline" className="flex-1" onClick={onClose}>
+            {touchEntityType && touchEntityId && onWorkEntity && (
+              <Button size="sm" variant="default" className="flex-1" onClick={() => { onWorkEntity(touchEntityType, touchEntityId); onClose(); }}>
+                <Briefcase className="h-3.5 w-3.5 mr-1" />
+                Work This
+              </Button>
+            )}
+            <Button size="sm" variant="outline" onClick={onClose}>
               Close
             </Button>
           </div>
