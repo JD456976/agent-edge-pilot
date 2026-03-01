@@ -11,6 +11,12 @@ const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // Disabled — superseded by deterministic LocalIntelBriefPanel
+  return new Response(
+    JSON.stringify({ error: 'intel-brief is disabled. Use the client-analysis edge function instead.' }),
+    { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer "))
