@@ -21,6 +21,7 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const anonClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -28,8 +29,27 @@ Deno.serve(async (req) => {
     const { data: { user } } = await anonClient.auth.getUser();
     if (!user) throw new Error("Unauthorized");
 
+    const serviceClient = createClient(supabaseUrl, serviceKey);
+
     const { audio_text, entity_type, entity_id, entity_title } = await req.json();
     if (!audio_text) throw new Error("audio_text required (browser-side transcription)");
+
+    // Rate limit check
+    const { checkAndLogUsage } = await import('../_shared/rateLimiter.ts');
+    const rateCheck = await checkAndLogUsage(serviceClient, user.id, {
+      functionName: 'voice-transcribe',
+      dailyLimit: 20,
+    });
+    if (!rateCheck.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: 'Daily limit reached',
+          message: `You've used ${rateCheck.used}/${rateCheck.limit} AI requests today. Limit resets at midnight.`,
+          limitExceeded: true,
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Use AI to clean up and summarize the transcription
     const aiRes = await fetch(AI_GATEWAY_URL, {

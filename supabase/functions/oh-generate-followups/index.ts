@@ -53,6 +53,23 @@ Deno.serve(async (req) => {
     const { data: visitors } = await query;
     if (!visitors?.length) throw new Error('No visitors found');
 
+    // Rate limit check
+    const { checkAndLogUsage } = await import('../_shared/rateLimiter.ts');
+    const rateCheck = await checkAndLogUsage(serviceClient, user.id, {
+      functionName: 'oh-generate-followups',
+      dailyLimit: 10,
+    });
+    if (!rateCheck.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: 'Daily limit reached',
+          message: `You've used ${rateCheck.used}/${rateCheck.limit} AI requests today. Limit resets at midnight.`,
+          limitExceeded: true,
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const drafts: any[] = [];
 
     for (const visitor of visitors.slice(0, 10)) {
