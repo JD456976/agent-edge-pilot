@@ -116,29 +116,29 @@ function formatCurrency(n: number) {
   return n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
 }
 
-const riskBadge: Record<RiskLevel, { variant: 'urgent' | 'warning' | 'opportunity'; label: string }> = {
+const riskBadge: Record<RiskLevel, {variant: 'urgent' | 'warning' | 'opportunity';label: string;}> = {
   red: { variant: 'urgent', label: 'High Risk' },
   yellow: { variant: 'warning', label: 'At Risk' },
-  green: { variant: 'opportunity', label: 'On Track' },
+  green: { variant: 'opportunity', label: 'On Track' }
 };
 
 type DetailItem =
-  | { kind: 'action'; data: CommandCenterAction }
-  | { kind: 'deal'; data: CommandCenterDealAtRisk }
-  | { kind: 'opportunity'; data: CommandCenterOpportunity }
-  | { kind: 'speedAlert'; data: CommandCenterSpeedAlert };
+{kind: 'action';data: CommandCenterAction;} |
+{kind: 'deal';data: CommandCenterDealAtRisk;} |
+{kind: 'opportunity';data: CommandCenterOpportunity;} |
+{kind: 'speedAlert';data: CommandCenterSpeedAlert;};
 
 // Panels that render as pairs in a 2-col grid
 const PAIRED_PANELS: Set<PanelId> = new Set([
-  'money-at-risk', 'opportunity-heat',
-  'income-forecast', 'stability-score',
-  'income-volatility', 'pipeline-fragility',
-  'lead-decay', 'operational-load',
-  'deal-failure', 'ghosting-risk',
-  'referral-conversion', 'listing-performance',
-  'time-allocation', 'opportunity-radar',
-  'market-signals',
-]);
+'money-at-risk', 'opportunity-heat',
+'income-forecast', 'stability-score',
+'income-volatility', 'pipeline-fragility',
+'lead-decay', 'operational-load',
+'deal-failure', 'ghosting-risk',
+'referral-conversion', 'listing-performance',
+'time-allocation', 'opportunity-radar',
+'market-signals']
+);
 
 // PANEL_LABELS is now imported from useCommandCenterLayout
 
@@ -150,18 +150,18 @@ export default function CommandCenter() {
   const navigate = useNavigate();
   const { pendingNavigation, clearNavigation } = useEntityNavigation();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [quickAddPrefill, setQuickAddPrefill] = useState<{ title?: string; leadId?: string; dealId?: string }>({});
+  const [quickAddPrefill, setQuickAddPrefill] = useState<{title?: string;leadId?: string;dealId?: string;}>({});
   const [showLogTouch, setShowLogTouch] = useState(false);
   const [showTouchPicker, setShowTouchPicker] = useState(false);
-  const [touchTarget, setTouchTarget] = useState<{ entityType: 'lead' | 'deal'; entityId: string; entityTitle: string } | null>(null);
+  const [touchTarget, setTouchTarget] = useState<{entityType: 'lead' | 'deal';entityId: string;entityTitle: string;} | null>(null);
   const [showEodReview, setShowEodReview] = useState(false);
-  const [executionEntity, setExecutionEntity] = useState<{ entity: Deal | Lead; entityType: 'deal' | 'lead'; moneyResult?: MoneyModelResult | null; oppResult?: OpportunityHeatResult | null } | null>(null);
+  const [executionEntity, setExecutionEntity] = useState<{entity: Deal | Lead;entityType: 'deal' | 'lead';moneyResult?: MoneyModelResult | null;oppResult?: OpportunityHeatResult | null;} | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<DetailItem | null>(null);
   const [snoozedIds, setSnoozedIds] = useState<Set<string>>(new Set());
   const [hasFubIntegration, setHasFubIntegration] = useState(false);
   const [snoozeCounts, setSnoozeCounts] = useState<Record<string, number>>(() => {
-    try { return JSON.parse(localStorage.getItem(SNOOZE_STORAGE_KEY) || '{}'); } catch { return {}; }
+    try {return JSON.parse(localStorage.getItem(SNOOZE_STORAGE_KEY) || '{}');} catch {return {};}
   });
   const [stressReductionDismissed, setStressReductionDismissed] = useState(false);
   const [editMode_unused, setEditMode_unused] = useState(false); // kept for compat but unused
@@ -195,7 +195,7 @@ export default function CommandCenter() {
   // User Maturity & Adaptive Mode
   const maturity = useUserMaturity();
   const [fullViewOverride, setFullViewOverride] = useState(() => {
-    try { return localStorage.getItem('dp-full-view') === 'true'; } catch { return false; }
+    try {return localStorage.getItem('dp-full-view') === 'true';} catch {return false;}
   });
 
   // Progressive unlock notification
@@ -221,7 +221,7 @@ export default function CommandCenter() {
   const {
     panelOrder, hiddenPanels, editMode, isDragging, setIsDragging,
     toggleEditMode, reorder, togglePanelVisibility, isPanelHidden,
-    applyPreset, resetToDefault, showAllPanels, visibleCount, totalCount,
+    applyPreset, resetToDefault, showAllPanels, visibleCount, totalCount
   } = useCommandCenterLayout(user?.id);
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [showHiddenPanels, setShowHiddenPanels] = useState(false);
@@ -229,7 +229,7 @@ export default function CommandCenter() {
   // Minimal Mode Audit (dev only)
   useEffect(() => {
     if (focusMode === 'minimal' && !fullViewOverride) {
-      const visibleCount = panelOrder.filter(id => isPanelVisibleInMode(id, 'minimal', maturity.level, false)).length;
+      const visibleCount = panelOrder.filter((id) => isPanelVisibleInMode(id, 'minimal', maturity.level, false)).length;
       const report = computeMinimalModeAudit(visibleCount, maturity.level);
       logAuditReport(report);
     }
@@ -237,7 +237,7 @@ export default function CommandCenter() {
 
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
   const handleDragStart = useCallback((_event: DragStartEvent) => {
@@ -264,15 +264,15 @@ export default function CommandCenter() {
             // Undo by re-applying previous order
             reorder(prevOrderRef.current[0], prevOrderRef.current[0]); // trigger re-render
           }
-        },
-      }, React.createElement(Undo2, { className: 'h-3 w-3' }), 'Undo') as any,
+        }
+      }, React.createElement(Undo2, { className: 'h-3 w-3' }), 'Undo') as any
     });
   }, [reorder, setIsDragging, panelOrder, markSaving, markSaved]);
 
   // Daily Operating Mode
   const { currentMode } = useSessionMode();
 
-  const showPostActionToast = useCallback((kind: 'complete' | 'snooze' | 'handled', context?: { isRiskDeal?: boolean; isOverdue?: boolean; isOpportunity?: boolean; taskId?: string }) => {
+  const showPostActionToast = useCallback((kind: 'complete' | 'snooze' | 'handled', context?: {isRiskDeal?: boolean;isOverdue?: boolean;isOpportunity?: boolean;taskId?: string;}) => {
     const feedback = getPostActionFeedback(kind, context);
     if (kind === 'complete' && context?.taskId) {
       const taskId = context.taskId;
@@ -281,8 +281,8 @@ export default function CommandCenter() {
         duration: 5000,
         action: React.createElement('button', {
           className: 'inline-flex items-center gap-1 shrink-0 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors',
-          onClick: () => uncompleteTask(taskId),
-        }, React.createElement(Undo2, { className: 'h-3 w-3' }), 'Undo') as any,
+          onClick: () => uncompleteTask(taskId)
+        }, React.createElement(Undo2, { className: 'h-3 w-3' }), 'Undo') as any
       });
     } else {
       toast({ description: feedback.message, duration: 3000 });
@@ -290,8 +290,8 @@ export default function CommandCenter() {
   }, [uncompleteTask]);
 
   const handleSnooze = useCallback((id: string) => {
-    setSnoozedIds(prev => new Set(prev).add(id));
-    setSnoozeCounts(prev => {
+    setSnoozedIds((prev) => new Set(prev).add(id));
+    setSnoozeCounts((prev) => {
       const next = { ...prev, [id]: (prev[id] || 0) + 1 };
       localStorage.setItem(SNOOZE_STORAGE_KEY, JSON.stringify(next));
       return next;
@@ -306,7 +306,7 @@ export default function CommandCenter() {
 
   useEffect(() => {
     // Wait for DataContext to finish loading, or fallback after 600ms
-    if (!dataLoading) { setLoading(false); return; }
+    if (!dataLoading) {setLoading(false);return;}
     const t = setTimeout(() => setLoading(false), 600);
     return () => clearTimeout(t);
   }, [dataLoading]);
@@ -316,10 +316,10 @@ export default function CommandCenter() {
     (async () => {
       const { data: { user: u } } = await supabase.auth.getUser();
       if (!u) return;
-      const { data } = await (supabase.from('crm_integrations' as any)
-        .select('status')
-        .eq('user_id', u.id)
-        .maybeSingle() as any);
+      const { data } = await (supabase.from('crm_integrations' as any).
+      select('status').
+      eq('user_id', u.id).
+      maybeSingle() as any);
       setHasFubIntegration(data?.status === 'connected');
     })();
   }, []);
@@ -329,12 +329,12 @@ export default function CommandCenter() {
     (async () => {
       const { data: { user: u } } = await supabase.auth.getUser();
       if (!u) return;
-      const { data } = await (supabase.from('fub_appointments' as any)
-        .select('id, title, start_at, end_at, location, description')
-        .eq('user_id', u.id)
-        .gte('start_at', new Date().toISOString())
-        .order('start_at', { ascending: true })
-        .limit(100) as any);
+      const { data } = await (supabase.from('fub_appointments' as any).
+      select('id, title, start_at, end_at, location, description').
+      eq('user_id', u.id).
+      gte('start_at', new Date().toISOString()).
+      order('start_at', { ascending: true }).
+      limit(100) as any);
       setFubAppointments(data || []);
     })();
   }, []);
@@ -351,7 +351,7 @@ export default function CommandCenter() {
   // Market Conditions Layer
   const { conditions: marketConditions } = useMarketConditions();
 
-  const activeDeals = deals.filter(d => d.stage !== 'closed');
+  const activeDeals = deals.filter((d) => d.stage !== 'closed');
   const totalRevenue = activeDeals.reduce((s, d) => s + d.commission, 0);
   const dealsNeedingAttention = panels.dealsAtRisk.length;
 
@@ -365,7 +365,7 @@ export default function CommandCenter() {
     closing_7d_points: scoringPrefs.closing_7d_points,
     closing_3d_points: scoringPrefs.closing_3d_points,
     milestone_points: scoringPrefs.milestone_points,
-    drift_conflict_points: scoringPrefs.drift_conflict_points,
+    drift_conflict_points: scoringPrefs.drift_conflict_points
   } : undefined, [scoringPrefs, scoringLoaded]);
 
   const moneyResults = useMemo(() => {
@@ -377,8 +377,8 @@ export default function CommandCenter() {
   const { playbooks: cohortPlaybooks, situations: playbookSituations } = useNetworkPlaybooks(leads, deals, tasks, moneyResults, networkParticipation.showPlaybooks);
 
   const topMoneyAtRisk = useMemo(() => {
-    const sorted = [...moneyResults].filter(r => r.personalCommissionAtRisk > 0)
-      .sort((a, b) => b.personalCommissionAtRisk - a.personalCommissionAtRisk);
+    const sorted = [...moneyResults].filter((r) => r.personalCommissionAtRisk > 0).
+    sort((a, b) => b.personalCommissionAtRisk - a.personalCommissionAtRisk);
     return sorted[0] || null;
   }, [moneyResults]);
 
@@ -386,17 +386,17 @@ export default function CommandCenter() {
   const [userDefaults, setUserDefaults] = useState<UserCommissionDefaults | undefined>();
   useEffect(() => {
     if (!user?.id) return;
-    supabase.from('commission_defaults').select('*').eq('user_id', user.id).maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setUserDefaults({
-            typicalCommissionRate: data.default_commission_rate ? Number(data.default_commission_rate) : undefined,
-            typicalSplitPct: data.default_split ? Number(data.default_split) : undefined,
-            typicalReferralFeePct: data.default_referral_fee ? Number(data.default_referral_fee) : undefined,
-            typicalPriceMid: (data as any).typical_price_mid ? Number((data as any).typical_price_mid) : undefined,
-          });
-        }
-      });
+    supabase.from('commission_defaults').select('*').eq('user_id', user.id).maybeSingle().
+    then(({ data }) => {
+      if (data) {
+        setUserDefaults({
+          typicalCommissionRate: data.default_commission_rate ? Number(data.default_commission_rate) : undefined,
+          typicalSplitPct: data.default_split ? Number(data.default_split) : undefined,
+          typicalReferralFeePct: data.default_referral_fee ? Number(data.default_referral_fee) : undefined,
+          typicalPriceMid: (data as any).typical_price_mid ? Number((data as any).typical_price_mid) : undefined
+        });
+      }
+    });
   }, [user?.id]);
 
   const oppWeights = useMemo(() => scoringLoaded ? {
@@ -406,7 +406,7 @@ export default function CommandCenter() {
     engagement_points: scoringPrefs.engagement_points,
     gap_2d_points: scoringPrefs.gap_2d_points,
     gap_5d_points: scoringPrefs.gap_5d_points,
-    drift_new_lead_points: scoringPrefs.drift_new_lead_points,
+    drift_new_lead_points: scoringPrefs.drift_new_lead_points
   } : undefined, [scoringPrefs, scoringLoaded]);
 
   const opportunityResults = useMemo(() => {
@@ -423,15 +423,15 @@ export default function CommandCenter() {
     if (!pendingNavigation) return;
     const { entityId, entityType } = pendingNavigation;
     if (entityType === 'deal') {
-      const deal = deals.find(d => d.id === entityId);
+      const deal = deals.find((d) => d.id === entityId);
       if (deal) {
-        const mr = moneyResults.find(r => r.dealId === entityId) || null;
+        const mr = moneyResults.find((r) => r.dealId === entityId) || null;
         setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: mr });
       }
     } else {
-      const lead = leads.find(l => l.id === entityId);
+      const lead = leads.find((l) => l.id === entityId);
       if (lead) {
-        const or = opportunityResults.find(r => r.leadId === entityId) || null;
+        const or = opportunityResults.find((r) => r.leadId === entityId) || null;
         setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: or });
       }
     }
@@ -439,7 +439,7 @@ export default function CommandCenter() {
   }, [pendingNavigation, clearNavigation, deals, leads, moneyResults, opportunityResults]);
 
   // Apply Playbook handler
-  const handleApplyPlaybook = useCallback(async (playbook: NetworkPlaybook, situation: { entityId: string; entityType: 'lead' | 'deal'; entityTitle: string }) => {
+  const handleApplyPlaybook = useCallback(async (playbook: NetworkPlaybook, situation: {entityId: string;entityType: 'lead' | 'deal';entityTitle: string;}) => {
     const timingToMs: Record<string, number> = { now: 0, under_1h: 3600000, same_day: 14400000, next_day: 86400000 };
     for (const step of playbook.steps) {
       const dueAt = new Date(Date.now() + (timingToMs[step.timing_bucket] || 0)).toISOString();
@@ -450,7 +450,7 @@ export default function CommandCenter() {
         dueAt,
         relatedDealId: situation.entityType === 'deal' ? situation.entityId : undefined,
         relatedLeadId: situation.entityType === 'lead' ? situation.entityId : undefined,
-        assignedToUserId: user?.id || '',
+        assignedToUserId: user?.id || ''
       });
     }
     toast({ description: `Playbook applied: ${playbook.steps.length} tasks created`, duration: 3000 });
@@ -466,14 +466,14 @@ export default function CommandCenter() {
   }, [deals, dealParticipants, user?.id]);
 
   // ── Stability Score ────────────────────────────────────────────────
-   const now = useMemo(() => new Date(), []);
+  const now = useMemo(() => new Date(), []);
   const dueSoonTasks = useMemo(() => {
     const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-    return tasks.filter(t => !t.completedAt && new Date(t.dueAt) >= now && new Date(t.dueAt) <= in48h);
+    return tasks.filter((t) => !t.completedAt && new Date(t.dueAt) >= now && new Date(t.dueAt) <= in48h);
   }, [tasks, now]);
 
   const todayStart = useMemo(() => {
-    const d = new Date(); d.setHours(0, 0, 0, 0); return d;
+    const d = new Date();d.setHours(0, 0, 0, 0);return d;
   }, []);
 
   // Single source of truth for EOD data
@@ -487,9 +487,9 @@ export default function CommandCenter() {
 
   const stabilityInputs = useMemo((): StabilityInputs => {
     const forecast30 = forecast?.next30 ?? 0;
-    const topDealExpected = forecast?.topContributors
-      .filter(c => c.windows.w30)
-      .sort((a, b) => b.expectedPersonalCommission - a.expectedPersonalCommission)[0]?.expectedPersonalCommission ?? 0;
+    const topDealExpected = forecast?.topContributors.
+    filter((c) => c.windows.w30).
+    sort((a, b) => b.expectedPersonalCommission - a.expectedPersonalCommission)[0]?.expectedPersonalCommission ?? 0;
 
     return {
       overdueTasksCount: overdueTasks.length,
@@ -498,7 +498,7 @@ export default function CommandCenter() {
       forecast30,
       topDealExpected,
       moneyAtRiskTotal: totalMoneyAtRisk,
-      momentum: momentum as 'Improving' | 'Stable' | 'Declining',
+      momentum: momentum as 'Improving' | 'Stable' | 'Declining'
     };
   }, [overdueTasks, dueSoonTasks, untouchedHotLeads, forecast, totalMoneyAtRisk, momentum]);
 
@@ -519,22 +519,22 @@ export default function CommandCenter() {
 
   // Operational load / burnout detection
   const burnoutCritical = useMemo(() => {
-    const overdue = tasks.filter(t => !t.completedAt && new Date(t.dueAt) < new Date());
+    const overdue = tasks.filter((t) => !t.completedAt && new Date(t.dueAt) < new Date());
     const tomorrow = new Date(Date.now() + 48 * 60 * 60 * 1000);
-    const dueSoon = tasks.filter(t => !t.completedAt && new Date(t.dueAt) >= new Date() && new Date(t.dueAt) <= tomorrow);
+    const dueSoon = tasks.filter((t) => !t.completedAt && new Date(t.dueAt) >= new Date() && new Date(t.dueAt) <= tomorrow);
     let score = 0;
-    if (overdue.length >= 8) score += 30;
-    else if (overdue.length >= 4) score += 15;
-    if (dueSoon.length >= 10) score += 25;
-    else if (dueSoon.length >= 5) score += 10;
-    if (stabilityResult.score < 40) score += 20;
-    else if (stabilityResult.score < 60) score += 10;
+    if (overdue.length >= 8) score += 30;else
+    if (overdue.length >= 4) score += 15;
+    if (dueSoon.length >= 10) score += 25;else
+    if (dueSoon.length >= 5) score += 10;
+    if (stabilityResult.score < 40) score += 20;else
+    if (stabilityResult.score < 60) score += 10;
     return score >= 70;
   }, [tasks, stabilityResult.score]);
 
   // Predictive signals for Autopilot
   const predictiveSignals = useMemo(() => {
-    const signals: { type: 'failure' | 'ghosting' | 'fragility' | 'volatility' | 'decay'; label: string; severity: 'high' | 'medium' }[] = [];
+    const signals: {type: 'failure' | 'ghosting' | 'fragility' | 'volatility' | 'decay';label: string;severity: 'high' | 'medium';}[] = [];
     if (hasCriticalFailureRisk(deals, tasks, moneyResults)) {
       signals.push({ type: 'failure', label: 'A deal is at critical failure risk. Protect income now.', severity: 'high' });
     }
@@ -557,22 +557,22 @@ export default function CommandCenter() {
       type: taskType as any,
       dueAt: new Date().toISOString(),
       relatedLeadId: lead.id,
-      assignedToUserId: user?.id || '',
+      assignedToUserId: user?.id || ''
     });
     toast({ description: `Task created: ${title}`, duration: 3000 });
   }, [addTask, user?.id]);
 
   const handleStartAction = useCallback(async (deal: Deal, result: MoneyModelResult) => {
     const suggested = suggestAction(result, deal);
-    const dueDate = result.riskScore >= 70
-      ? new Date().toISOString()
-      : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const dueDate = result.riskScore >= 70 ?
+    new Date().toISOString() :
+    new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     await addTask({
       title: suggested.title,
       type: suggested.type as any,
       dueAt: dueDate,
       relatedDealId: deal.id,
-      assignedToUserId: user?.id || '',
+      assignedToUserId: user?.id || ''
     });
     toast({ description: 'Task created from money risk analysis', duration: 3000 });
     setMoneyDrawerResult(null);
@@ -587,7 +587,7 @@ export default function CommandCenter() {
       dueAt: new Date().toISOString(),
       relatedDealId: dealId,
       relatedLeadId: leadId,
-      assignedToUserId: user?.id || '',
+      assignedToUserId: user?.id || ''
     });
     toast({ description: `Task created: ${title}`, duration: 3000 });
   }, [addTask, user?.id]);
@@ -595,14 +595,14 @@ export default function CommandCenter() {
   // Execution layer handler
   const handleOpenExecution = useCallback((entityId: string, entityType: 'deal' | 'lead') => {
     if (entityType === 'deal') {
-      const deal = deals.find(d => d.id === entityId);
+      const deal = deals.find((d) => d.id === entityId);
       if (!deal) return;
-      const mr = moneyResults.find(r => r.dealId === entityId) || null;
+      const mr = moneyResults.find((r) => r.dealId === entityId) || null;
       setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: mr });
     } else {
-      const lead = leads.find(l => l.id === entityId);
+      const lead = leads.find((l) => l.id === entityId);
       if (!lead) return;
-      const or = opportunityResults.find(r => r.leadId === entityId) || null;
+      const or = opportunityResults.find((r) => r.leadId === entityId) || null;
       setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: or });
     }
   }, [deals, leads, moneyResults, opportunityResults]);
@@ -614,7 +614,7 @@ export default function CommandCenter() {
       dueAt,
       relatedDealId: entityType === 'deal' ? entityId : undefined,
       relatedLeadId: entityType === 'lead' ? entityId : undefined,
-      assignedToUserId: user?.id || '',
+      assignedToUserId: user?.id || ''
     });
     toast({ description: `Task created: ${title}`, duration: 3000 });
   }, [addTask, user?.id]);
@@ -631,7 +631,7 @@ export default function CommandCenter() {
       type: 'follow_up',
       dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       relatedDealId: dealId,
-      assignedToUserId: user?.id || '',
+      assignedToUserId: user?.id || ''
     });
     toast({ description: `Task created: ${title}`, duration: 3000 });
   }, [addTask, user?.id]);
@@ -648,7 +648,7 @@ export default function CommandCenter() {
 
   // EOD: deals at risk without touches today
   const untouchedRiskDeals = useMemo(() => {
-    return deals.filter(d => d.stage !== 'closed' && (d.riskLevel === 'red' || d.riskLevel === 'yellow') && (!d.lastTouchedAt || new Date(d.lastTouchedAt) < todayStart));
+    return deals.filter((d) => d.stage !== 'closed' && (d.riskLevel === 'red' || d.riskLevel === 'yellow') && (!d.lastTouchedAt || new Date(d.lastTouchedAt) < todayStart));
   }, [deals, todayStart]);
 
   // Midday: risks reduced since session start
@@ -656,7 +656,7 @@ export default function CommandCenter() {
     if (!previousSnapshot) return 0;
     let count = 0;
     for (const dealId of previousSnapshot.riskDealIds) {
-      const deal = deals.find(d => d.id === dealId);
+      const deal = deals.find((d) => d.id === dealId);
       if (deal && deal.riskLevel === 'green') count++;
     }
     return count;
@@ -664,24 +664,24 @@ export default function CommandCenter() {
 
   // Mode-aware header
   const modeHeader = useMemo(() => {
-    const riskCount = moneyResults.filter(r => r.personalCommissionAtRisk > 0).length;
-    const oppCount = opportunityResults.filter(r => r.opportunityScore >= 40).length;
+    const riskCount = moneyResults.filter((r) => r.personalCommissionAtRisk > 0).length;
+    const oppCount = opportunityResults.filter((r) => r.opportunityScore >= 40).length;
 
     switch (currentMode) {
       case 'morning':
         return {
           message: 'Start by protecting income, then create new opportunities.',
-          subtext: `Top risks: ${riskCount}, Top opportunities: ${oppCount}`,
+          subtext: `Top risks: ${riskCount}, Top opportunities: ${oppCount}`
         };
       case 'midday':
         return {
           message: 'Stabilize risks and keep momentum.',
-          subtext: `Risks reduced today: ${risksReducedToday}`,
+          subtext: `Risks reduced today: ${risksReducedToday}`
         };
       case 'evening':
         return {
           message: 'Make sure nothing critical is left unattended.',
-          subtext: `Open urgent items remaining: ${untouchedRiskDeals.length + overdueTasks.length}`,
+          subtext: `Open urgent items remaining: ${untouchedRiskDeals.length + overdueTasks.length}`
         };
     }
   }, [currentMode, moneyResults, opportunityResults, risksReducedToday, untouchedRiskDeals, overdueTasks]);
@@ -699,8 +699,8 @@ export default function CommandCenter() {
               completeTask(taskId);
               showPostActionToast('complete', {
                 taskId,
-                isOverdue: tasks.find(t => t.id === taskId && !t.completedAt && new Date(t.dueAt) < new Date()) !== undefined,
-                isRiskDeal: deals.some(d => d.stage !== 'closed' && (d.riskLevel === 'red' || d.riskLevel === 'yellow') && tasks.find(t => t.id === taskId)?.relatedDealId === d.id),
+                isOverdue: tasks.find((t) => t.id === taskId && !t.completedAt && new Date(t.dueAt) < new Date()) !== undefined,
+                isRiskDeal: deals.some((d) => d.stage !== 'closed' && (d.riskLevel === 'red' || d.riskLevel === 'yellow') && tasks.find((t) => t.id === taskId)?.relatedDealId === d.id)
               });
             }}
             snoozedIds={snoozedIds}
@@ -720,9 +720,9 @@ export default function CommandCenter() {
             onCreateTask={handleAutopilotCreateTask}
             burnoutCritical={burnoutCritical}
             predictiveSignals={predictiveSignals}
-            onOpenExecution={handleOpenExecution}
-          />
-        );
+            onOpenExecution={handleOpenExecution} />);
+
+
       case 'prepared-actions':
         return (
           <PreparedActionsCard
@@ -734,24 +734,24 @@ export default function CommandCenter() {
             autonomyLevel={autonomyLevel}
             onReviewAction={(action) => {
               if (action.entityType === 'deal') {
-                const deal = deals.find(d => d.id === action.entityId);
-                if (deal) setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: moneyResults.find(r => r.dealId === action.entityId) || null });
+                const deal = deals.find((d) => d.id === action.entityId);
+                if (deal) setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: moneyResults.find((r) => r.dealId === action.entityId) || null });
               } else {
-                const lead = leads.find(l => l.id === action.entityId);
-                if (lead) setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: opportunityResults.find(r => r.leadId === action.entityId) || null });
+                const lead = leads.find((l) => l.id === action.entityId);
+                if (lead) setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: opportunityResults.find((r) => r.leadId === action.entityId) || null });
               }
             }}
             onExecuteAction={(action) => {
               if (action.entityType === 'deal') {
-                const deal = deals.find(d => d.id === action.entityId);
-                if (deal) setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: moneyResults.find(r => r.dealId === action.entityId) || null });
+                const deal = deals.find((d) => d.id === action.entityId);
+                if (deal) setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: moneyResults.find((r) => r.dealId === action.entityId) || null });
               } else {
-                const lead = leads.find(l => l.id === action.entityId);
-                if (lead) setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: opportunityResults.find(r => r.leadId === action.entityId) || null });
+                const lead = leads.find((l) => l.id === action.entityId);
+                if (lead) setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: opportunityResults.find((r) => r.leadId === action.entityId) || null });
               }
-            }}
-          />
-        );
+            }} />);
+
+
       case 'execution-queue':
         return (
           <ExecutionQueuePanel
@@ -760,9 +760,9 @@ export default function CommandCenter() {
             tasks={tasks}
             moneyResults={moneyResults}
             opportunityResults={opportunityResults}
-            onStartAction={handleOpenExecution}
-          />
-        );
+            onStartAction={handleOpenExecution} />);
+
+
       case 'money-at-risk':
         return (
           <MoneyAtRiskPanel
@@ -773,9 +773,9 @@ export default function CommandCenter() {
             onAddCommissionToDeals={() => navigate('/?workspace=work')}
             refreshData={refreshData}
             dealChanges={dealChanges}
-            riskWeights={riskWeights}
-          />
-        );
+            riskWeights={riskWeights} />);
+
+
       case 'opportunity-heat':
         return (
           <OpportunityHeatPanel
@@ -784,9 +784,9 @@ export default function CommandCenter() {
             userId={user?.id || ''}
             onStartAction={handleOpportunityAction}
             leadChanges={leadChanges}
-            oppWeights={oppWeights}
-          />
-        );
+            oppWeights={oppWeights} />);
+
+
       case 'income-forecast':
         return (
           <IncomeForecastPanelV2
@@ -794,22 +794,22 @@ export default function CommandCenter() {
             participants={dealParticipants}
             userId={user?.id || ''}
             moneyResults={moneyResults}
-            typicalDealValue={userDefaults?.typicalPriceMid ? Math.round((userDefaults.typicalPriceMid * (userDefaults.typicalCommissionRate ?? 3) / 100) * (userDefaults.typicalSplitPct ?? 100) / 100) : 8000}
+            typicalDealValue={userDefaults?.typicalPriceMid ? Math.round(userDefaults.typicalPriceMid * (userDefaults.typicalCommissionRate ?? 3) / 100 * (userDefaults.typicalSplitPct ?? 100) / 100) : 8000}
             onCreateTask={handleForecastCreateTask}
             onOpenMoneyAtRisk={() => {
-              if (topMoneyAtRisk && deals.find(d => d.id === topMoneyAtRisk.dealId)) {
-                handleMoneySelect(topMoneyAtRisk, deals.find(d => d.id === topMoneyAtRisk.dealId)!);
+              if (topMoneyAtRisk && deals.find((d) => d.id === topMoneyAtRisk.dealId)) {
+                handleMoneySelect(topMoneyAtRisk, deals.find((d) => d.id === topMoneyAtRisk.dealId)!);
               }
-            }}
-          />
-        );
+            }} />);
+
+
       case 'stability-score':
         return (
           <StabilityScorePanelV2
             inputs={stabilityInputs}
-            onCreateTask={(title) => handleAutopilotCreateTask(title)}
-          />
-        );
+            onCreateTask={(title) => handleAutopilotCreateTask(title)} />);
+
+
       case 'income-volatility':
         return (
           <IncomeVolatilityPanel
@@ -817,14 +817,14 @@ export default function CommandCenter() {
             participants={dealParticipants}
             userId={user?.id || ''}
             forecast={forecast}
-            typicalMonthlyIncome={userDefaults?.typicalPriceMid ? Math.round((userDefaults.typicalPriceMid * (userDefaults.typicalCommissionRate ?? 3) / 100) * (userDefaults.typicalSplitPct ?? 100) / 100) : 8000}
+            typicalMonthlyIncome={userDefaults?.typicalPriceMid ? Math.round(userDefaults.typicalPriceMid * (userDefaults.typicalCommissionRate ?? 3) / 100 * (userDefaults.typicalSplitPct ?? 100) / 100) : 8000}
             onOpenOpportunities={() => {
-              if (topOpportunity && leads.find(l => l.id === topOpportunity.leadId)) {
-                handleOpportunityAction(leads.find(l => l.id === topOpportunity.leadId)!, topOpportunity);
+              if (topOpportunity && leads.find((l) => l.id === topOpportunity.leadId)) {
+                handleOpportunityAction(leads.find((l) => l.id === topOpportunity.leadId)!, topOpportunity);
               }
-            }}
-          />
-        );
+            }} />);
+
+
       case 'pipeline-fragility':
         return (
           <PipelineFragilityPanel
@@ -832,12 +832,12 @@ export default function CommandCenter() {
             moneyResults={moneyResults}
             forecast={forecast}
             onOpenOpportunities={() => {
-              if (topOpportunity && leads.find(l => l.id === topOpportunity.leadId)) {
-                handleOpportunityAction(leads.find(l => l.id === topOpportunity.leadId)!, topOpportunity);
+              if (topOpportunity && leads.find((l) => l.id === topOpportunity.leadId)) {
+                handleOpportunityAction(leads.find((l) => l.id === topOpportunity.leadId)!, topOpportunity);
               }
-            }}
-          />
-        );
+            }} />);
+
+
       case 'lead-decay':
         return (
           <LeadDecayPanel
@@ -848,9 +848,9 @@ export default function CommandCenter() {
               setTouchTarget({ entityType, entityId, entityTitle });
               setShowLogTouch(true);
             }}
-            onCreateTask={(title, leadId) => handleAutopilotCreateTask(title, undefined, leadId)}
-          />
-        );
+            onCreateTask={(title, leadId) => handleAutopilotCreateTask(title, undefined, leadId)} />);
+
+
       case 'operational-load':
         return (
           <OperationalLoadPanel
@@ -859,18 +859,18 @@ export default function CommandCenter() {
             leads={leads}
             stabilityResult={stabilityResult}
             stabilityScore={stabilityResult.score}
-            totalMoneyAtRisk={totalMoneyAtRisk}
-          />
-        );
+            totalMoneyAtRisk={totalMoneyAtRisk} />);
+
+
       case 'deal-failure':
         return (
           <DealFailurePanel
             deals={deals}
             tasks={tasks}
             moneyResults={moneyResults}
-            onCreateTask={(title, dealId) => handleAutopilotCreateTask(title, dealId)}
-          />
-        );
+            onCreateTask={(title, dealId) => handleAutopilotCreateTask(title, dealId)} />);
+
+
       case 'ghosting-risk':
         return (
           <GhostingRiskPanel
@@ -881,25 +881,25 @@ export default function CommandCenter() {
               setTouchTarget({ entityType, entityId, entityTitle });
               setShowLogTouch(true);
             }}
-            onCreateTask={(title, leadId) => handleAutopilotCreateTask(title, undefined, leadId)}
-          />
-        );
+            onCreateTask={(title, leadId) => handleAutopilotCreateTask(title, undefined, leadId)} />);
+
+
       case 'referral-conversion':
         return (
           <ReferralConversionPanel
             leads={leads}
             tasks={tasks}
             opportunityResults={opportunityResults}
-            userDefaults={userDefaults}
-          />
-        );
+            userDefaults={userDefaults} />);
+
+
       case 'listing-performance':
         return (
           <ListingPerformancePanel
             deals={deals}
-            tasks={tasks}
-          />
-        );
+            tasks={tasks} />);
+
+
       case 'time-allocation':
         return (
           <TimeAllocationEngine
@@ -908,9 +908,9 @@ export default function CommandCenter() {
             moneyResults={moneyResults}
             opportunityResults={opportunityResults}
             stabilityScore={stabilityResult.score}
-            totalMoneyAtRisk={totalMoneyAtRisk}
-          />
-        );
+            totalMoneyAtRisk={totalMoneyAtRisk} />);
+
+
       case 'opportunity-radar':
         return (
           <OpportunityRadarPanel
@@ -920,19 +920,19 @@ export default function CommandCenter() {
             opportunityResults={opportunityResults}
             onAction={(item) => {
               if (item.entityType === 'lead') {
-                const lead = leads.find(l => l.id === item.entityId);
+                const lead = leads.find((l) => l.id === item.entityId);
                 if (!lead) return;
-                const or = opportunityResults.find(r => r.leadId === item.entityId) || null;
+                const or = opportunityResults.find((r) => r.leadId === item.entityId) || null;
                 setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: or });
               } else if (item.entityType === 'deal') {
-                const deal = deals.find(d => d.id === item.entityId);
+                const deal = deals.find((d) => d.id === item.entityId);
                 if (!deal) return;
-                const mr = moneyResults.find(r => r.dealId === item.entityId) || null;
+                const mr = moneyResults.find((r) => r.dealId === item.entityId) || null;
                 setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: mr });
               }
-            }}
-          />
-        );
+            }} />);
+
+
       case 'income-protection':
         return (
           <IncomeProtectionShield
@@ -942,41 +942,41 @@ export default function CommandCenter() {
             totalMoneyAtRisk={totalMoneyAtRisk}
             userId={user?.id}
             onAction={(threat) => {
-              const deal = deals.find(d => d.id === threat.dealId);
-              const result = moneyResults.find(r => r.dealId === threat.dealId);
+              const deal = deals.find((d) => d.id === threat.dealId);
+              const result = moneyResults.find((r) => r.dealId === threat.dealId);
               if (deal && result) handleMoneySelect(result, deal);
-            }}
-          />
-        );
+            }} />);
+
+
       case 'market-conditions':
         return (
           <MarketConditionsPanel
             conditions={marketConditions}
             deals={deals}
             leads={leads}
-            moneyResults={moneyResults}
-          />
-        );
+            moneyResults={moneyResults} />);
+
+
       case 'learning-transparency':
         return (
           <LearningTransparencyPanel
             snapshot={learningSnapshot}
-            onReset={resetLearning}
-          />
-        );
+            onReset={resetLearning} />);
+
+
       case 'network-benchmarks':
         return (
           <NetworkBenchmarksPanel
             agentMetrics={{
-              followUpCompletionRate: tasks.length > 0
-                ? tasks.filter(t => t.completedAt).length / tasks.length
-                : undefined,
-              dealCloseRate: deals.length > 0
-                ? deals.filter(d => d.stage === 'closed').length / deals.length
-                : undefined,
-            }}
-          />
-        );
+              followUpCompletionRate: tasks.length > 0 ?
+              tasks.filter((t) => t.completedAt).length / tasks.length :
+              undefined,
+              dealCloseRate: deals.length > 0 ?
+              deals.filter((d) => d.stage === 'closed').length / deals.length :
+              undefined
+            }} />);
+
+
       case 'weekly-review':
         return (
           <WeeklyCommandReview
@@ -985,30 +985,30 @@ export default function CommandCenter() {
             tasks={tasks}
             moneyResults={moneyResults}
             stabilityScore={stabilityResult.score}
-            totalMoneyAtRisk={totalMoneyAtRisk}
-          />
-        );
+            totalMoneyAtRisk={totalMoneyAtRisk} />);
+
+
       case 'agent-profile':
         return (
           <AgentProfilePanel
             profile={agentProfile}
             loading={agentProfileLoading}
             onExport={exportAgentProfile}
-            onReset={resetAgentProfile}
-          />
-        );
+            onReset={resetAgentProfile} />);
+
+
       case 'income-patterns':
         return (
-          <IncomePatternsPanel patterns={incomePatterns} />
-        );
+          <IncomePatternsPanel patterns={incomePatterns} />);
+
       case 'market-signals':
         return (
           <MarketSignalsPanel
             deals={deals}
             leads={leads}
-            moneyResults={moneyResults}
-          />
-        );
+            moneyResults={moneyResults} />);
+
+
       case 'end-of-day':
         return null; // EOD is handled separately in mode cards
       default:
@@ -1026,8 +1026,8 @@ export default function CommandCenter() {
           <SkeletonCard lines={3} />
           <SkeletonCard lines={3} />
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   if (!hasData) {
@@ -1048,16 +1048,16 @@ export default function CommandCenter() {
           onConnectCrm={() => navigate('/?workspace=sync')}
           onAddDeal={() => setShowQuickAdd(true)}
           onSetIncomeTarget={() => navigate('/?workspace=settings')}
-          onLoadDemo={seedDemoData}
-        />
+          onLoadDemo={seedDemoData} />
+
 
         <EmptyState
           type="deals"
           title="Your command center is ready"
           description="Connect your CRM to import deals and leads, add them manually, or load demo data to explore all features."
           actionLabel="Add Your First Deal"
-          onAction={() => setShowQuickAdd(true)}
-        />
+          onAction={() => setShowQuickAdd(true)} />
+
         {showQuickAdd && <QuickAddModal defaultType="deal" onClose={() => setShowQuickAdd(false)} />}
         <CSVImportModal open={showCSVImport} onClose={() => setShowCSVImport(false)} />
         <div className="mt-4 text-center">
@@ -1065,8 +1065,8 @@ export default function CommandCenter() {
             <Upload className="h-3.5 w-3.5 mr-1" /> Import from CSV
           </Button>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -1101,12 +1101,12 @@ export default function CommandCenter() {
           {/* Desktop: toolbar row */}
           <div className="hidden lg:flex items-center gap-2 flex-wrap">
             <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5" onClick={async () => {
-              const btn = document.activeElement as HTMLButtonElement;
-              btn?.blur();
-              toast({ title: 'Syncing…', description: 'Refreshing your data' });
-              await refreshData();
-              toast({ title: 'Synced', description: 'Dashboard data is up to date' });
-            }}>
+            const btn = document.activeElement as HTMLButtonElement;
+            btn?.blur();
+            toast({ title: 'Syncing…', description: 'Refreshing your data' });
+            await refreshData();
+            toast({ title: 'Synced', description: 'Dashboard data is up to date' });
+          }}>
               <RefreshCw className="h-3 w-3" /> Sync
             </Button>
             <AutoSaveIndicator status={saveStatus} />
@@ -1116,13 +1116,13 @@ export default function CommandCenter() {
               {density === 'comfortable' ? 'Compact' : 'Comfortable'}
             </Button>
             <ExportSnapshotButton
-              totalRevenue={totalRevenue}
-              totalMoneyAtRisk={totalMoneyAtRisk}
-              stabilityScore={stabilityResult.score}
-              overdueCount={overdueTasks.length}
-              activeDeals={activeDeals.length}
-              momentum={momentum}
-            />
+            totalRevenue={totalRevenue}
+            totalMoneyAtRisk={totalMoneyAtRisk}
+            stabilityScore={stabilityResult.score}
+            overdueCount={overdueTasks.length}
+            activeDeals={activeDeals.length}
+            momentum={momentum} />
+
             <PanelSearchFilter onFilterChange={setPanelFilter} />
             <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5" onClick={() => setShowCustomizer(true)}>
               <Settings2 className="h-3 w-3" />
@@ -1149,21 +1149,21 @@ export default function CommandCenter() {
         </div>
 
       {/* Adaptive Mode First-Run Banner */}
-      {focusMode === 'minimal' && maturity.level <= 1 && !fullViewOverride && (
-        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-center gap-3">
+      {focusMode === 'minimal' && maturity.level <= 1 && !fullViewOverride &&
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-center gap-3">
           <Info className="h-4 w-4 text-primary shrink-0" />
           <div className="flex-1">
             <p className="text-sm text-foreground">Starting with a focused view — more insights will appear as your data grows.</p>
             <p className="text-xs text-muted-foreground mt-0.5">Level: {maturity.label} · {maturity.dealCount} deals · {maturity.leadCount} leads</p>
           </div>
           <Button size="sm" variant="ghost" className="text-xs shrink-0" onClick={() => {
-            setFullViewOverride(true);
-            localStorage.setItem('dp-full-view', 'true');
-          }}>
+          setFullViewOverride(true);
+          localStorage.setItem('dp-full-view', 'true');
+        }}>
             Switch to Full View
           </Button>
         </div>
-      )}
+      }
 
       {/* Getting Started Checklist (shows until dismissed or all complete) */}
       <GettingStartedChecklist
@@ -1175,8 +1175,8 @@ export default function CommandCenter() {
         onConnectCrm={() => navigate('/?workspace=sync')}
         onAddDeal={() => setShowQuickAdd(true)}
         onSetIncomeTarget={() => navigate('/?workspace=settings')}
-        onLoadDemo={seedDemoData}
-      />
+        onLoadDemo={seedDemoData} />
+
 
       {/* Favorites Strip */}
       <FavoritesStrip favorites={favorites} onSelect={(id, type) => handleOpenExecution(id, type)} />
@@ -1186,8 +1186,8 @@ export default function CommandCenter() {
         stabilityResult={stabilityResult}
         totalMoneyAtRisk={totalMoneyAtRisk}
         totalRevenue={totalRevenue}
-        overdueCount={overdueTasks.length}
-      />
+        overdueCount={overdueTasks.length} />
+
 
       {/* Upcoming Events Panel */}
       <UpcomingEventsPanel
@@ -1195,52 +1195,52 @@ export default function CommandCenter() {
         tasks={tasks}
         appointments={fubAppointments}
         isCollapsed={isCollapsed('upcoming-events')}
-        onToggleCollapse={() => toggleCollapse('upcoming-events')}
-      />
+        onToggleCollapse={() => toggleCollapse('upcoming-events')} />
+
 
       {/* Morning Brief (first session of the day) */}
-      {currentMode === 'morning' && (
-        <MorningBriefCard
-          deals={deals}
-          leads={leads}
-          tasks={tasks}
-          moneyResults={moneyResults}
-          opportunityResults={opportunityResults}
-          stabilityResult={stabilityResult}
-          totalMoneyAtRisk={totalMoneyAtRisk}
-          previousSnapshot={previousSnapshot}
-          onStartActions={() => {
-            markBriefViewed();
-            // Launch first recommended action into workspace
-            if (topMoneyAtRisk) {
-              const deal = deals.find(d => d.id === topMoneyAtRisk.dealId);
-              if (deal) {
-                setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: topMoneyAtRisk });
-                return;
-              }
+      {currentMode === 'morning' &&
+      <MorningBriefCard
+        deals={deals}
+        leads={leads}
+        tasks={tasks}
+        moneyResults={moneyResults}
+        opportunityResults={opportunityResults}
+        stabilityResult={stabilityResult}
+        totalMoneyAtRisk={totalMoneyAtRisk}
+        previousSnapshot={previousSnapshot}
+        onStartActions={() => {
+          markBriefViewed();
+          // Launch first recommended action into workspace
+          if (topMoneyAtRisk) {
+            const deal = deals.find((d) => d.id === topMoneyAtRisk.dealId);
+            if (deal) {
+              setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: topMoneyAtRisk });
+              return;
             }
-            if (topOpportunity) {
-              const lead = leads.find(l => l.id === topOpportunity.leadId);
-              if (lead) {
-                setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: topOpportunity });
-                return;
-              }
+          }
+          if (topOpportunity) {
+            const lead = leads.find((l) => l.id === topOpportunity.leadId);
+            if (lead) {
+              setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: topOpportunity });
+              return;
             }
-          }}
-          onReviewDetail={() => { markBriefViewed(); navigate('/?workspace=work'); }}
-        />
-      )}
+          }
+        }}
+        onReviewDetail={() => {markBriefViewed();navigate('/?workspace=work');}} />
+
+      }
 
       {/* Daily Intelligence Briefing */}
       <CollapsiblePanel id="daily-briefing" label="Daily Intelligence Briefing" icon={<Sparkles className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('daily-briefing')} onToggleCollapse={() => toggleCollapse('daily-briefing')}>
       <div className="rounded-lg border border-border bg-card p-4 space-y-2">
         {/* Import highlight banner */}
-        {showImportBadge && (
+        {showImportBadge &&
           <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-primary/5 border border-primary/10 mb-2">
             <Badge variant="outline" className="text-xs border-primary/30 text-primary">Imported just now</Badge>
             <span className="text-xs text-muted-foreground">New items from your latest FUB import are reflected below.</span>
           </div>
-        )}
+          }
 
         {/* Mode-aware briefing message */}
         <div className="flex items-center gap-2">
@@ -1269,13 +1269,13 @@ export default function CommandCenter() {
         </div>
 
         {/* Missed yesterday */}
-        {missedYesterday > 0 && (
+        {missedYesterday > 0 &&
           <p className="text-xs text-muted-foreground">
             Yesterday's unfinished priorities: {missedYesterday}
           </p>
-        )}
+          }
 
-        <span className="text-xs text-muted-foreground block">
+        <span className="text-xs text-muted-foreground block font-bold">
           {currentMode === 'morning' ? 'Good morning' : currentMode === 'midday' ? 'Good afternoon' : 'Good evening'}, {user?.name?.split(' ')[0]}
         </span>
       </div>
@@ -1284,83 +1284,83 @@ export default function CommandCenter() {
       {/* Control Status & Progress */}
       <CollapsiblePanel id="control-status" label="Control Status & Progress" icon={<TrendingUp className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('control-status')} onToggleCollapse={() => toggleCollapse('control-status')}>
       <ControlStatusBar
-        controlStatus={controlStatus}
-        progressItems={progressItems}
-        showStressReduction={stressReduction}
-        stressReductionDismissed={stressReductionDismissed}
-        onDismissStressReduction={() => setStressReductionDismissed(true)}
-      />
+          controlStatus={controlStatus}
+          progressItems={progressItems}
+          showStressReduction={stressReduction}
+          stressReductionDismissed={stressReductionDismissed}
+          onDismissStressReduction={() => setStressReductionDismissed(true)} />
+
       </CollapsiblePanel>
 
       {/* Self-Optimizing Nudges */}
-      {selfOptAnalysis.nudges.length > 0 && (
-        <SelfOptNudges nudges={selfOptAnalysis.nudges} />
-      )}
+      {selfOptAnalysis.nudges.length > 0 &&
+      <SelfOptNudges nudges={selfOptAnalysis.nudges} />
+      }
 
       {/* Daily Mode Cards — MorningFocusCard hidden when MorningBriefCard is visible to reduce duplication */}
       {/* MorningBriefCard already covers morning priorities above */}
-      {currentMode === 'midday' && (
-        <MiddayStabilizationCard
-          currentTotalRisk={totalMoneyAtRisk}
-          sessionStart={sessionStartRisk}
-          risksReducedToday={risksReducedToday}
-        />
-      )}
-      {currentMode === 'evening' && (
-        <EodSafetyCard
-          untouchedRiskDeals={untouchedRiskDeals}
-          untouchedHotLeads={untouchedHotLeads}
-          overdueTasks={overdueTasks}
-          onLogTouch={() => setShowTouchPicker(true)}
-          onCreateTask={() => {
-            setQuickAddPrefill({});
-            setShowQuickAdd(true);
-          }}
-          onReviewItems={() => setShowEodReview(true)}
-        />
-      )}
+      {currentMode === 'midday' &&
+      <MiddayStabilizationCard
+        currentTotalRisk={totalMoneyAtRisk}
+        sessionStart={sessionStartRisk}
+        risksReducedToday={risksReducedToday} />
+
+      }
+      {currentMode === 'evening' &&
+      <EodSafetyCard
+        untouchedRiskDeals={untouchedRiskDeals}
+        untouchedHotLeads={untouchedHotLeads}
+        overdueTasks={overdueTasks}
+        onLogTouch={() => setShowTouchPicker(true)}
+        onCreateTask={() => {
+          setQuickAddPrefill({});
+          setShowQuickAdd(true);
+        }}
+        onReviewItems={() => setShowEodReview(true)} />
+
+      }
 
       {/* What This Means Today */}
       <CollapsiblePanel id="what-this-means" label="What This Means Today" icon={<Info className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('what-this-means')} onToggleCollapse={() => toggleCollapse('what-this-means')}>
       <WhatThisMeansPanel
-        deals={deals}
-        leads={leads}
-        tasks={tasks}
-        moneyResults={moneyResults}
-        opportunityResults={opportunityResults}
-        stabilityResult={stabilityResult}
-        totalMoneyAtRisk={totalMoneyAtRisk}
-      />
-      </CollapsiblePanel>
-
-      {/* Daily Flight Plan */}
-      <CollapsiblePanel id="daily-flight-plan" label="Daily Flight Plan" icon={<Zap className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('daily-flight-plan')} onToggleCollapse={() => toggleCollapse('daily-flight-plan')}>
-      <PanelErrorBoundary>
-        <DailyFlightPlan
           deals={deals}
           leads={leads}
           tasks={tasks}
           moneyResults={moneyResults}
           opportunityResults={opportunityResults}
           stabilityResult={stabilityResult}
-          totalMoneyAtRisk={totalMoneyAtRisk}
-          sessionMode={currentMode === 'midday' ? 'midday' : currentMode}
-          onStartAction={(step) => {
-            if (step.entityType === 'deal' && step.entityId) {
-              const deal = deals.find(d => d.id === step.entityId);
-              const result = moneyResults.find(r => r.dealId === step.entityId);
-              if (deal && result) handleMoneySelect(result, deal);
-            } else if (step.entityType === 'lead' && step.entityId) {
-              const lead = leads.find(l => l.id === step.entityId);
-              const opp = opportunityResults.find(r => r.leadId === step.entityId);
-              if (lead && opp) handleOpportunityAction(lead, opp);
-            } else if (step.entityType === 'task' && step.entityId) {
-              completeTask(step.entityId);
-              showPostActionToast('complete', { taskId: step.entityId });
-            }
-          }}
-          onOpenExecution={handleOpenExecution}
-        />
+          totalMoneyAtRisk={totalMoneyAtRisk} />
+
+      </CollapsiblePanel>
+
+      {/* Daily Flight Plan */}
+      <CollapsiblePanel id="daily-flight-plan" label="Daily Flight Plan" icon={<Zap className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('daily-flight-plan')} onToggleCollapse={() => toggleCollapse('daily-flight-plan')}>
+      <PanelErrorBoundary>
+        <DailyFlightPlan
+            deals={deals}
+            leads={leads}
+            tasks={tasks}
+            moneyResults={moneyResults}
+            opportunityResults={opportunityResults}
+            stabilityResult={stabilityResult}
+            totalMoneyAtRisk={totalMoneyAtRisk}
+            sessionMode={currentMode === 'midday' ? 'midday' : currentMode}
+            onStartAction={(step) => {
+              if (step.entityType === 'deal' && step.entityId) {
+                const deal = deals.find((d) => d.id === step.entityId);
+                const result = moneyResults.find((r) => r.dealId === step.entityId);
+                if (deal && result) handleMoneySelect(result, deal);
+              } else if (step.entityType === 'lead' && step.entityId) {
+                const lead = leads.find((l) => l.id === step.entityId);
+                const opp = opportunityResults.find((r) => r.leadId === step.entityId);
+                if (lead && opp) handleOpportunityAction(lead, opp);
+              } else if (step.entityType === 'task' && step.entityId) {
+                completeTask(step.entityId);
+                showPostActionToast('complete', { taskId: step.entityId });
+              }
+            }}
+            onOpenExecution={handleOpenExecution} />
+
       </PanelErrorBoundary>
       </CollapsiblePanel>
 
@@ -1368,74 +1368,74 @@ export default function CommandCenter() {
       <CollapsiblePanel id="strategic-overview" label="Strategic Overview" icon={<BarChart3 className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('strategic-overview')} onToggleCollapse={() => toggleCollapse('strategic-overview')}>
       <PanelErrorBoundary>
         <StrategicOverviewPanel
-          overview={strategicOverview}
-          onOpenPlanner={() => setShowWeeklyPlanner(true)}
-          hasBudget={hasUserSetBudget(user?.id)}
-        />
+            overview={strategicOverview}
+            onOpenPlanner={() => setShowWeeklyPlanner(true)}
+            hasBudget={hasUserSetBudget(user?.id)} />
+
       </PanelErrorBoundary>
       </CollapsiblePanel>
 
       {/* ── Sortable Panels ────────────────────────────────────── */}
       <div data-tour="panel-area">
       <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}>
+
         <SortableContext items={sortWithPins(panelOrder)} strategy={verticalListSortingStrategy}>
           <div className={cn('grid grid-cols-1 md:grid-cols-2', density === 'compact' ? 'gap-2' : 'gap-4')}>
-            {sortWithPins(panelOrder).map(panelId => {
-              if (isPanelHidden(panelId) && !showHiddenPanels) return null;
-              if (!isPanelVisibleInMode(panelId, focusMode, maturity.level, fullViewOverride)) return null;
-              if (!matchesPanelFilter(panelId, panelFilter)) return null;
-              const content = renderPanel(panelId);
-              if (!content) return null;
-              const isFullWidth = !PAIRED_PANELS.has(panelId);
-              return (
-                <SortablePanel key={panelId} id={panelId} editMode={editMode} fullWidth={isFullWidth} label={PANEL_LABELS[panelId]} isCollapsed={isCollapsed(panelId)} onToggleCollapse={() => toggleCollapse(panelId)}>
+            {sortWithPins(panelOrder).map((panelId) => {
+                if (isPanelHidden(panelId) && !showHiddenPanels) return null;
+                if (!isPanelVisibleInMode(panelId, focusMode, maturity.level, fullViewOverride)) return null;
+                if (!matchesPanelFilter(panelId, panelFilter)) return null;
+                const content = renderPanel(panelId);
+                if (!content) return null;
+                const isFullWidth = !PAIRED_PANELS.has(panelId);
+                return (
+                  <SortablePanel key={panelId} id={panelId} editMode={editMode} fullWidth={isFullWidth} label={PANEL_LABELS[panelId]} isCollapsed={isCollapsed(panelId)} onToggleCollapse={() => toggleCollapse(panelId)}>
                   <PanelErrorBoundary>
                     <div className="relative group/pin">
                       <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover/pin:opacity-100 transition-opacity">
                         <PanelHelpTooltip panelId={panelId} />
-                        {editMode && (
+                        {editMode &&
                           <PanelPinButton panelId={panelId} isPinned={isPinned(panelId)} onToggle={togglePin} />
-                        )}
+                          }
                       </div>
                       <LazyPanel skeletonLines={isFullWidth ? 4 : 3} forceMount={editMode || isDragging}>
                         {content}
                       </LazyPanel>
                     </div>
                   </PanelErrorBoundary>
-                </SortablePanel>
-              );
-            })}
+                </SortablePanel>);
+
+              })}
           </div>
         </SortableContext>
       </DndContext>
       </div>
 
       {/* Hidden panels toggle */}
-      {hiddenPanels.size > 0 && (
-        <button
-          onClick={() => setShowHiddenPanels(prev => !prev)}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
-        >
+      {hiddenPanels.size > 0 &&
+      <button
+        onClick={() => setShowHiddenPanels((prev) => !prev)}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors">
+
           {showHiddenPanels ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
           {showHiddenPanels ? 'Hide' : 'Show'} {hiddenPanels.size} hidden panel{hiddenPanels.size !== 1 ? 's' : ''}
         </button>
-      )}
+      }
 
       {/* Cohort Playbooks */}
-      {cohortPlaybooks.length > 0 && (
-        <PanelErrorBoundary>
+      {cohortPlaybooks.length > 0 &&
+      <PanelErrorBoundary>
           <CohortPlaybooksPanel
-            playbooks={cohortPlaybooks}
-            situations={playbookSituations}
-            onApplyPlaybook={handleApplyPlaybook}
-          />
+          playbooks={cohortPlaybooks}
+          situations={playbookSituations}
+          onApplyPlaybook={handleApplyPlaybook} />
+
         </PanelErrorBoundary>
-      )}
+      }
 
       {/* 4-Panel Grid + Pipeline Watch */}
       <CollapsiblePanel id="priority-grid" label="Priority Actions, Deals at Risk & Speed Alerts" icon={<Zap className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('priority-grid')} onToggleCollapse={() => toggleCollapse('priority-grid')}>
@@ -1449,43 +1449,23 @@ export default function CommandCenter() {
             <span className="text-xs text-muted-foreground ml-auto">{panels.priorityActions.length} items</span>
           </div>
           <p className="text-xs text-muted-foreground mb-3">Focus on these first to protect or create income.</p>
-          {panels.priorityActions.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">You're all caught up!</p>
-          ) : (
-            <div className="space-y-2">
-              {panels.priorityActions.map(action => {
-                const confidence = (action.scores.urgencyScore >= 40 && action.scores.revenueImpactScore >= 40) || action.scores.decayRiskScore >= 50 ? 'High' : 'Medium';
-                const snoozeCount = getSnoozeCount(action.id);
-                return (
-                  <div
-                    key={action.id}
-                    className="flex items-start gap-3 p-2.5 rounded-md hover:bg-accent/50 transition-colors group cursor-pointer"
-                    onClick={() => setSelectedItem({ kind: 'action', data: action })}
-                  >
+          {panels.priorityActions.length === 0 ?
+              <p className="text-sm text-muted-foreground py-4 text-center">You're all caught up!</p> :
+
+              <div className="space-y-2">
+              {panels.priorityActions.map((action) => {
+                  const confidence = action.scores.urgencyScore >= 40 && action.scores.revenueImpactScore >= 40 || action.scores.decayRiskScore >= 50 ? 'High' : 'Medium';
+                  const snoozeCount = getSnoozeCount(action.id);
+                  return (
+                    <div
+                      key={action.id}
+                      className="flex items-start gap-3 p-2.5 rounded-md hover:bg-accent/50 transition-colors group cursor-pointer"
+                      onClick={() => setSelectedItem({ kind: 'action', data: action })}>
+
                     <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (action.relatedTaskId) {
-                          completeTask(action.relatedTaskId);
-                          showPostActionToast('complete', { taskId: action.relatedTaskId, isOverdue: action.timeWindow === 'Overdue' });
-                        } else {
-                          // Suggested action without a backing task — create + complete it
-                          try {
-                            await addTask({
-                              title: action.title,
-                              dueAt: new Date().toISOString(),
-                              completedAt: new Date().toISOString(),
-                              relatedLeadId: action.relatedLeadId || null,
-                              relatedDealId: action.relatedDealId || null,
-                            } as any);
-                            showPostActionToast('complete', { isOverdue: false });
-                          } catch {
-                            toast({ description: 'Could not mark action as done', duration: 2000 });
-                          }
-                        }
-                      }}
-                      className="mt-0.5 h-5 w-5 rounded-md border-2 border-muted-foreground/30 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors shrink-0"
-                    >
+                        onClick={(e) => {e.stopPropagation();if (action.relatedTaskId) {completeTask(action.relatedTaskId);showPostActionToast('complete', { taskId: action.relatedTaskId, isOverdue: action.timeWindow === 'Overdue' });}}}
+                        className="mt-0.5 h-5 w-5 rounded-md border-2 border-muted-foreground/30 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors shrink-0">
+
                       <Check className="h-3 w-3 text-transparent group-hover:text-primary transition-colors" />
                     </button>
                     <div className="flex-1 min-w-0">
@@ -1498,28 +1478,28 @@ export default function CommandCenter() {
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs text-muted-foreground">{action.reason}</span>
-                        {action.potentialValue && (
+                        {action.potentialValue &&
                           <span className="text-xs text-opportunity font-medium">{formatCurrency(action.potentialValue)}</span>
-                        )}
+                          }
                       </div>
-                      {snoozeCount >= 3 && (
+                      {snoozeCount >= 3 &&
                         <p className="text-[10px] text-warning mt-1 italic">Action repeatedly deferred.</p>
-                      )}
+                        }
                     </div>
                     <span className={`text-xs font-medium shrink-0 ${action.timeWindow === 'Overdue' ? 'text-urgent' : action.timeWindow === 'Due now' ? 'text-warning' : 'text-muted-foreground'}`}>
                       {action.timeWindow}
                     </span>
-                  </div>
-                );
-              })}
+                  </div>);
+
+                })}
               <button
-                onClick={() => navigate('/?workspace=work')}
-                className="w-full text-center text-xs text-primary hover:text-primary/80 transition-colors py-2"
-              >
+                  onClick={() => navigate('/?workspace=work')}
+                  className="w-full text-center text-xs text-primary hover:text-primary/80 transition-colors py-2">
+
                 View All Actions <ChevronRight className="inline h-3 w-3" />
               </button>
             </div>
-          )}
+              }
         </div>
         </PanelErrorBoundary>
 
@@ -1530,25 +1510,25 @@ export default function CommandCenter() {
             <AlertTriangle className="h-4 w-4 text-warning" />
             <h2 className="text-sm font-semibold">Deals at Risk</h2>
           </div>
-          {panels.dealsAtRisk.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">All deals are on track</p>
-          ) : (
-            <div className="space-y-2">
-              {panels.dealsAtRisk.map(item => (
+          {panels.dealsAtRisk.length === 0 ?
+              <p className="text-sm text-muted-foreground py-4 text-center">All deals are on track</p> :
+
+              <div className="space-y-2">
+              {panels.dealsAtRisk.map((item) =>
                 <div
                   key={item.deal.id}
                   className="flex items-center justify-between p-2 rounded-md hover:bg-accent/50 transition-colors cursor-pointer"
-                  onClick={() => setSelectedItem({ kind: 'deal', data: item })}
-                >
+                  onClick={() => setSelectedItem({ kind: 'deal', data: item })}>
+
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{item.deal.title}</p>
                     <p className="text-xs text-muted-foreground">{item.topReason}</p>
                   </div>
                   <Badge variant={riskBadge[item.deal.riskLevel].variant}>{riskBadge[item.deal.riskLevel].label}</Badge>
                 </div>
-              ))}
+                )}
             </div>
-          )}
+              }
         </div>
         </PanelErrorBoundary>
 
@@ -1560,16 +1540,16 @@ export default function CommandCenter() {
             <h2 className="text-sm font-semibold">Speed Alerts</h2>
           </div>
           <p className="text-xs text-muted-foreground mb-3">Time-sensitive items requiring immediate attention.</p>
-          {panels.speedAlerts.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">No time-sensitive alerts</p>
-          ) : (
-            <div className="space-y-2">
-              {panels.speedAlerts.map(alert => (
+          {panels.speedAlerts.length === 0 ?
+              <p className="text-sm text-muted-foreground py-4 text-center">No time-sensitive alerts</p> :
+
+              <div className="space-y-2">
+              {panels.speedAlerts.map((alert) =>
                 <div
                   key={alert.id}
                   className="p-2 rounded-md hover:bg-accent/50 transition-colors cursor-pointer"
-                  onClick={() => setSelectedItem({ kind: 'speedAlert', data: alert })}
-                >
+                  onClick={() => setSelectedItem({ kind: 'speedAlert', data: alert })}>
+
                   <div className="flex items-start gap-2">
                     <span className={`status-dot mt-1.5 shrink-0 ${alert.type === 'urgent' || alert.type === 'task_due' ? 'bg-urgent' : 'bg-time-sensitive'}`} />
                     <div className="min-w-0">
@@ -1578,17 +1558,17 @@ export default function CommandCenter() {
                     </div>
                   </div>
                 </div>
-              ))}
+                )}
             </div>
-          )}
+              }
         </div>
         </PanelErrorBoundary>
       </div>
       </CollapsiblePanel>
 
       {/* Pipeline Watch */}
-      {pipelineWatch.length > 0 && (
-        <CollapsiblePanel id="pipeline-watch" label="Pipeline Watch" icon={<Eye className="h-3.5 w-3.5 text-muted-foreground" />} isCollapsed={isCollapsed('pipeline-watch')} onToggleCollapse={() => toggleCollapse('pipeline-watch')}>
+      {pipelineWatch.length > 0 &&
+      <CollapsiblePanel id="pipeline-watch" label="Pipeline Watch" icon={<Eye className="h-3.5 w-3.5 text-muted-foreground" />} isCollapsed={isCollapsed('pipeline-watch')} onToggleCollapse={() => toggleCollapse('pipeline-watch')}>
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-center gap-2 mb-3">
             <Eye className="h-4 w-4 text-muted-foreground" />
@@ -1596,33 +1576,33 @@ export default function CommandCenter() {
             <span className="text-xs text-muted-foreground ml-auto">Since last session</span>
           </div>
           <div className="space-y-2">
-            {pipelineWatch.map(event => (
-              <div key={event.id} className="flex items-center gap-2.5 p-2 rounded-md">
+            {pipelineWatch.map((event) =>
+            <div key={event.id} className="flex items-center gap-2.5 p-2 rounded-md">
                 <span className="text-sm">{event.icon}</span>
                 <span className="text-sm text-muted-foreground">{event.text}</span>
               </div>
-            ))}
+            )}
           </div>
         </div>
         </CollapsiblePanel>
-      )}
+      }
 
       {/* FUB Drift Detection + Watchlist */}
-      {hasFubIntegration && (
-        <CollapsiblePanel id="fub-drift-watchlist" label="CRM Drift & Watchlist" icon={<RefreshCw className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('fub-drift-watchlist')} onToggleCollapse={() => toggleCollapse('fub-drift-watchlist')}>
+      {hasFubIntegration &&
+      <CollapsiblePanel id="fub-drift-watchlist" label="CRM Drift & Watchlist" icon={<RefreshCw className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('fub-drift-watchlist')} onToggleCollapse={() => toggleCollapse('fub-drift-watchlist')}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <PanelErrorBoundary>
             <FubDriftCard
               hasIntegration={hasFubIntegration}
-              onScopedStageComplete={(runId) => navigate(`/?workspace=sync`)}
-            />
+              onScopedStageComplete={(runId) => navigate(`/?workspace=sync`)} />
+
           </PanelErrorBoundary>
           <PanelErrorBoundary>
             <FubWatchlistPanel hasIntegration={hasFubIntegration} />
           </PanelErrorBoundary>
         </div>
         </CollapsiblePanel>
-      )}
+      }
 
       {/* Detail Drawer */}
       <ActionDetailDrawer
@@ -1632,36 +1612,27 @@ export default function CommandCenter() {
           completeTask(taskId);
           showPostActionToast('handled');
         }}
-        onWorkEntity={(entityType, entityId) => {
-          if (entityType === 'deal') {
-            const deal = deals.find(d => d.id === entityId);
-            if (deal) setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: moneyResults.find(r => r.dealId === entityId) || null });
-          } else {
-            const lead = leads.find(l => l.id === entityId);
-            if (lead) setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: opportunityResults.find(r => r.leadId === entityId) || null });
-          }
-        }}
-        snoozeCount={selectedItem ? getSnoozeCount(selectedItem.kind === 'action' ? selectedItem.data.id : '') : 0}
-      />
+        snoozeCount={selectedItem ? getSnoozeCount(selectedItem.kind === 'action' ? selectedItem.data.id : '') : 0} />
+
 
       {/* Money Risk Drawer */}
       <MoneyRiskDrawer
         result={moneyDrawerResult}
         deal={moneyDrawerDeal}
-        onClose={() => { setMoneyDrawerResult(null); setMoneyDrawerDeal(null); }}
-        onStartAction={handleStartAction}
-      />
+        onClose={() => {setMoneyDrawerResult(null);setMoneyDrawerDeal(null);}}
+        onStartAction={handleStartAction} />
+
 
       {/* Quick Add Modal */}
-      {showQuickAdd && (
-        <QuickAddModal
-          defaultType="task"
-          prefillTaskTitle={quickAddPrefill.title}
-          prefillRelatedLeadId={quickAddPrefill.leadId}
-          prefillRelatedDealId={quickAddPrefill.dealId}
-          onClose={() => { setShowQuickAdd(false); setQuickAddPrefill({}); }}
-        />
-      )}
+      {showQuickAdd &&
+      <QuickAddModal
+        defaultType="task"
+        prefillTaskTitle={quickAddPrefill.title}
+        prefillRelatedLeadId={quickAddPrefill.leadId}
+        prefillRelatedDealId={quickAddPrefill.dealId}
+        onClose={() => {setShowQuickAdd(false);setQuickAddPrefill({});}} />
+
+      }
 
       {/* Touch Picker (EOD Log Touch) */}
       <TouchPickerModal
@@ -1671,24 +1642,24 @@ export default function CommandCenter() {
           setShowTouchPicker(false);
           setTouchTarget({ entityType, entityId, entityTitle });
           setShowLogTouch(true);
-        }}
-      />
+        }} />
+
 
       {/* Log Touch Modal */}
-      {showLogTouch && touchTarget && (
-        <LogTouchModal
-          open={true}
-          entityType={touchTarget.entityType}
-          entityId={touchTarget.entityId}
-          entityTitle={touchTarget.entityTitle}
-          onClose={() => { setShowLogTouch(false); setTouchTarget(null); }}
-        />
-      )}
+      {showLogTouch && touchTarget &&
+      <LogTouchModal
+        open={true}
+        entityType={touchTarget.entityType}
+        entityId={touchTarget.entityId}
+        entityTitle={touchTarget.entityTitle}
+        onClose={() => {setShowLogTouch(false);setTouchTarget(null);}} />
+
+      }
 
       {/* End of Day Review Drawer */}
       <EndOfDayReviewDrawer
         open={showEodReview}
-        onClose={() => { setShowEodReview(false); markEodCompleted(); }}
+        onClose={() => {setShowEodReview(false);markEodCompleted();}}
         overdueTasks={eodSummary.overdueTasks}
         untouchedHotLeads={eodSummary.untouchedHotLeads}
         computedAt={eodSummary.computedAt}
@@ -1703,8 +1674,8 @@ export default function CommandCenter() {
           setQuickAddPrefill({ title: prefillTitle, leadId: relatedLeadId, dealId: relatedDealId });
           setShowQuickAdd(true);
         }}
-        onNavigateToTasks={() => navigate('/?workspace=work')}
-      />
+        onNavigateToTasks={() => navigate('/?workspace=work')} />
+
 
       {/* Action Composer Drawer */}
       <ActionComposerDrawer
@@ -1716,15 +1687,15 @@ export default function CommandCenter() {
         oppResult={executionEntity?.oppResult}
         tasks={tasks}
         onCreateTask={handleExecutionFollowUp}
-        onLogTouch={handleExecutionLogTouch}
-      />
+        onLogTouch={handleExecutionLogTouch} />
+
 
       {/* Weekly Planning Assistant */}
       <WeeklyPlanningAssistant
         open={showWeeklyPlanner}
         onClose={() => setShowWeeklyPlanner(false)}
-        overview={strategicOverview}
-      />
+        overview={strategicOverview} />
+
 
       {/* Confetti overlay */}
       <ConfettiOverlay active={confettiActive} />
@@ -1747,8 +1718,8 @@ export default function CommandCenter() {
         onReset={resetToDefault}
         onShowAll={showAllPanels}
         visibleCount={visibleCount}
-        totalCount={totalCount}
-      />
-    </div>
-  );
+        totalCount={totalCount} />
+
+    </div>);
+
 }
