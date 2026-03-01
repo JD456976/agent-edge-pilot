@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
           name: task.title,
           dueDate: task.due_at ? new Date(task.due_at).toISOString().split("T")[0] : undefined,
           ...(fubPersonId ? { personId: fubPersonId } : {}),
-          ...(fubUserId ? { assignedTo: fubUserId } : {}),
+          ...(fubUserId ? { assignedUserId: fubUserId } : {}),
           ...(fields || {}),
         };
       } else if (action === "complete" && fields?.fub_task_id) {
