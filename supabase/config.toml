@@ -89,3 +89,6 @@ verify_jwt = false
 
 [functions.calendar-feed]
 verify_jwt = false
+
+[functions.fub-send-message]
+verify_jwt = false
