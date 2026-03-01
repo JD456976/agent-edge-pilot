@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Zap, DollarSign, AlertTriangle, TrendingUp, Eye, Check, Phone, Briefcase } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -91,6 +91,62 @@ export function ActionDetailDrawer({ item, onClose, onComplete, onWorkEntity, sn
   const [showTouch, setShowTouch] = useState(false);
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const { toast } = useToast();
+
+  // ── Shared FUB fetch: one call for all child panels ──────────────
+  const [sharedPersonProfile, setSharedPersonProfile] = useState<any>(null);
+  const [sharedFubActivities, setSharedFubActivities] = useState<any[]>([]);
+  const [fubFetchDone, setFubFetchDone] = useState(false);
+
+  const touchEntityType: 'lead' | 'deal' | null = !item ? null :
+    item.kind === 'deal' ? 'deal' :
+    item.kind === 'opportunity' ? 'lead' :
+    item.kind === 'action' ? (item.data.relatedDealId ? 'deal' : item.data.relatedLeadId ? 'lead' : null) :
+    item.kind === 'speedAlert' ? (item.data.relatedDealId ? 'deal' : item.data.relatedLeadId ? 'lead' : null) : null;
+  const touchEntityId = !item ? null :
+    item.kind === 'deal' ? item.data.deal.id :
+    item.kind === 'opportunity' ? item.data.lead.id :
+    item.kind === 'action' ? (item.data.relatedDealId || item.data.relatedLeadId || null) :
+    item.kind === 'speedAlert' ? (item.data.relatedDealId || item.data.relatedLeadId || null) : null;
+
+  useEffect(() => {
+    if (!touchEntityId || !touchEntityType) return;
+    let cancelled = false;
+    setFubFetchDone(false);
+    setSharedPersonProfile(null);
+    setSharedFubActivities([]);
+
+    const entity =
+      item?.kind === 'deal' ? item.data.deal :
+      item?.kind === 'opportunity' ? item.data.lead :
+      null;
+
+    const importedFrom = (entity as any)?.importedFrom || (entity as any)?.imported_from;
+    if (!importedFrom?.startsWith('fub:')) {
+      setFubFetchDone(true);
+      return;
+    }
+
+    const fubPersonId = parseInt(importedFrom.replace('fub:', ''));
+    import('@/lib/edgeClient').then(({ callEdgeFunction }) => {
+      callEdgeFunction('fub-activity', {
+        fub_person_id: fubPersonId,
+        entity_id: touchEntityId,
+        limit: 200,
+      }).then((result: any) => {
+        if (!cancelled) {
+          if (result?.personProfile) setSharedPersonProfile(result.personProfile);
+          if (result?.activities) setSharedFubActivities(result.activities);
+        }
+      }).catch(() => {
+        // Non-critical — panels will gracefully show without FUB data
+      }).finally(() => {
+        if (!cancelled) setFubFetchDone(true);
+      });
+    });
+
+    return () => { cancelled = true; };
+  }, [touchEntityId, item]);
+
   if (!item) return null;
 
   const isOpportunity = item.kind === 'opportunity';
@@ -125,17 +181,7 @@ export function ActionDetailDrawer({ item, onClose, onComplete, onWorkEntity, sn
 
   const confidence = getConfidence(scores!);
 
-  // Determine entity for touch logging
-  const touchEntityType: 'lead' | 'deal' | null =
-    item.kind === 'deal' ? 'deal' :
-    item.kind === 'opportunity' ? 'lead' :
-    item.kind === 'action' ? (item.data.relatedDealId ? 'deal' : item.data.relatedLeadId ? 'lead' : null) :
-    item.kind === 'speedAlert' ? (item.data.relatedDealId ? 'deal' : item.data.relatedLeadId ? 'lead' : null) : null;
-  const touchEntityId =
-    item.kind === 'deal' ? item.data.deal.id :
-    item.kind === 'opportunity' ? item.data.lead.id :
-    item.kind === 'action' ? (item.data.relatedDealId || item.data.relatedLeadId || null) :
-    item.kind === 'speedAlert' ? (item.data.relatedDealId || item.data.relatedLeadId || null) : null;
+  // touchEntityType and touchEntityId are computed above (before the early return)
 
   return (
     <>
@@ -178,6 +224,7 @@ export function ActionDetailDrawer({ item, onClose, onComplete, onWorkEntity, sn
                 item.kind === 'opportunity' ? item.data.lead :
                 null as any
               }
+              personProfile={sharedPersonProfile}
             />
           )}
 
@@ -209,6 +256,7 @@ export function ActionDetailDrawer({ item, onClose, onComplete, onWorkEntity, sn
                 item.kind === 'opportunity' ? item.data.lead :
                 null as any
               }
+              externalPersonProfile={sharedPersonProfile}
             />
           )}
 
@@ -223,6 +271,7 @@ export function ActionDetailDrawer({ item, onClose, onComplete, onWorkEntity, sn
                 item.kind === 'opportunity' ? item.data.lead :
                 null as any
               }
+              personProfile={sharedPersonProfile}
             />
           )}
 

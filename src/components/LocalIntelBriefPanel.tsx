@@ -28,9 +28,10 @@ interface Props {
   entityType: 'lead' | 'deal';
   entityName: string;
   entity: any;
+  externalPersonProfile?: FubPersonProfile | null;
 }
 
-export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity }: Props) {
+export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity, externalPersonProfile }: Props) {
   const { user } = useAuth();
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
   const [fubActivities, setFubActivities] = useState<FubActivity[]>([]);
@@ -95,6 +96,12 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
       setFubActivities(fubs);
       setLoading(false);
 
+      // If parent already provided the person profile, use it and skip edge call
+      if (externalPersonProfile) {
+        setPersonProfile(externalPersonProfile);
+        return;
+      }
+
       const importedFrom = entity?.importedFrom || entity?.imported_from;
       if (importedFrom?.startsWith('fub:')) {
         try {
@@ -113,7 +120,7 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity 
         } catch { /* non-critical */ }
       }
     })();
-  }, [user, entityId]);
+  }, [user, entityId, externalPersonProfile]);
 
   const insights = useMemo(() => {
     const totalEvents = activities.length + fubActivities.length;
