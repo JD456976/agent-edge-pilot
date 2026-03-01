@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Send, Copy, Loader2, RefreshCw, Mail, MessageSquare, Phone } from 'lucide-react';
+import { Sparkles, Send, Copy, Loader2, RefreshCw, Mail, MessageSquare, Phone, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,10 +28,12 @@ export function AIFollowUpPanel({ entityType, entityId, entityName }: Props) {
   const [context, setContext] = useState('');
   const [generating, setGenerating] = useState(false);
   const [draft, setDraft] = useState<{ subject?: string; body?: string; talking_points?: string[]; opening?: string; closing?: string } | null>(null);
+  const [rateLimitMessage, setRateLimitMessage] = useState<string | null>(null);
 
   const generate = async () => {
     setGenerating(true);
     setDraft(null);
+    setRateLimitMessage(null);
     try {
       const data = await callEdgeFunction<any>('ai-follow-up', {
         entity_type: entityType,
@@ -40,9 +42,18 @@ export function AIFollowUpPanel({ entityType, entityId, entityName }: Props) {
         tone,
         context: context || undefined,
       });
+      if (data?.limitExceeded) {
+        setRateLimitMessage(data.message || 'Daily AI limit reached. Resets at midnight.');
+        return;
+      }
       setDraft(data);
     } catch (err: any) {
-      toast({ description: err?.message || 'Failed to generate draft', variant: 'destructive' });
+      if (err?.kind === 'rate_limited' || err?.limitExceeded || err?.details?.limitExceeded) {
+        const msg = err?.details?.message || err?.message || 'Daily AI limit reached. Resets at midnight.';
+        setRateLimitMessage(msg);
+      } else {
+        toast({ description: err?.message || 'Failed to generate draft', variant: 'destructive' });
+      }
     } finally {
       setGenerating(false);
     }
@@ -92,6 +103,16 @@ export function AIFollowUpPanel({ entityType, entityId, entityName }: Props) {
         {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
         Generate {draftType === 'call_script' ? 'Call Script' : draftType === 'text' ? 'Text' : 'Email'} for {entityName}
       </Button>
+
+      {rateLimitMessage && (
+        <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 p-3">
+          <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+          <div className="text-xs text-warning">
+            <p className="font-medium">{rateLimitMessage}</p>
+            <p className="mt-1 text-muted-foreground">You can still write a follow-up manually below.</p>
+          </div>
+        </div>
+      )}
 
       {draft && (
         <div className="space-y-2 animate-fade-in">

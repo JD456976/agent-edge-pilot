@@ -89,6 +89,23 @@ Risk Flags: ${(deal.risk_flags || []).join(", ") || "None"}`;
       call_script: "Write a brief call talking points script with 3-4 key points to cover.",
     };
 
+    // Rate limit check
+    const { checkAndLogUsage } = await import('../_shared/rateLimiter.ts');
+    const rateCheck = await checkAndLogUsage(serviceClient, user.id, {
+      functionName: 'ai-follow-up',
+      dailyLimit: 15,
+    });
+    if (!rateCheck.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: 'Daily limit reached',
+          message: `You've used ${rateCheck.used}/${rateCheck.limit} AI requests today. Limit resets at midnight.`,
+          limitExceeded: true,
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const systemPrompt = `You are a real estate agent's AI assistant. Generate a follow-up ${draft_type} for the client described below.
 
 ${toneInstructions[tone] || toneInstructions.professional}
