@@ -1,5 +1,5 @@
 import { useState, useMemo, useTransition, useCallback } from 'react';
-import { CalendarDays, ChevronDown, Clock, Briefcase, Home, CheckSquare, ExternalLink } from 'lucide-react';
+import { CalendarDays, ChevronDown, Clock, Briefcase, Home, CheckSquare, Download } from 'lucide-react';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { format, isAfter, isBefore, addDays, startOfDay, parseISO, formatISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -92,9 +92,11 @@ interface UpcomingEventsPanelProps {
   appointments: FubAppointment[];
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  onOpenLead?: (leadId: string) => void;
+  onOpenDeal?: (dealId: string) => void;
 }
 
-export function UpcomingEventsPanel({ deals, tasks, appointments, isCollapsed, onToggleCollapse }: UpcomingEventsPanelProps) {
+export function UpcomingEventsPanel({ deals, tasks, appointments, isCollapsed, onToggleCollapse, onOpenLead, onOpenDeal }: UpcomingEventsPanelProps) {
   const [horizon, setHorizon] = useState(7);
   const [isPending, startTransition] = useTransition();
   const { openWorkspace } = useWorkspace();
@@ -106,8 +108,28 @@ export function UpcomingEventsPanel({ deals, tasks, appointments, isCollapsed, o
   }, []);
 
   const handleEventClick = useCallback((ev: CalendarEvent) => {
-    downloadICS(ev);
-  }, []);
+    if (ev.type === 'task') {
+      const taskId = ev.id.replace('task-', '');
+      const task = tasks.find(t => t.id === taskId);
+      if (task?.relatedLeadId && onOpenLead) {
+        onOpenLead(task.relatedLeadId);
+      } else if (task?.relatedDealId && onOpenDeal) {
+        onOpenDeal(task.relatedDealId);
+      }
+    } else if (ev.type === 'milestone') {
+      // Extract deal id from event id (format: "deal-{uuid}-{label}")
+      // UUID has 5 dash-separated segments
+      const withoutPrefix = ev.id.replace('deal-', '');
+      const segments = withoutPrefix.split('-');
+      if (segments.length >= 5) {
+        const dealId = segments.slice(0, 5).join('-');
+        onOpenDeal?.(dealId);
+      }
+    } else if (ev.type === 'appointment') {
+      // Appointments: download ICS as fallback since there's no in-app appointment detail view
+      downloadICS(ev);
+    }
+  }, [tasks, onOpenLead, onOpenDeal]);
 
   const events = useMemo(() => {
     const now = startOfDay(new Date());
@@ -125,7 +147,7 @@ export function UpcomingEventsPanel({ deals, tasks, appointments, isCollapsed, o
             date: d,
             endDate: a.end_at ? parseISO(a.end_at) : undefined,
             type: 'appointment',
-            detail: a.location || undefined,
+            detail: a.location ? a.location.replace(/([a-z])([A-Z])/g, '$1, $2').trim() : undefined,
           });
         }
       } catch {}
@@ -227,7 +249,6 @@ export function UpcomingEventsPanel({ deals, tasks, appointments, isCollapsed, o
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium truncate">{ev.title}</span>
                     {eventBadge(ev.type)}
-                    <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Clock className="h-3 w-3 text-muted-foreground" />
@@ -238,6 +259,13 @@ export function UpcomingEventsPanel({ deals, tasks, appointments, isCollapsed, o
                   </div>
                   {ev.detail && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{ev.detail}</p>}
                 </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); downloadICS(ev); }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-accent ml-auto shrink-0"
+                  title="Add to calendar"
+                >
+                  <Download className="h-3 w-3 text-muted-foreground" />
+                </button>
               </button>
             ))}
           </div>

@@ -1227,7 +1227,16 @@ export default function CommandCenter() {
         tasks={tasks}
         appointments={fubAppointments}
         isCollapsed={isCollapsed('upcoming-events')}
-        onToggleCollapse={() => toggleCollapse('upcoming-events')} />
+        onToggleCollapse={() => toggleCollapse('upcoming-events')}
+        onOpenLead={(leadId) => {
+          const lead = leads.find(l => l.id === leadId);
+          if (lead) handleOpenLead(lead);
+        }}
+        onOpenDeal={(dealId) => {
+          const deal = deals.find(d => d.id === dealId);
+          if (deal) handleOpenDeal(deal);
+        }}
+      />
 
 
       {/* Morning Brief (first session of the day) */}
