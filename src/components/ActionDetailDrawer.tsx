@@ -6,6 +6,7 @@ import { LogTouchModal } from '@/components/LogTouchModal';
 import { ActivityTrail } from '@/components/ActivityTrail';
 import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
 import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
+import { ClientFitPanel } from '@/components/ClientFitPanel';
 import { FubContextStrip } from '@/components/FubContextStrip';
 import { useToast } from '@/hooks/use-toast';
 import type { ScoredEntity, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
@@ -220,6 +221,20 @@ export function ActionDetailDrawer({ item, onClose, onComplete, onWorkEntity, sn
               entity={
                 item.kind === 'deal' ? item.data.deal :
                 item.kind === 'opportunity' ? item.data.lead :
+                null as any
+              }
+            />
+          )}
+
+          {/* Client Fit Evaluation */}
+          {touchEntityType === 'lead' && touchEntityId && (
+            <ClientFitPanel
+              entityId={touchEntityId}
+              entityType="lead"
+              entityName={title}
+              entity={
+                item.kind === 'opportunity' ? item.data.lead :
+                item.kind === 'action' ? { importedFrom: null } :
                 null as any
               }
             />
