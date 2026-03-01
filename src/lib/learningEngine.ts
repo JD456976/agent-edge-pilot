@@ -9,11 +9,11 @@
  */
 
 // ── Storage Keys ─────────────────────────────────────────────────────
-const STORAGE_PREFIX = 'dp-learning';
-const OUTCOMES_KEY = `${STORAGE_PREFIX}-outcomes`;
-const ACTION_EFF_KEY = `${STORAGE_PREFIX}-action-eff`;
-const BEHAVIOR_KEY = `${STORAGE_PREFIX}-behavior`;
-const CALIBRATION_KEY = `${STORAGE_PREFIX}-calibration`;
+export const STORAGE_PREFIX = 'dp-learning';
+export const OUTCOMES_KEY = `${STORAGE_PREFIX}-outcomes`;
+export const ACTION_EFF_KEY = `${STORAGE_PREFIX}-action-eff`;
+export const BEHAVIOR_KEY = `${STORAGE_PREFIX}-behavior`;
+export const CALIBRATION_KEY = `${STORAGE_PREFIX}-calibration`;
 
 // ── Types ────────────────────────────────────────────────────────────
 

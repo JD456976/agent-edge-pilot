@@ -2122,35 +2122,47 @@ export type Database = {
       }
       self_opt_preferences: {
         Row: {
+          action_effectiveness: Json | null
           allow_channel_optimization: boolean
           allow_priority_reweighting: boolean
           allow_time_of_day_optimization: boolean
+          behavioral_pattern: Json | null
+          calibration_weights: Json | null
           coaching_tone: Database["public"]["Enums"]["coaching_tone"]
           created_at: string
           enabled: boolean
           nudge_level: Database["public"]["Enums"]["nudge_level"]
+          outcomes: Json | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          action_effectiveness?: Json | null
           allow_channel_optimization?: boolean
           allow_priority_reweighting?: boolean
           allow_time_of_day_optimization?: boolean
+          behavioral_pattern?: Json | null
+          calibration_weights?: Json | null
           coaching_tone?: Database["public"]["Enums"]["coaching_tone"]
           created_at?: string
           enabled?: boolean
           nudge_level?: Database["public"]["Enums"]["nudge_level"]
+          outcomes?: Json | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          action_effectiveness?: Json | null
           allow_channel_optimization?: boolean
           allow_priority_reweighting?: boolean
           allow_time_of_day_optimization?: boolean
+          behavioral_pattern?: Json | null
+          calibration_weights?: Json | null
           coaching_tone?: Database["public"]["Enums"]["coaching_tone"]
           created_at?: string
           enabled?: boolean
           nudge_level?: Database["public"]["Enums"]["nudge_level"]
+          outcomes?: Json | null
           updated_at?: string
           user_id?: string
         }
