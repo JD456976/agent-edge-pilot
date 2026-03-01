@@ -107,6 +107,8 @@ import { PanelDensityToggle, usePanelDensity } from '@/components/PanelDensityTo
 import { AutoSaveIndicator, useAutoSaveIndicator } from '@/components/AutoSaveIndicator';
 import { ConfettiOverlay, useConfetti } from '@/components/ConfettiOverlay';
 import { UpcomingEventsPanel } from '@/components/UpcomingEventsPanel';
+import { DailyPulseBar } from '@/components/DailyPulseBar';
+import { IntelligenceLibrary } from '@/components/IntelligenceLibrary';
 import type { RiskLevel, Deal, Lead, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 const SNOOZE_STORAGE_KEY = 'dp-snooze-counts';
@@ -1183,8 +1185,30 @@ export default function CommandCenter() {
         totalRevenue={totalRevenue}
         overdueCount={overdueTasks.length} />
 
+      {/* TIER 1: Daily Pulse Bar */}
+      <DailyPulseBar
+        totalMoneyAtRisk={totalMoneyAtRisk}
+        topMoneyResult={topMoneyAtRisk}
+        topDeal={topMoneyAtRisk ? deals.find(d => d.id === topMoneyAtRisk.dealId) || null : null}
+        topOpportunity={topOpportunity}
+        topLead={topOpportunity ? leads.find(l => l.id === topOpportunity.leadId) || null : null}
+        overdueTasks={overdueTasks}
+        dueSoonTasks={dueSoonTasks}
+        onMoneyClick={() => {
+          if (topMoneyAtRisk) {
+            const deal = deals.find(d => d.id === topMoneyAtRisk.dealId);
+            if (deal) handleMoneySelect(topMoneyAtRisk, deal);
+          }
+        }}
+        onLeadClick={() => {
+          if (topOpportunity) {
+            const lead = leads.find(l => l.id === topOpportunity.leadId);
+            if (lead) handleOpportunityAction(lead, topOpportunity);
+          }
+        }}
+        onTasksClick={() => navigate('/?workspace=work')}
+      />
 
-      {/* Upcoming Events Panel */}
       <UpcomingEventsPanel
         deals={deals}
         tasks={tasks}
@@ -1370,56 +1394,23 @@ export default function CommandCenter() {
       </PanelErrorBoundary>
       </CollapsiblePanel>
 
-      {/* ── Sortable Panels ────────────────────────────────────── */}
-      <div data-tour="panel-area">
-      <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}>
-
-        <SortableContext items={sortWithPins(panelOrder)} strategy={verticalListSortingStrategy}>
-          <div className={cn('grid grid-cols-1 md:grid-cols-2', density === 'compact' ? 'gap-2' : 'gap-4')}>
-            {sortWithPins(panelOrder).map((panelId) => {
-                if (isPanelHidden(panelId) && !showHiddenPanels) return null;
-                if (!isPanelVisibleInMode(panelId, focusMode, maturity.level, fullViewOverride)) return null;
-                if (!matchesPanelFilter(panelId, panelFilter)) return null;
-                const content = renderPanel(panelId);
-                if (!content) return null;
-                const isFullWidth = !PAIRED_PANELS.has(panelId);
-                return (
-                  <SortablePanel key={panelId} id={panelId} editMode={editMode} fullWidth={isFullWidth} label={PANEL_LABELS[panelId]} isCollapsed={isCollapsed(panelId)} onToggleCollapse={() => toggleCollapse(panelId)}>
-                  <PanelErrorBoundary>
-                    <div className="relative group/pin">
-                      <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover/pin:opacity-100 transition-opacity">
-                        <PanelHelpTooltip panelId={panelId} />
-                        {editMode &&
-                          <PanelPinButton panelId={panelId} isPinned={isPinned(panelId)} onToggle={togglePin} />
-                          }
-                      </div>
-                      <LazyPanel skeletonLines={isFullWidth ? 4 : 3} forceMount={editMode || isDragging}>
-                        {content}
-                      </LazyPanel>
-                    </div>
-                  </PanelErrorBoundary>
-                </SortablePanel>);
-
-              })}
-          </div>
-        </SortableContext>
-      </DndContext>
+      {/* ── TIER 2: Action Zone — always visible ────────────────── */}
+      <div className="space-y-3" data-tour="panel-area">
+        <PanelErrorBoundary>{renderPanel('autopilot')}</PanelErrorBoundary>
+        <PanelErrorBoundary>{renderPanel('money-at-risk')}</PanelErrorBoundary>
+        <PanelErrorBoundary>{renderPanel('opportunity-heat')}</PanelErrorBoundary>
       </div>
 
-      {/* Hidden panels toggle */}
-      {hiddenPanels.size > 0 &&
-      <button
-        onClick={() => setShowHiddenPanels((prev) => !prev)}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors">
-
-          {showHiddenPanels ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          {showHiddenPanels ? 'Hide' : 'Show'} {hiddenPanels.size} hidden panel{hiddenPanels.size !== 1 ? 's' : ''}
-        </button>
-      }
+      {/* ── TIER 3: Intelligence Library ──────────────────────── */}
+      <IntelligenceLibrary
+        renderPanel={renderPanel}
+        isPanelVisible={(panelId) => {
+          if (isPanelHidden(panelId) && !showHiddenPanels) return false;
+          if (!isPanelVisibleInMode(panelId, focusMode, maturity.level, fullViewOverride)) return false;
+          if (!matchesPanelFilter(panelId, panelFilter)) return false;
+          return true;
+        }}
+      />
 
       {/* Cohort Playbooks */}
       {cohortPlaybooks.length > 0 &&
