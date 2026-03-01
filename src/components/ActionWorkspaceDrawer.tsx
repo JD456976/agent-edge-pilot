@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
 import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
+import { ClientFitPanel } from '@/components/ClientFitPanel';
 import { FubContextStrip } from '@/components/FubContextStrip';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -494,12 +495,22 @@ export function ActionWorkspaceDrawer({
 
             {/* ── INTEL TAB ────────────────────────────────────────── */}
             {activeTab === 'intel' && entity && (
-              <LocalIntelBriefPanel
-                entityId={context.entityId}
-                entityType={context.entityType}
-                entityName={context.entityName}
-                entity={entity}
-              />
+              <div className="space-y-4">
+                <LocalIntelBriefPanel
+                  entityId={context.entityId}
+                  entityType={context.entityType}
+                  entityName={context.entityName}
+                  entity={entity}
+                />
+                {context.entityType === 'lead' && (
+                  <ClientFitPanel
+                    entityId={context.entityId}
+                    entityType="lead"
+                    entityName={context.entityName}
+                    entity={entity}
+                  />
+                )}
+              </div>
             )}
 
             {/* ── PREFERENCES TAB ─────────────────────────────────── */}
