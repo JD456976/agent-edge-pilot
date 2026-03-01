@@ -466,6 +466,10 @@ export default function CommandCenter() {
 
   // ── Stability Score ────────────────────────────────────────────────
   const now = useMemo(() => new Date(), []);
+  const overdueTasks = useMemo(() =>
+    tasks.filter(t => !t.completedAt && new Date(t.dueAt) < now),
+    [tasks, now]
+  );
   const dueSoonTasks = useMemo(() => {
     const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
     return tasks.filter((t) => !t.completedAt && new Date(t.dueAt) >= now && new Date(t.dueAt) <= in48h);
@@ -477,7 +481,7 @@ export default function CommandCenter() {
 
   // Single source of truth for EOD data
   const eodSummary = useEndOfDaySummary(tasks, leads);
-  const { overdueTasks, untouchedHotLeads } = eodSummary;
+  const { overdueTasks: eodOverdueTasks, untouchedHotLeads } = eodSummary;
 
   const totalMoneyAtRisk = useMemo(() => moneyResults.reduce((s, r) => s + r.personalCommissionAtRisk, 0), [moneyResults]);
 
@@ -518,18 +522,15 @@ export default function CommandCenter() {
 
   // Operational load / burnout detection
   const burnoutCritical = useMemo(() => {
-    const overdue = tasks.filter((t) => !t.completedAt && new Date(t.dueAt) < new Date());
-    const tomorrow = new Date(Date.now() + 48 * 60 * 60 * 1000);
-    const dueSoon = tasks.filter((t) => !t.completedAt && new Date(t.dueAt) >= new Date() && new Date(t.dueAt) <= tomorrow);
     let score = 0;
-    if (overdue.length >= 8) score += 30;else
-    if (overdue.length >= 4) score += 15;
-    if (dueSoon.length >= 10) score += 25;else
-    if (dueSoon.length >= 5) score += 10;
+    if (overdueTasks.length >= 8) score += 30;else
+    if (overdueTasks.length >= 4) score += 15;
+    if (dueSoonTasks.length >= 10) score += 25;else
+    if (dueSoonTasks.length >= 5) score += 10;
     if (stabilityResult.score < 40) score += 20;else
     if (stabilityResult.score < 60) score += 10;
     return score >= 70;
-  }, [tasks, stabilityResult.score]);
+  }, [overdueTasks, dueSoonTasks, stabilityResult.score]);
 
   // Predictive signals for Autopilot
   const predictiveSignals = useMemo(() => {
