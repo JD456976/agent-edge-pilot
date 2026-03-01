@@ -453,7 +453,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       role: p.role as any, split_percent: p.splitPercent,
       commission_override: p.commissionOverride ?? null,
     }).eq('id', p.id);
-    await loadData();
+    setDealParticipants(prev =>
+      prev.map(existing =>
+        existing.id === p.id
+          ? { ...existing, role: p.role, splitPercent: p.splitPercent, commissionOverride: p.commissionOverride }
+          : existing
+      )
+    );
   };
 
   const addDealParticipant = async (p: Omit<DealParticipant, 'id'>) => {
@@ -461,12 +467,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       deal_id: p.dealId, user_id: p.userId, role: p.role as any,
       split_percent: p.splitPercent, commission_override: p.commissionOverride ?? null,
     });
-    await loadData();
+    const { data: newRow } = await supabase
+      .from('deal_participants')
+      .select('*')
+      .eq('deal_id', p.dealId)
+      .eq('user_id', p.userId)
+      .maybeSingle();
+    if (newRow) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('user_id', p.userId)
+        .maybeSingle();
+      setDealParticipants(prev => [...prev, mapParticipant(newRow, profile?.name)]);
+    }
   };
 
   const deleteDealParticipant = async (id: string) => {
     await supabase.from('deal_participants').delete().eq('id', id);
-    await loadData();
+    setDealParticipants(prev => prev.filter(existing => existing.id !== id));
   };
 
   const hasData = leads.length > 0 || deals.length > 0 || tasks.length > 0;
