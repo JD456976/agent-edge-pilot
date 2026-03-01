@@ -236,7 +236,7 @@ export function ActionWorkspaceDrawer({
         const result = await callEdgeFunction('fub-activity', {
           fub_person_id: fubPersonId,
           entity_id: (entity as any).id,
-          limit: 5,
+          limit: 25,
         });
         if (!cancelled && result) {
           setRecentFubActivities(result.activities || []);
@@ -394,6 +394,7 @@ export function ActionWorkspaceDrawer({
   return (
     <Sheet open={open} onOpenChange={(v) => !v && handleClose()}>
       <SheetContent
+        hideClose
         className="w-full md:max-w-lg overflow-y-auto p-0"
         style={{
           paddingLeft: 'env(safe-area-inset-left, 0px)',
@@ -514,6 +515,46 @@ export function ActionWorkspaceDrawer({
             {/* ── CALL TAB ─────────────────────────────────────────── */}
             {activeTab === 'call' && callBrief && (
               <div className="space-y-4">
+                {/* Call History from FUB */}
+                {(() => {
+                  const callHistory = recentFubActivities.filter(a => a.activity_type === 'call' || a.activity_type === 'phone');
+                  if (callHistory.length === 0) return null;
+                  return (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Call History (FUB)</p>
+                      <div className="space-y-1 max-h-[180px] overflow-y-auto">
+                        {callHistory.map((a, i) => (
+                          <div key={i} className="flex items-start gap-2 text-xs p-2 rounded-md border border-border bg-muted/30">
+                            <div className="shrink-0 mt-0.5">
+                              {a.direction === 'inbound' ? (
+                                <ArrowDownLeft className="h-3 w-3 text-primary" />
+                              ) : (
+                                <ArrowUpRight className="h-3 w-3 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium capitalize">{a.direction || 'outbound'} call</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {new Date(a.occurred_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                  {' '}
+                                  {new Date(a.occurred_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              {a.body_preview && <p className="text-muted-foreground truncate mt-0.5">{a.body_preview}</p>}
+                              {a.duration_seconds != null && a.duration_seconds > 0 && (
+                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                  Duration: {Math.floor(a.duration_seconds / 60)}m {a.duration_seconds % 60}s
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Goal */}
                 <div className="rounded-md border border-primary/10 bg-primary/5 p-3">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Goal of Call</p>
@@ -693,6 +734,41 @@ export function ActionWorkspaceDrawer({
                     </p>
                   )}
                 </div>
+
+                {/* Text History from FUB */}
+                {(() => {
+                  const textHistory = recentFubActivities.filter(a => a.activity_type === 'text' || a.activity_type === 'sms' || a.activity_type === 'textMessage');
+                  if (textHistory.length === 0) return null;
+                  return (
+                    <div className="space-y-1.5 border-t border-border pt-3">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Text History (FUB)</p>
+                      <div className="space-y-1 max-h-[240px] overflow-y-auto">
+                        {textHistory.map((a, i) => (
+                          <div key={i} className="flex items-start gap-2 text-xs p-2 rounded-md border border-border bg-muted/30">
+                            <div className="shrink-0 mt-0.5">
+                              {a.direction === 'inbound' ? (
+                                <ArrowDownLeft className="h-3 w-3 text-primary" />
+                              ) : (
+                                <ArrowUpRight className="h-3 w-3 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium capitalize">{a.direction || 'outbound'}</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {new Date(a.occurred_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                  {' '}
+                                  {new Date(a.occurred_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              {a.body_preview && <p className="text-muted-foreground mt-0.5">{a.body_preview}</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -792,6 +868,39 @@ export function ActionWorkspaceDrawer({
                     </Button>
                   )}
                 </div>
+
+                {/* Email History from FUB */}
+                {(() => {
+                  const emailHistory = recentFubActivities.filter(a => a.activity_type === 'email');
+                  if (emailHistory.length === 0) return null;
+                  return (
+                    <div className="space-y-1.5 border-t border-border pt-3">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Email History (FUB)</p>
+                      <div className="space-y-1 max-h-[240px] overflow-y-auto">
+                        {emailHistory.map((a, i) => (
+                          <div key={i} className="flex items-start gap-2 text-xs p-2 rounded-md border border-border bg-muted/30">
+                            <div className="shrink-0 mt-0.5">
+                              {a.direction === 'inbound' ? (
+                                <ArrowDownLeft className="h-3 w-3 text-primary" />
+                              ) : (
+                                <ArrowUpRight className="h-3 w-3 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium truncate max-w-[180px]">{a.subject || 'No subject'}</span>
+                                <span className="text-[10px] text-muted-foreground shrink-0">
+                                  {new Date(a.occurred_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                </span>
+                              </div>
+                              {a.body_preview && <p className="text-muted-foreground mt-0.5 line-clamp-2">{a.body_preview}</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
