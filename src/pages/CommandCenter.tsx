@@ -22,7 +22,6 @@ import { AutopilotPanel } from '@/components/AutopilotPanel';
 import { ControlStatusBar } from '@/components/ControlStatusBar';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { QuickAddModal } from '@/components/QuickAddModal';
-import { FubDriftCard } from '@/components/FubDriftCard';
 import { FubWatchlistPanel } from '@/components/FubWatchlistPanel';
 import { MoneyAtRiskPanel } from '@/components/MoneyAtRiskPanel';
 import { MoneyRiskDrawer } from '@/components/MoneyRiskDrawer';
@@ -1100,15 +1099,6 @@ export default function CommandCenter() {
 
           {/* Desktop: toolbar row */}
           <div className="hidden lg:flex items-center gap-2 flex-wrap">
-            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5" onClick={async () => {
-            const btn = document.activeElement as HTMLButtonElement;
-            btn?.blur();
-            toast({ title: 'Syncing…', description: 'Refreshing your data' });
-            await refreshData();
-            toast({ title: 'Synced', description: 'Dashboard data is up to date' });
-          }}>
-              <RefreshCw className="h-3 w-3" /> Sync
-            </Button>
             <AutoSaveIndicator status={saveStatus} />
             <NotificationBell alerts={alerts} />
             <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5" onClick={toggleDensity} aria-label={density === 'comfortable' ? 'Switch to compact view' : 'Switch to comfortable view'}>
@@ -1463,7 +1453,25 @@ export default function CommandCenter() {
                       onClick={() => setSelectedItem({ kind: 'action', data: action })}>
 
                     <button
-                        onClick={(e) => {e.stopPropagation();if (action.relatedTaskId) {completeTask(action.relatedTaskId);showPostActionToast('complete', { taskId: action.relatedTaskId, isOverdue: action.timeWindow === 'Overdue' });}}}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (action.relatedTaskId) {
+                            completeTask(action.relatedTaskId);
+                            showPostActionToast('complete', { taskId: action.relatedTaskId, isOverdue: action.timeWindow === 'Overdue' });
+                          } else {
+                            // Suggested actions without a backing task — create one marked complete
+                            await addTask({
+                              title: action.title,
+                              type: (action.suggestedType || 'follow_up') as any,
+                              dueAt: new Date().toISOString(),
+                              completedAt: new Date().toISOString(),
+                              relatedDealId: action.relatedDealId || undefined,
+                              relatedLeadId: action.relatedLeadId || undefined,
+                              assignedToUserId: user?.id || '',
+                            });
+                            showPostActionToast('complete', {});
+                          }
+                        }}
                         className="mt-0.5 h-5 w-5 rounded-md border-2 border-muted-foreground/30 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors shrink-0">
 
                       <Check className="h-3 w-3 text-transparent group-hover:text-primary transition-colors" />
@@ -1587,20 +1595,12 @@ export default function CommandCenter() {
         </CollapsiblePanel>
       }
 
-      {/* FUB Drift Detection + Watchlist */}
+      {/* FUB Watchlist (drift is handled by auto-sync) */}
       {hasFubIntegration &&
-      <CollapsiblePanel id="fub-drift-watchlist" label="CRM Drift & Watchlist" icon={<RefreshCw className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('fub-drift-watchlist')} onToggleCollapse={() => toggleCollapse('fub-drift-watchlist')}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <PanelErrorBoundary>
-            <FubDriftCard
-              hasIntegration={hasFubIntegration}
-              onScopedStageComplete={(runId) => navigate(`/?workspace=sync`)} />
-
-          </PanelErrorBoundary>
+      <CollapsiblePanel id="fub-drift-watchlist" label="CRM Watchlist" icon={<RefreshCw className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('fub-drift-watchlist')} onToggleCollapse={() => toggleCollapse('fub-drift-watchlist')}>
           <PanelErrorBoundary>
             <FubWatchlistPanel hasIntegration={hasFubIntegration} />
           </PanelErrorBoundary>
-        </div>
         </CollapsiblePanel>
       }
 
