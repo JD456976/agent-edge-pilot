@@ -415,6 +415,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       related_lead_id: task.relatedLeadId || null,
       related_deal_id: task.relatedDealId || null,
       assigned_to_user_id: task.assignedToUserId,
+      ...(task.completedAt ? { completed_at: task.completedAt } : {}),
     }).select().single();
     if (error) {
       console.error('Failed to add task:', error);
