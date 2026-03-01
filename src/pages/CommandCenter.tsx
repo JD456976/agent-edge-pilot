@@ -1463,7 +1463,27 @@ export default function CommandCenter() {
                     onClick={() => setSelectedItem({ kind: 'action', data: action })}
                   >
                     <button
-                      onClick={(e) => { e.stopPropagation(); if (action.relatedTaskId) { completeTask(action.relatedTaskId); showPostActionToast('complete', { taskId: action.relatedTaskId, isOverdue: action.timeWindow === 'Overdue' }); } }}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (action.relatedTaskId) {
+                          completeTask(action.relatedTaskId);
+                          showPostActionToast('complete', { taskId: action.relatedTaskId, isOverdue: action.timeWindow === 'Overdue' });
+                        } else {
+                          // Suggested action without a backing task — create + complete it
+                          try {
+                            await addTask({
+                              title: action.title,
+                              dueAt: new Date().toISOString(),
+                              completedAt: new Date().toISOString(),
+                              relatedLeadId: action.relatedLeadId || null,
+                              relatedDealId: action.relatedDealId || null,
+                            } as any);
+                            showPostActionToast('complete', { isOverdue: false });
+                          } catch {
+                            toast({ description: 'Could not mark action as done', duration: 2000 });
+                          }
+                        }
+                      }}
                       className="mt-0.5 h-5 w-5 rounded-md border-2 border-muted-foreground/30 flex items-center justify-center hover:border-primary hover:bg-primary/10 transition-colors shrink-0"
                     >
                       <Check className="h-3 w-3 text-transparent group-hover:text-primary transition-colors" />
