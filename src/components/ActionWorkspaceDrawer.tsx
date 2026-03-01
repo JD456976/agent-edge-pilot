@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap } from 'lucide-react';
+import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap, Send, Clock, ArrowUpRight, ArrowDownLeft, Loader2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
@@ -14,10 +15,12 @@ import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
 import { FubContextStrip } from '@/components/FubContextStrip';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFubSend } from '@/hooks/useFubSend';
 import { toast } from '@/hooks/use-toast';
 import type { Deal, Lead, Task, TaskType } from '@/types';
 import type { MoneyModelResult } from '@/lib/moneyModel';
 import type { OpportunityHeatResult } from '@/lib/leadMoneyModel';
+import type { FubPersonProfile, FubActivity } from '@/lib/intelAnalyzer';
 import {
   buildExecutionContext,
   composeCommunication,
@@ -84,11 +87,14 @@ const CALL_OUTCOMES = [
 
 // ── SMS Templates ────────────────────────────────────────────────────
 
-function generateSmsVariants(name: string, context: string): { label: string; text: string }[] {
+function generateSmsVariants(name: string, context: string, profile?: FubPersonProfile | null): { label: string; text: string }[] {
+  const stage = profile?.stage ? ` regarding your ${profile.stage.toLowerCase()} search` : '';
+  const timeframe = profile?.timeFrame ? ` I know your ${profile.timeFrame.toLowerCase()} timeline` : '';
+  const preApproval = profile?.preApproved ? ' — and congrats on the pre-approval!' : '';
   return [
-    { label: 'Short', text: `Hi ${name}, checking in — do you have a moment to connect today?` },
-    { label: 'Medium', text: `Hi ${name}, I wanted to follow up on our conversation. ${context ? context + ' ' : ''}Are you available for a quick chat?` },
-    { label: 'Friendly', text: `Hey ${name}! Hope you're doing well. I've been thinking about your situation and had a few ideas. Would love to chat when you have a moment 😊` },
+    { label: 'Short', text: `Hi ${name}, checking in${stage} — do you have a moment to connect today?` },
+    { label: 'Contextual', text: `Hi ${name}, I wanted to follow up${stage}.${timeframe ? timeframe + ' is important, so' : ''} I have some updates to share.${preApproval} Are you available for a quick chat?` },
+    { label: 'Friendly', text: `Hey ${name}! Hope you're doing well. I've been thinking about your situation${stage} and had a few ideas. Would love to chat when you have a moment 😊` },
   ];
 }
 
@@ -155,11 +161,14 @@ export function ActionWorkspaceDrawer({
 
   // Text tab state
   const [selectedSmsIndex, setSelectedSmsIndex] = useState(0);
+  const [quickSendMode, setQuickSendMode] = useState(false);
+  const [textSent, setTextSent] = useState(false);
 
   // Email tab state
   const [emailTone, setEmailTone] = useState<EmailTone>('professional');
   const [emailLength, setEmailLength] = useState<EmailLength>('medium');
   const [editedEmail, setEditedEmail] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
 
   // Task tab state
   const [taskTitle, setTaskTitle] = useState('');
@@ -170,6 +179,11 @@ export function ActionWorkspaceDrawer({
   // Notes tab state
   const [noteText, setNoteText] = useState('');
   const [savedNotes, setSavedNotes] = useState<Array<{ id: string; note: string; created_at: string }>>([]);
+
+  // FUB enrichment state
+  const [fubProfile, setFubProfile] = useState<FubPersonProfile | null>(null);
+  const [recentFubActivities, setRecentFubActivities] = useState<FubActivity[]>([]);
+  const [fubPersonId, setFubPersonId] = useState<number | null>(null);
 
   const loadNotes = useCallback(async (eType: string, eId: string) => {
     const { data } = await supabase
@@ -184,11 +198,54 @@ export function ActionWorkspaceDrawer({
     setSavedNotes((data || []) as any);
   }, []);
 
+  // Derive FUB person ID
+  useEffect(() => {
+    if (!entity) { setFubPersonId(null); return; }
+    const importedFrom = (entity as any)?.importedFrom || (entity as any)?.imported_from;
+    if (importedFrom?.startsWith('fub:')) {
+      setFubPersonId(parseInt(importedFrom.replace('fub:', '')));
+    } else {
+      setFubPersonId(null);
+    }
+  }, [entity]);
+
   // Derived data
   const context = useMemo((): ExecutionContext | null => {
     if (!entity) return null;
     return buildExecutionContext(entity, entityType, moneyResult, oppResult, tasks);
   }, [entity, entityType, moneyResult, oppResult, tasks]);
+
+  // FUB send hook
+  const fubSendOptions = useMemo(() => {
+    if (!fubPersonId || !context) return null;
+    return { fubPersonId, entityId: context.entityId, entityType: context.entityType };
+  }, [fubPersonId, context]);
+  const { sendText, sendEmail, sending } = useFubSend(fubSendOptions);
+
+  // Load FUB activities and profile
+  useEffect(() => {
+    if (!entity || !open || !fubPersonId) {
+      setRecentFubActivities([]);
+      setFubProfile(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { callEdgeFunction } = await import('@/lib/edgeClient');
+        const result = await callEdgeFunction('fub-activity', {
+          fub_person_id: fubPersonId,
+          entity_id: (entity as any).id,
+          limit: 5,
+        });
+        if (!cancelled && result) {
+          setRecentFubActivities(result.activities || []);
+          if (result.personProfile) setFubProfile(result.personProfile as FubPersonProfile);
+        }
+      } catch { /* non-critical */ }
+    })();
+    return () => { cancelled = true; };
+  }, [entity, open, fubPersonId]);
 
   useEffect(() => {
     if (entity && context && open) {
@@ -218,8 +275,8 @@ export function ActionWorkspaceDrawer({
   const smsVariants = useMemo(() => {
     if (!context) return [];
     const contextStr = context.riskSignals[0] || '';
-    return generateSmsVariants(context.entityName, contextStr);
-  }, [context]);
+    return generateSmsVariants(context.entityName, contextStr, fubProfile);
+  }, [context, fubProfile]);
 
   const emailBody = useMemo(() => {
     if (!draft) return '';
@@ -255,6 +312,11 @@ export function ActionWorkspaceDrawer({
     setSavedNotes([]);
     setShowObjections(false);
     setCopiedField(null);
+    setTextSent(false);
+    setEmailSent(false);
+    setQuickSendMode(false);
+    setFubProfile(null);
+    setRecentFubActivities([]);
     onClose();
   }, [onClose]);
 
@@ -377,7 +439,30 @@ export function ActionWorkspaceDrawer({
                 <FubContextStrip
                   entityId={context.entityId}
                   entity={entity}
+                  personProfile={fubProfile}
                 />
+              </div>
+            )}
+            {/* Recent FUB Activity */}
+            {recentFubActivities.length > 0 && (
+              <div className="mt-2 space-y-1">
+                <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">Recent Activity</p>
+                <div className="space-y-0.5">
+                  {recentFubActivities.slice(0, 3).map((a, i) => (
+                    <div key={i} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      {a.direction === 'inbound' ? (
+                        <ArrowDownLeft className="h-2.5 w-2.5 text-primary shrink-0" />
+                      ) : (
+                        <ArrowUpRight className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
+                      )}
+                      <span className="font-medium capitalize">{a.activity_type}</span>
+                      {a.subject && <span className="truncate max-w-[140px]">— {a.subject}</span>}
+                      <span className="ml-auto text-[10px] shrink-0">
+                        {new Date(a.occurred_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -529,7 +614,15 @@ export function ActionWorkspaceDrawer({
             {/* ── TEXT TAB ─────────────────────────────────────────── */}
             {activeTab === 'text' && (
               <div className="space-y-4">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Suggested Messages</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Suggested Messages</p>
+                  {fubPersonId && (
+                    <div className="flex items-center gap-2">
+                      <Label className="text-[10px] text-muted-foreground">Quick Send</Label>
+                      <Switch checked={quickSendMode} onCheckedChange={setQuickSendMode} className="h-4 w-7" />
+                    </div>
+                  )}
+                </div>
                 <div className="space-y-2">
                   {smsVariants.map((variant, i) => (
                     <div
@@ -551,19 +644,54 @@ export function ActionWorkspaceDrawer({
                   ))}
                 </div>
 
-                {/* Schedule follow-up toggle */}
-                <div className="border-t border-border pt-3">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs w-full"
-                    onClick={() => {
-                      onLogTouch?.(context.entityType, context.entityId, context.entityName, 'text', smsVariants[selectedSmsIndex]?.text || 'Sent text');
-                    }}
-                  >
-                    <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                    Log Text Sent
-                  </Button>
+                {/* Send / Log actions */}
+                <div className="border-t border-border pt-3 space-y-2">
+                  {textSent ? (
+                    <div className="flex items-center gap-2 text-sm text-opportunity">
+                      <Check className="h-4 w-4" />
+                      <span>Text sent via FUB</span>
+                    </div>
+                  ) : fubPersonId ? (
+                    <Button
+                      size="sm"
+                      className="text-xs w-full"
+                      disabled={sending}
+                      onClick={async () => {
+                        const msg = smsVariants[selectedSmsIndex]?.text;
+                        if (!msg) return;
+                        if (quickSendMode) {
+                          const ok = await sendText(msg);
+                          if (ok) { setTextSent(true); onLogTouch?.(context.entityType, context.entityId, context.entityName, 'text', `Sent via FUB: ${msg}`); }
+                        } else {
+                          // Draft+confirm: show confirmation
+                          if (confirm(`Send this text via FUB?\n\n"${msg}"`)) {
+                            const ok = await sendText(msg);
+                            if (ok) { setTextSent(true); onLogTouch?.(context.entityType, context.entityId, context.entityName, 'text', `Sent via FUB: ${msg}`); }
+                          }
+                        }
+                      }}
+                    >
+                      {sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+                      {quickSendMode ? 'Send Text Now' : 'Review & Send via FUB'}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs w-full"
+                      onClick={() => {
+                        onLogTouch?.(context.entityType, context.entityId, context.entityName, 'text', smsVariants[selectedSmsIndex]?.text || 'Sent text');
+                      }}
+                    >
+                      <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                      Log Text Sent
+                    </Button>
+                  )}
+                  {fubPersonId && !textSent && (
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      {quickSendMode ? 'Sends immediately through FUB' : 'You\'ll preview before sending'}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -616,16 +744,53 @@ export function ActionWorkspaceDrawer({
                 />
 
                 {/* Actions */}
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="text-xs flex-1" onClick={() => handleCopy(`Subject: ${draft.email.subject}\n\n${displayEmail}`, 'fullemail')}>
-                    {copiedField === 'fullemail' ? <Check className="h-3.5 w-3.5 mr-1" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
-                    {copiedField === 'fullemail' ? 'Copied' : 'Copy Email'}
-                  </Button>
-                  <Button size="sm" variant="outline" className="text-xs" onClick={() => {
-                    onLogTouch?.(context.entityType, context.entityId, context.entityName, 'email', 'Sent email');
-                  }}>
-                    Log Email Sent
-                  </Button>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="text-xs flex-1" onClick={() => handleCopy(`Subject: ${draft.email.subject}\n\n${displayEmail}`, 'fullemail')}>
+                      {copiedField === 'fullemail' ? <Check className="h-3.5 w-3.5 mr-1" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
+                      {copiedField === 'fullemail' ? 'Copied' : 'Copy Email'}
+                    </Button>
+                  </div>
+                  {emailSent ? (
+                    <div className="flex items-center gap-2 text-sm text-opportunity">
+                      <Check className="h-4 w-4" />
+                      <span>Email sent via FUB</span>
+                    </div>
+                  ) : fubPersonId ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[10px] text-muted-foreground">Quick Send</Label>
+                        <Switch checked={quickSendMode} onCheckedChange={setQuickSendMode} className="h-4 w-7" />
+                      </div>
+                      <Button
+                        size="sm"
+                        className="text-xs w-full"
+                        disabled={sending}
+                        onClick={async () => {
+                          const subj = draft.email.subject;
+                          const bod = displayEmail;
+                          if (quickSendMode) {
+                            const ok = await sendEmail(subj, bod);
+                            if (ok) { setEmailSent(true); onLogTouch?.(context.entityType, context.entityId, context.entityName, 'email', `Sent via FUB: ${subj}`); }
+                          } else {
+                            if (confirm(`Send this email via FUB?\n\nSubject: ${subj}\n\n${bod.slice(0, 200)}...`)) {
+                              const ok = await sendEmail(subj, bod);
+                              if (ok) { setEmailSent(true); onLogTouch?.(context.entityType, context.entityId, context.entityName, 'email', `Sent via FUB: ${subj}`); }
+                            }
+                          }
+                        }}
+                      >
+                        {sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+                        {quickSendMode ? 'Send Email Now' : 'Review & Send via FUB'}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button size="sm" variant="outline" className="text-xs w-full" onClick={() => {
+                      onLogTouch?.(context.entityType, context.entityId, context.entityName, 'email', 'Sent email');
+                    }}>
+                      Log Email Sent
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
