@@ -594,6 +594,17 @@ export default function CommandCenter() {
     toast({ description: `Task created: ${title}`, duration: 3000 });
   }, [addTask, user?.id]);
 
+  // Open lead/deal record (drawer) — for name clicks, NOT action buttons
+  const handleOpenLead = useCallback((lead: Lead) => {
+    const or = opportunityResults.find((r) => r.leadId === lead.id) || null;
+    setExecutionEntity({ entity: lead, entityType: 'lead', oppResult: or });
+  }, [opportunityResults]);
+
+  const handleOpenDeal = useCallback((deal: Deal) => {
+    const mr = moneyResults.find((r) => r.dealId === deal.id) || null;
+    setExecutionEntity({ entity: deal, entityType: 'deal', moneyResult: mr });
+  }, [moneyResults]);
+
   // Execution layer handler
   const handleOpenExecution = useCallback((entityId: string, entityType: 'deal' | 'lead') => {
     if (entityType === 'deal') {
@@ -821,8 +832,9 @@ export default function CommandCenter() {
             forecast={forecast}
             typicalMonthlyIncome={userDefaults?.typicalPriceMid ? Math.round(userDefaults.typicalPriceMid * (userDefaults.typicalCommissionRate ?? 3) / 100 * (userDefaults.typicalSplitPct ?? 100) / 100) : 8000}
             onOpenOpportunities={() => {
-              if (topOpportunity && leads.find((l) => l.id === topOpportunity.leadId)) {
-                handleOpportunityAction(leads.find((l) => l.id === topOpportunity.leadId)!, topOpportunity);
+              if (topOpportunity) {
+                const lead = leads.find((l) => l.id === topOpportunity.leadId);
+                if (lead) handleOpenLead(lead);
               }
             }} />);
 
@@ -834,8 +846,9 @@ export default function CommandCenter() {
             moneyResults={moneyResults}
             forecast={forecast}
             onOpenOpportunities={() => {
-              if (topOpportunity && leads.find((l) => l.id === topOpportunity.leadId)) {
-                handleOpportunityAction(leads.find((l) => l.id === topOpportunity.leadId)!, topOpportunity);
+              if (topOpportunity) {
+                const lead = leads.find((l) => l.id === topOpportunity.leadId);
+                if (lead) handleOpenLead(lead);
               }
             }} />);
 
@@ -1020,7 +1033,7 @@ export default function CommandCenter() {
       default:
         return null;
     }
-  }, [panels, snoozedIds, handleSnooze, topMoneyAtRisk, deals, leads, tasks, handleMoneySelect, topOpportunity, handleOpportunityAction, stabilityResult, stabilityInputs, overdueTasks, dueSoonTasks, totalMoneyAtRisk, handleAutopilotCreateTask, burnoutCritical, predictiveSignals, handleOpenExecution, moneyResults, opportunityResults, dealParticipants, user?.id, refreshData, dealChanges, leadChanges, riskWeights, oppWeights, forecast, userDefaults, marketConditions, learningSnapshot, resetLearning, completeTask, showPostActionToast, navigate, handleForecastCreateTask, agentProfile, agentProfileLoading, exportAgentProfile, resetAgentProfile, incomePatterns]);
+  }, [panels, snoozedIds, handleSnooze, topMoneyAtRisk, deals, leads, tasks, handleMoneySelect, topOpportunity, handleOpportunityAction, stabilityResult, stabilityInputs, overdueTasks, dueSoonTasks, totalMoneyAtRisk, handleAutopilotCreateTask, burnoutCritical, predictiveSignals, handleOpenExecution, handleOpenLead, handleOpenDeal, moneyResults, opportunityResults, dealParticipants, user?.id, refreshData, dealChanges, leadChanges, riskWeights, oppWeights, forecast, userDefaults, marketConditions, learningSnapshot, resetLearning, completeTask, showPostActionToast, navigate, handleForecastCreateTask, agentProfile, agentProfileLoading, exportAgentProfile, resetAgentProfile, incomePatterns]);
 
   if (loading) {
     return (
@@ -1203,7 +1216,7 @@ export default function CommandCenter() {
         onLeadClick={() => {
           if (topOpportunity) {
             const lead = leads.find(l => l.id === topOpportunity.leadId);
-            if (lead) handleOpportunityAction(lead, topOpportunity);
+            if (lead) handleOpenLead(lead);
           }
         }}
         onTasksClick={() => navigate('/?workspace=work')}
@@ -1371,8 +1384,7 @@ export default function CommandCenter() {
                 if (deal && result) handleMoneySelect(result, deal);
               } else if (step.entityType === 'lead' && step.entityId) {
                 const lead = leads.find((l) => l.id === step.entityId);
-                const opp = opportunityResults.find((r) => r.leadId === step.entityId);
-                if (lead && opp) handleOpportunityAction(lead, opp);
+                if (lead) handleOpenLead(lead);
               } else if (step.entityType === 'task' && step.entityId) {
                 completeTask(step.entityId);
                 showPostActionToast('complete', { taskId: step.entityId });
