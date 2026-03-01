@@ -430,8 +430,9 @@ Deno.serve(async (req) => {
 
       if (existing && existing.activity_count > 0) {
         const age = Date.now() - new Date(existing.updated_at).getTime();
-        if (age < 24 * 60 * 60 * 1000) {
-          return new Response(JSON.stringify({ analysis: existing.analysis_json, cached: true, updated_at: existing.updated_at }), {
+        const hasClientFit = !!(existing.analysis_json as any)?.client_fit;
+        if (age < 24 * 60 * 60 * 1000 && hasClientFit) {
+          return new Response(JSON.stringify({ analysis: existing.analysis_json, cached: true, activity_count: existing.activity_count, updated_at: existing.updated_at }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
