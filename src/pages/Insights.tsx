@@ -35,7 +35,7 @@ export default function Insights() {
   const [tab, setTab] = useState<typeof TABS[number]>('Forecast');
 
   const { conditions: marketConditions } = useMarketConditions();
-  const { snapshot: learningSnapshot, resetLearning } = useAgentLearning(deals, leads, tasks);
+  const { snapshot: learningSnapshot, resetLearning } = useAgentLearning(deals, leads, tasks, user?.id);
   const previousSnapshot = useSessionMemory(leads, deals, tasks, alerts, hasData);
   const { prefs: scoringPrefs, loaded: scoringLoaded } = useScoringPreferences(user?.id);
 

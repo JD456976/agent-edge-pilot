@@ -344,7 +344,7 @@ export default function CommandCenter() {
 
 
   // Agent Learning Layer
-  const { calibration, snapshot: learningSnapshot, trackTaskCompletion, trackTaskIgnored, resetLearning } = useAgentLearning(deals, leads, tasks);
+  const { calibration, snapshot: learningSnapshot, trackTaskCompletion, trackTaskIgnored, resetLearning } = useAgentLearning(deals, leads, tasks, user?.id);
 
   // Network Effect Layer
   const { participation: networkParticipation } = useNetworkTelemetry();
