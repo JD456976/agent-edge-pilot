@@ -984,7 +984,11 @@ export default function CommandCenter() {
             tasks={tasks}
             moneyResults={moneyResults}
             stabilityScore={stabilityResult.score}
-            totalMoneyAtRisk={totalMoneyAtRisk} />);
+            totalMoneyAtRisk={totalMoneyAtRisk}
+            onSelectLead={(leadId) => {
+              const lead = leads.find(l => l.id === leadId);
+              if (lead) setSelectedItem({ kind: 'opportunity', data: { lead, scores: { entityId: lead.id, entityType: 'lead', urgencyScore: 0, revenueImpactScore: 0, decayRiskScore: 50, attentionGapScore: 60, opportunityScore: 0, overallPriorityScore: 50, explanation: ['Went cold this week'] }, topReason: 'Went cold this week' } });
+            }} />);
 
 
       case 'agent-profile':
@@ -1427,10 +1431,12 @@ export default function CommandCenter() {
         </PanelErrorBoundary>
       }
 
-      {/* 4-Panel Grid + Pipeline Watch */}
+      {/* 4-Panel Grid + Pipeline Watch — only show panels with data */}
+      {(panels.priorityActions.length > 0 || panels.dealsAtRisk.length > 0 || panels.speedAlerts.length > 0) && (
       <CollapsiblePanel id="priority-grid" label="Priority Actions, Deals at Risk & Speed Alerts" icon={<Zap className="h-3.5 w-3.5 text-primary" />} isCollapsed={isCollapsed('priority-grid')} onToggleCollapse={() => toggleCollapse('priority-grid')}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Priority Actions */}
+        {/* Priority Actions — only when there are items */}
+        {panels.priorityActions.length > 0 && (
         <PanelErrorBoundary>
         <div className="rounded-lg border border-border bg-card p-4 md:row-span-2">
           <div className="flex items-center gap-2 mb-1">
@@ -1439,10 +1445,7 @@ export default function CommandCenter() {
             <span className="text-xs text-muted-foreground ml-auto">{panels.priorityActions.length} items</span>
           </div>
           <p className="text-xs text-muted-foreground mb-3">Focus on these first to protect or create income.</p>
-          {panels.priorityActions.length === 0 ?
-              <p className="text-sm text-muted-foreground py-4 text-center">You're all caught up!</p> :
-
-              <div className="space-y-2">
+          <div className="space-y-2">
               {panels.priorityActions.map((action) => {
                   const confidence = action.scores.urgencyScore >= 40 && action.scores.revenueImpactScore >= 40 || action.scores.decayRiskScore >= 50 ? 'High' : 'Medium';
                   const snoozeCount = getSnoozeCount(action.id);
@@ -1507,20 +1510,18 @@ export default function CommandCenter() {
                 View All Actions <ChevronRight className="inline h-3 w-3" />
               </button>
             </div>
-              }
         </div>
         </PanelErrorBoundary>
+        )}
 
-        {/* Deals at Risk */}
+        {/* Deals at Risk — only when there are risky deals */}
+        {panels.dealsAtRisk.length > 0 && (
         <PanelErrorBoundary>
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="h-4 w-4 text-warning" />
             <h2 className="text-sm font-semibold">Deals at Risk</h2>
           </div>
-          {panels.dealsAtRisk.length === 0 ?
-              <p className="text-sm text-muted-foreground py-4 text-center">All deals are on track</p> :
-
               <div className="space-y-2">
               {panels.dealsAtRisk.map((item) =>
                 <div
@@ -1536,21 +1537,19 @@ export default function CommandCenter() {
                 </div>
                 )}
             </div>
-              }
         </div>
         </PanelErrorBoundary>
+        )}
 
-        {/* Speed Alerts */}
+        {/* Speed Alerts — only when there are alerts */}
+        {panels.speedAlerts.length > 0 && (
         <PanelErrorBoundary>
-        <div className="rounded-lg border border-border bg-card p-4 md:col-start-2">
+        <div className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-center gap-2 mb-1">
             <Zap className="h-4 w-4 text-time-sensitive" />
             <h2 className="text-sm font-semibold">Speed Alerts</h2>
           </div>
           <p className="text-xs text-muted-foreground mb-3">Time-sensitive items requiring immediate attention.</p>
-          {panels.speedAlerts.length === 0 ?
-              <p className="text-sm text-muted-foreground py-4 text-center">No time-sensitive alerts</p> :
-
               <div className="space-y-2">
               {panels.speedAlerts.map((alert) =>
                 <div
@@ -1568,11 +1567,12 @@ export default function CommandCenter() {
                 </div>
                 )}
             </div>
-              }
         </div>
         </PanelErrorBoundary>
+        )}
       </div>
       </CollapsiblePanel>
+      )}
 
       {/* Pipeline Watch */}
       {pipelineWatch.length > 0 &&

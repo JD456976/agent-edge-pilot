@@ -7,6 +7,8 @@ import { useNetworkBenchmarks } from '@/hooks/useNetworkBenchmarks';
 import type { Deal, Lead, Task } from '@/types';
 import type { MoneyModelResult } from '@/lib/moneyModel';
 
+interface MissedOppLead { id: string; name: string; }
+
 interface Props {
   deals: Deal[];
   leads: Lead[];
@@ -14,13 +16,14 @@ interface Props {
   moneyResults: MoneyModelResult[];
   stabilityScore: number;
   totalMoneyAtRisk: number;
+  onSelectLead?: (leadId: string) => void;
 }
 
 function formatCurrency(n: number) {
   return n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
 }
 
-export function WeeklyCommandReview({ deals, leads, tasks, moneyResults, stabilityScore, totalMoneyAtRisk }: Props) {
+export function WeeklyCommandReview({ deals, leads, tasks, moneyResults, stabilityScore, totalMoneyAtRisk, onSelectLead }: Props) {
   const userOverride = getWeeklyReviewUserOverride();
   const defaultExpanded = getWeeklyReviewDefaultExpanded();
   const isAutoCollapsed = !defaultExpanded && userOverride === null;
@@ -48,11 +51,12 @@ export function WeeklyCommandReview({ deals, leads, tasks, moneyResults, stabili
     const totalTasks = tasks.filter(t => new Date(t.dueAt) >= weekAgo && new Date(t.dueAt) <= now);
 
     // Missed opportunities (hot leads that went cold or were lost)
-    const missedOpps = leads.filter(l => {
+    const missedOppLeads: MissedOppLead[] = leads.filter(l => {
       if (l.leadTemperature !== 'cold') return false;
       const lastContact = new Date(l.lastContactAt);
       return lastContact >= weekAgo && lastContact <= now;
-    }).length;
+    }).map(l => ({ id: l.id, name: l.name }));
+    const missedOpps = missedOppLeads.length;
 
     // Pipeline health
     const activeDeals = deals.filter(d => d.stage !== 'closed');
@@ -75,6 +79,7 @@ export function WeeklyCommandReview({ deals, leads, tasks, moneyResults, stabili
       completedTasks: completedTasks.length,
       totalTasks: totalTasks.length,
       missedOpps,
+      missedOppLeads,
       activeDeals: activeDeals.length,
       riskyDeals,
       trend,
@@ -118,10 +123,13 @@ export function WeeklyCommandReview({ deals, leads, tasks, moneyResults, stabili
           {review.completedTasks}/{review.totalTasks} tasks done
         </span>
         {review.missedOpps > 0 && (
-          <span className="flex items-center gap-1">
+          <button
+            onClick={handleToggle}
+            className="flex items-center gap-1 hover:text-foreground transition-colors"
+            title={review.missedOppLeads.map(l => l.name).join(', ')}>
             <AlertTriangle className="h-3 w-3 text-warning" />
-            {review.missedOpps} missed opportunities
-          </span>
+            <span className="underline decoration-dotted underline-offset-2">{review.missedOpps} missed opportunities</span>
+          </button>
         )}
       </div>
 
@@ -137,6 +145,26 @@ export function WeeklyCommandReview({ deals, leads, tasks, moneyResults, stabili
               {totalMoneyAtRisk > 0 && <span className="text-urgent">{formatCurrency(totalMoneyAtRisk)} at risk</span>}
             </div>
           </div>
+
+          {/* Missed Opportunities Detail */}
+          {review.missedOppLeads.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3 text-warning" /> Missed Opportunities
+              </p>
+              <p className="text-[10px] text-muted-foreground">Leads that went cold this week — consider re-engaging.</p>
+              <div className="space-y-1">
+                {review.missedOppLeads.map(lead => (
+                  <button
+                    key={lead.id}
+                    onClick={() => onSelectLead?.(lead.id)}
+                    className="block text-xs text-primary hover:text-primary/80 underline decoration-dotted underline-offset-2 transition-colors">
+                    {lead.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Adjustments */}
           <div className="space-y-1.5">

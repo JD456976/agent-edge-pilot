@@ -237,14 +237,16 @@ interface SuggestedAction {
 function generateSuggestedActions(leads: Lead[], deals: Deal[], tasks: Task[], now: Date): SuggestedAction[] {
   const suggestions: SuggestedAction[] = [];
 
-  const leadsWithUpcomingTask = new Set<string>();
-  const dealsWithUpcomingTask = new Set<string>();
+  const leadsWithRecentOrUpcomingTask = new Set<string>();
+  const dealsWithRecentOrUpcomingTask = new Set<string>();
   for (const t of tasks) {
-    if (t.completedAt) continue;
+    // Skip suggestions for entities that have an upcoming task OR a recently completed one (within 24h)
+    const recentlyCompleted = t.completedAt && (now.getTime() - new Date(t.completedAt).getTime()) < 24 * 60 * 60 * 1000;
+    if (t.completedAt && !recentlyCompleted) continue;
     const h = hoursUntil(t.dueAt, now);
-    if (h < 72) {
-      if (t.relatedLeadId) leadsWithUpcomingTask.add(t.relatedLeadId);
-      if (t.relatedDealId) dealsWithUpcomingTask.add(t.relatedDealId);
+    if (h < 72 || recentlyCompleted) {
+      if (t.relatedLeadId) leadsWithRecentOrUpcomingTask.add(t.relatedLeadId);
+      if (t.relatedDealId) dealsWithRecentOrUpcomingTask.add(t.relatedDealId);
     }
   }
 
@@ -252,7 +254,7 @@ function generateSuggestedActions(leads: Lead[], deals: Deal[], tasks: Task[], n
     const scored = scoreLead(lead, now);
     if (!scored) continue;
     if (scored.attentionGapScore < 40 && daysSince(lead.lastContactAt, now) <= 4) continue;
-    if (leadsWithUpcomingTask.has(lead.id)) continue;
+    if (leadsWithRecentOrUpcomingTask.has(lead.id)) continue;
 
     const ds = daysSince(lead.lastContactAt, now);
     let suggestedType: TaskType = 'follow_up';
@@ -271,7 +273,7 @@ function generateSuggestedActions(leads: Lead[], deals: Deal[], tasks: Task[], n
 
   for (const deal of deals) {
     if (deal.stage === 'closed') continue;
-    if (dealsWithUpcomingTask.has(deal.id)) continue;
+    if (dealsWithRecentOrUpcomingTask.has(deal.id)) continue;
 
     const scored = scoreDeal(deal, now);
     if (!scored) continue;
