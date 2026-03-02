@@ -186,12 +186,23 @@ function matchDeal(norm: any, existingDeals: any[], rules: DedupRules) {
   return { match_status, matched_deal_id };
 }
 
-function matchTask(norm: any, existingTasks: any[], rules: DedupRules) {
+function matchTask(norm: any, existingTasks: any[], rules: DedupRules, fubId?: string) {
   let match_status = "new";
   let matched_task_id: string | null = null;
 
   if (!existingTasks) return { match_status, matched_task_id };
 
+  // PRIMARY CHECK: FUB ID match (most reliable — same FUB task, already imported)
+  if (fubId) {
+    const fubIdMatch = existingTasks.find((et: any) =>
+      et.imported_from === `fub:${fubId}`
+    );
+    if (fubIdMatch) {
+      return { match_status: "matched", matched_task_id: fubIdMatch.id };
+    }
+  }
+
+  // SECONDARY: title + due_date within 24h
   if (rules.task_title_due_date) {
     const titleMatch = existingTasks.find((et: any) =>
       et.title?.toLowerCase() === norm.title.toLowerCase() &&
@@ -201,6 +212,7 @@ function matchTask(norm: any, existingTasks: any[], rules: DedupRules) {
     if (titleMatch) { match_status = "matched"; matched_task_id = titleMatch.id; }
   }
 
+  // TERTIARY: title only (conflict, not matched)
   if (match_status === "new" && rules.task_title_only) {
     const titleOnly = existingTasks.find((et: any) =>
       et.title?.toLowerCase() === norm.title.toLowerCase()
@@ -331,7 +343,7 @@ Deno.serve(async (req) => {
       .eq("assigned_to_user_id", userId);
 
     const { data: existingTasks } = await svc.from("tasks")
-      .select("id, title, due_at")
+      .select("id, title, due_at, imported_from")
       .eq("assigned_to_user_id", userId);
 
     // Stage leads
@@ -359,7 +371,7 @@ Deno.serve(async (req) => {
     // Stage tasks
     const stagedTasks = rawTasks.map((t: any) => {
       const norm = normalizeTask(t);
-      const { match_status, matched_task_id } = matchTask(norm, existingTasks || [], rules);
+      const { match_status, matched_task_id } = matchTask(norm, existingTasks || [], rules, String(t.id));
       return {
         user_id: userId, import_run_id: run.id, fub_id: String(t.id),
         payload: t, normalized: norm, match_status, matched_task_id,
@@ -367,11 +379,33 @@ Deno.serve(async (req) => {
       };
     });
 
+    // Deduplicate within the batch: same title + same fub person + same day
+    const seen = new Set<string>();
+    const dedupedTasks = stagedTasks.filter((st: any) => {
+      const norm = st.normalized as any;
+      const dayKey = norm.dueAt
+        ? new Date(norm.dueAt).toISOString().slice(0, 10)
+        : 'no-date';
+      const personKey = norm.relatedFubPersonId || 'no-person';
+      const key = `${norm.title?.toLowerCase().trim()}|${personKey}|${dayKey}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // Also deduplicate by raw FUB task ID (a task should never appear twice)
+    const seenFubIds = new Set<string>();
+    const finalTasks = dedupedTasks.filter((st: any) => {
+      if (seenFubIds.has(st.fub_id)) return false;
+      seenFubIds.add(st.fub_id);
+      return true;
+    });
+
     // Insert staged data in parallel
     const insertPromises: Promise<any>[] = [];
     if (stagedLeads.length) insertPromises.push(svc.from("fub_staged_leads").insert(stagedLeads));
     if (stagedDeals.length) insertPromises.push(svc.from("fub_staged_deals").insert(stagedDeals));
-    if (stagedTasks.length) insertPromises.push(svc.from("fub_staged_tasks").insert(stagedTasks));
+    if (finalTasks.length) insertPromises.push(svc.from("fub_staged_tasks").insert(finalTasks));
     await Promise.all(insertPromises);
 
     // Audit log
@@ -382,7 +416,8 @@ Deno.serve(async (req) => {
         import_run_id: run.id,
         leads: stagedLeads.length,
         deals: stagedDeals.length,
-        tasks: stagedTasks.length,
+        tasks: finalTasks.length,
+        tasks_deduped: stagedTasks.length - finalTasks.length,
         mapping_version: CURRENT_MAPPING_VERSION,
         ...(isScoped ? { scoped: true, requested: body.selected } : {}),
       },
@@ -419,7 +454,7 @@ Deno.serve(async (req) => {
         counts: {
           leads: countsByStatus(stagedLeads),
           deals: countsByStatus(stagedDeals),
-          tasks: countsByStatus(stagedTasks),
+          tasks: countsByStatus(finalTasks),
         },
         not_found: notFound.length > 0 ? notFound : undefined,
         requested: isScoped ? {
