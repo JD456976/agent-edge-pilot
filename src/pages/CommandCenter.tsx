@@ -109,6 +109,7 @@ import { ConfettiOverlay, useConfetti } from '@/components/ConfettiOverlay';
 import { UpcomingEventsPanel } from '@/components/UpcomingEventsPanel';
 import { DailyPulseBar } from '@/components/DailyPulseBar';
 import { IntelligenceLibrary } from '@/components/IntelligenceLibrary';
+import { ShowingPrepCard } from '@/components/ShowingPrepCard';
 import type { RiskLevel, Deal, Lead, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 const SNOOZE_STORAGE_KEY = 'dp-snooze-counts';
@@ -331,7 +332,7 @@ export default function CommandCenter() {
       const { data: { user: u } } = await supabase.auth.getUser();
       if (!u) return;
       const { data } = await (supabase.from('fub_appointments' as any).
-      select('id, title, start_at, end_at, location, description').
+      select('id, title, start_at, end_at, location, description, related_lead_id').
       eq('user_id', u.id).
       gte('start_at', new Date().toISOString()).
       order('start_at', { ascending: true }).
@@ -339,6 +340,20 @@ export default function CommandCenter() {
       setFubAppointments(data || []);
     })();
   }, []);
+
+  // Imminent showing detection (within 48h with linked lead)
+  const imminentShowing = useMemo(() => {
+    const now = new Date();
+    const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+    for (const appt of fubAppointments) {
+      const startAt = new Date(appt.start_at);
+      if (startAt > now && startAt < in48h && appt.related_lead_id) {
+        const lead = leads.find((l: Lead) => l.id === appt.related_lead_id);
+        if (lead) return { appointment: appt, lead };
+      }
+    }
+    return null;
+  }, [fubAppointments, leads]);
 
   const panels = useMemo(() => buildCommandCenterPanels(leads, deals, tasks, alerts), [leads, deals, tasks, alerts]);
 
@@ -1190,6 +1205,21 @@ export default function CommandCenter() {
 
       {/* Favorites Strip */}
       <FavoritesStrip favorites={favorites} onSelect={(id, type) => handleOpenExecution(id, type)} />
+
+      {/* Showing Prep Card — appears when showing is within 48h */}
+      {imminentShowing && (
+        <ShowingPrepCard
+          appointment={imminentShowing.appointment}
+          lead={imminentShowing.lead}
+          tasks={tasks}
+          onOpenLead={handleOpenLead}
+          onLogTouch={(entityType, entityId, entityTitle) => {
+            setTouchTarget({ entityType, entityId, entityTitle });
+            setShowLogTouch(true);
+          }}
+          onCreateTask={(title, leadId) => handleAutopilotCreateTask(title, undefined, leadId)}
+        />
+      )}
 
       {/* Income Control Meter */}
       <IncomeControlMeter
