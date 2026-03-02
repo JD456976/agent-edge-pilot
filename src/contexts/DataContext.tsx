@@ -295,10 +295,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     await supabase.from('self_opt_preferences').delete().eq('user_id', user.id);
     await supabase.from('network_telemetry_events').delete().eq('user_id', user.id);
     await supabase.from('network_participation').delete().eq('user_id', user.id);
-    await supabase.from('scoring_preferences').delete().eq('user_id', user.id);
-    await supabase.from('commission_defaults').delete().eq('user_id', user.id);
-    await supabase.from('agent_intelligence_profile').delete().eq('user_id', user.id);
-    await supabase.from('crm_integrations').delete().eq('user_id', user.id);
+    // NOTE: crm_integrations is intentionally NOT wiped here.
+    // The FUB API key (encrypted separately) also survives wipe,
+    // so we keep the integration row to avoid forcing manual reconnection.
+    // To fully disconnect FUB, use the Disconnect button in the Sync page.
     await supabase.from('import_dedup_rules').delete().eq('user_id', user.id);
     await supabase.from('intel_briefs').delete().eq('user_id', user.id);
 
