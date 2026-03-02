@@ -561,6 +561,7 @@ export function ActionWorkspaceDrawer({
                     oppResult={oppResult ?? null}
                     fubProfile={fubProfile}
                     tasks={(tasks || []).map(t => ({ relatedLeadId: t.relatedLeadId, completedAt: t.completedAt ?? undefined }))}
+                    fubActivities={recentFubActivities}
                   />
                 )}
                 <LocalIntelBriefPanel

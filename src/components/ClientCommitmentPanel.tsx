@@ -18,7 +18,16 @@ import type { Lead } from '@/types';
 import type { OpportunityHeatResult } from '@/lib/leadMoneyModel';
 import type { FubPersonProfile } from '@/lib/intelAnalyzer';
 
-// ── Commitment verdict ──────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────
+
+export interface FubActivityRecord {
+  activity_type: string;
+  direction?: string;
+  body_preview?: string;
+  subject?: string;
+  occurred_at: string;
+  duration_seconds?: number;
+}
 
 type CommitmentVerdict = 'serious' | 'engaged' | 'browsing' | 'cold';
 
@@ -44,6 +53,7 @@ function assessCommitment(
   oppResult: OpportunityHeatResult | null,
   fubProfile: FubPersonProfile | null,
   tasks: { relatedLeadId?: string; completedAt?: string }[],
+  fubActivities: FubActivityRecord[],
 ): CommitmentAssessment {
   const signals: CommitmentSignal[] = [];
   const now = new Date();
@@ -111,16 +121,34 @@ function assessCommitment(
     }
   }
 
-  // 4. Engagement score
-  if (lead.engagementScore >= 50) {
-    signals.push({ label: `High engagement (${lead.engagementScore})`, impact: 'positive', weight: 5, reasoning: 'Multiple touchpoints or interactions recorded — this person is actively engaging with you.' });
-  } else if (lead.engagementScore > 0 && lead.engagementScore < 20) {
-    signals.push({ label: `Low engagement (${lead.engagementScore})`, impact: 'negative', weight: -3, reasoning: 'Minimal interaction history — could be a tire-kicker or early-stage browser.' });
+  // 4. Engagement score — derive from FUB activities if DB value is 0
+  const effectiveEngagement = lead.engagementScore > 0
+    ? lead.engagementScore
+    : Math.min(100, fubActivities.length * 4);
+
+  if (effectiveEngagement >= 50) {
+    signals.push({ label: `High engagement (${effectiveEngagement})`, impact: 'positive', weight: 5, reasoning: 'Multiple touchpoints or interactions recorded — this person is actively engaging with you.' });
+  } else if (effectiveEngagement > 0 && effectiveEngagement < 20) {
+    signals.push({ label: `Low engagement (${effectiveEngagement})`, impact: 'negative', weight: -3, reasoning: 'Minimal interaction history — could be a tire-kicker or early-stage browser.' });
+  } else if (effectiveEngagement >= 20 && effectiveEngagement < 50) {
+    signals.push({ label: `Moderate engagement (${effectiveEngagement})`, impact: 'neutral', weight: 1, reasoning: 'Some interaction history but not highly active.' });
   }
 
-  // 5. Recency of contact
-  if (lead.lastContactAt) {
-    const daysSinceContact = (now.getTime() - new Date(lead.lastContactAt).getTime()) / (1000 * 60 * 60 * 24);
+  // 5. Recency of contact — also check FUB activity timestamps
+  const contactDates: number[] = [];
+  if (lead.lastContactAt) contactDates.push(new Date(lead.lastContactAt).getTime());
+  if (lead.lastTouchedAt) contactDates.push(new Date(lead.lastTouchedAt).getTime());
+  if (fubActivities.length > 0) {
+    const latestActivity = fubActivities.reduce((latest, a) => {
+      const t = new Date(a.occurred_at).getTime();
+      return t > latest ? t : latest;
+    }, 0);
+    if (latestActivity > 0) contactDates.push(latestActivity);
+  }
+  const mostRecentContact = contactDates.length > 0 ? Math.max(...contactDates) : null;
+
+  if (mostRecentContact) {
+    const daysSinceContact = (now.getTime() - mostRecentContact) / (1000 * 60 * 60 * 24);
     if (daysSinceContact <= 2) {
       signals.push({ label: 'Recent contact (< 2 days)', impact: 'positive', weight: 4, reasoning: 'Recently communicated — relationship is active and warm.' });
     } else if (daysSinceContact > 14) {
@@ -139,7 +167,7 @@ function assessCommitment(
   // 7. Lead age vs activity
   if (lead.createdAt) {
     const daysOld = (now.getTime() - new Date(lead.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-    if (daysOld > 90 && lead.engagementScore < 30 && lead.leadTemperature !== 'hot') {
+    if (daysOld > 90 && effectiveEngagement < 30 && lead.leadTemperature !== 'hot') {
       signals.push({ label: `${Math.round(daysOld)}-day old lead, low engagement`, impact: 'negative', weight: -6, reasoning: 'This lead has been in your pipeline for months with little engagement. Classic "just looking" pattern.' });
     }
   }
@@ -147,12 +175,118 @@ function assessCommitment(
   // 8. Source quality
   const source = (lead.source || '').toLowerCase();
   if (source.includes('zillow') || source.includes('realtor')) {
-    if (!fubProfile?.preApproved && lead.engagementScore < 30) {
+    if (!fubProfile?.preApproved && effectiveEngagement < 30) {
       signals.push({ label: `Portal lead (${lead.source}) — no pre-approval`, impact: 'negative', weight: -3, reasoning: 'Portal leads without pre-approval have historically low conversion rates. Often browsing casually.' });
     }
   }
   if (source.includes('referral') || source.includes('sphere')) {
     signals.push({ label: `Referral/sphere source`, impact: 'positive', weight: 5, reasoning: 'Referrals convert at 3-5x the rate of portal leads — a warm introduction carries weight.' });
+  }
+
+  // 9. FUB Activity Pattern Analysis
+  if (fubActivities.length > 0) {
+    const calls = fubActivities.filter(a => ['call', 'calls', 'phone'].includes(a.activity_type));
+    const texts = fubActivities.filter(a => ['text', 'sms', 'textMessage', 'textMessages'].includes(a.activity_type));
+    const emails = fubActivities.filter(a => ['email', 'emails'].includes(a.activity_type));
+    const showings = fubActivities.filter(a => {
+      const t = a.activity_type.toLowerCase();
+      const body = (a.body_preview || '').toLowerCase();
+      const subj = (a.subject || '').toLowerCase();
+      return t.includes('showing') || t.includes('property_visit') || t.includes('viewed') ||
+             body.includes('showing') || subj.includes('showing');
+    });
+
+    // Showing activity is a strong buying signal
+    if (showings.length > 0) {
+      signals.push({
+        label: `${showings.length} showing${showings.length > 1 ? 's' : ''} / property view${showings.length > 1 ? 's' : ''}`,
+        impact: 'positive',
+        weight: Math.min(showings.length * 4, 9),
+        reasoning: 'Viewing properties in person is one of the strongest commitment signals. People who attend showings are actively searching.',
+      });
+    }
+
+    // Inbound communication = client initiating contact
+    const inboundCount = fubActivities.filter(a => a.direction === 'inbound').length;
+    const outboundCount = fubActivities.filter(a => a.direction === 'outbound').length;
+    if (inboundCount >= 3) {
+      signals.push({
+        label: `${inboundCount} inbound messages`,
+        impact: 'positive',
+        weight: Math.min(inboundCount, 7),
+        reasoning: 'Client is initiating contact — strong sign of genuine interest and engagement.',
+      });
+    } else if (outboundCount >= 5 && inboundCount === 0) {
+      signals.push({
+        label: `${outboundCount} outbound, 0 inbound`,
+        impact: 'negative',
+        weight: -5,
+        reasoning: 'You\'ve reached out multiple times with no response — classic ghosting pattern.',
+      });
+    }
+
+    // Call duration analysis
+    const answeredCalls = calls.filter(a => a.duration_seconds && a.duration_seconds > 30);
+    const missedCalls = calls.filter(a => !a.duration_seconds || a.duration_seconds <= 5);
+    if (answeredCalls.length >= 2) {
+      const avgDuration = answeredCalls.reduce((sum, c) => sum + (c.duration_seconds || 0), 0) / answeredCalls.length;
+      if (avgDuration > 120) {
+        signals.push({
+          label: `${answeredCalls.length} substantial calls (avg ${Math.round(avgDuration / 60)}min)`,
+          impact: 'positive',
+          weight: 5,
+          reasoning: 'Multiple calls with real conversation time indicates active dialogue and serious consideration.',
+        });
+      }
+    }
+    if (missedCalls.length >= 3 && answeredCalls.length === 0) {
+      signals.push({
+        label: `${missedCalls.length} unanswered calls`,
+        impact: 'negative',
+        weight: -4,
+        reasoning: 'Multiple unanswered calls suggest disengagement or avoidance.',
+      });
+    }
+
+    // Check for cancellation signals in notes/body
+    const cancelSignals = fubActivities.filter(a => {
+      const body = (a.body_preview || '').toLowerCase();
+      const subj = (a.subject || '').toLowerCase();
+      return body.includes('cancel') || body.includes('not interested') || body.includes('changed mind') ||
+             subj.includes('cancel') || body.includes('postpone') || body.includes('hold off');
+    });
+    if (cancelSignals.length > 0) {
+      signals.push({
+        label: `Cancellation/disinterest signals detected`,
+        impact: 'negative',
+        weight: -6,
+        reasoning: 'Activity history contains cancellation or disinterest language — reassess whether to continue investing time.',
+      });
+    }
+
+    // Total activity volume as a signal
+    if (fubActivities.length >= 15) {
+      signals.push({
+        label: `High activity volume (${fubActivities.length} interactions)`,
+        impact: 'positive',
+        weight: 3,
+        reasoning: 'Significant interaction history suggests this is an active relationship worth maintaining.',
+      });
+    } else if (fubActivities.length <= 3) {
+      signals.push({
+        label: `Minimal activity (${fubActivities.length} interaction${fubActivities.length !== 1 ? 's' : ''})`,
+        impact: 'negative',
+        weight: -2,
+        reasoning: 'Very few recorded interactions — relationship hasn\'t developed significantly.',
+      });
+    }
+  } else {
+    signals.push({
+      label: 'No FUB activity data',
+      impact: 'neutral',
+      weight: 0,
+      reasoning: 'No synced activity history available — assessment based on CRM metadata only.',
+    });
   }
 
   // Compute total score
@@ -328,15 +462,16 @@ interface Props {
   oppResult: OpportunityHeatResult | null;
   fubProfile: FubPersonProfile | null;
   tasks: { relatedLeadId?: string; completedAt?: string }[];
+  fubActivities?: FubActivityRecord[];
 }
 
-export function ClientCommitmentPanel({ lead, oppResult, fubProfile, tasks }: Props) {
+export function ClientCommitmentPanel({ lead, oppResult, fubProfile, tasks, fubActivities = [] }: Props) {
   const [showAllSignals, setShowAllSignals] = useState(false);
   const [showHeatBreakdown, setShowHeatBreakdown] = useState(false);
 
   const assessment = useMemo(
-    () => assessCommitment(lead, oppResult, fubProfile, tasks),
-    [lead, oppResult, fubProfile, tasks],
+    () => assessCommitment(lead, oppResult, fubProfile, tasks, fubActivities),
+    [lead, oppResult, fubProfile, tasks, fubActivities],
   );
 
   const config = VERDICT_CONFIG[assessment.verdict];
