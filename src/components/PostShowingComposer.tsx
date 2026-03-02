@@ -134,7 +134,7 @@ export function PostShowingComposer({
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="bottom" className="h-auto max-h-[85vh] overflow-y-auto">
+      <SheetContent side="bottom" className="h-auto max-h-[90dvh] overflow-y-auto">
         <SheetHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

@@ -97,6 +97,9 @@ export default function CalendarPage() {
   const { tasks, deals } = useData();
   const { user } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [calView, setCalView] = useState<'month' | 'list'>(() =>
+    window.innerWidth < 640 ? 'list' : 'month'
+  );
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [fubAppointments, setFubAppointments] = useState<any[]>([]);
@@ -313,9 +316,25 @@ export default function CalendarPage() {
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <h2 className="text-sm font-semibold">{format(currentMonth, 'MMMM yyyy')}</h2>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentMonth(m => addMonths(m, 1))}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5">
+            <button
+              onClick={() => setCalView('month')}
+              className={cn('px-2 py-1 text-xs rounded-md transition-colors', calView === 'month' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
+            >
+              Month
+            </button>
+            <button
+              onClick={() => setCalView('list')}
+              className={cn('px-2 py-1 text-xs rounded-md transition-colors', calView === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
+            >
+              List
+            </button>
+          </div>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentMonth(m => addMonths(m, 1))}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Legend */}
@@ -325,6 +344,39 @@ export default function CalendarPage() {
         <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-accent" /> Deal Milestones</span>
       </div>
 
+      {calView === 'list' ? (
+        <div className="space-y-2">
+          {events
+            .filter(ev => new Date(ev.startAt) >= new Date(new Date().setHours(0,0,0,0)))
+            .slice(0, 30)
+            .map(ev => (
+              <button
+                key={ev.id}
+                onClick={() => setSelectedEvent(ev)}
+                className="w-full flex items-start gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/30 transition-colors text-left"
+              >
+                <div className="shrink-0 text-center w-10">
+                  <p className="text-[10px] text-muted-foreground uppercase">{format(parseISO(ev.startAt), 'MMM')}</p>
+                  <p className="text-lg font-bold leading-none">{format(parseISO(ev.startAt), 'd')}</p>
+                  <p className="text-[10px] text-muted-foreground">{format(parseISO(ev.startAt), 'EEE')}</p>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{ev.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(parseISO(ev.startAt), 'h:mm a')}
+                    {ev.sourceLabel && ` · ${ev.sourceLabel}`}
+                  </p>
+                </div>
+                <div className={cn('w-2 h-2 rounded-full mt-1.5 shrink-0', ev.color)} />
+              </button>
+            ))
+          }
+          {events.filter(ev => new Date(ev.startAt) >= new Date(new Date().setHours(0,0,0,0))).length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-8">No upcoming events</p>
+          )}
+        </div>
+      ) : (
+      <>
       {/* Calendar grid */}
       <div className="border border-border rounded-lg overflow-hidden bg-card">
         {/* Day headers */}
@@ -384,6 +436,8 @@ export default function CalendarPage() {
           </div>
         ))}
       </div>
+      </>
+      )}
 
       {/* Day detail panel (below calendar on mobile, side panel feel) */}
       {selectedDate && selectedDateEvents.length > 0 && (

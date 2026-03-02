@@ -332,6 +332,7 @@ export function ActionComposerDrawer({
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('call');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showObjections, setShowObjections] = useState(false);
+  const [contextOpen, setContextOpen] = useState(false);
   const [callOutcomeLogged, setCallOutcomeLogged] = useState(false);
   const [showPostAction, setShowPostAction] = useState(false);
   const [selectedSmsIndex, setSelectedSmsIndex] = useState(0);
@@ -603,10 +604,24 @@ export function ActionComposerDrawer({
 
           {/* Split layout: Context left, Execution right */}
           <div className="flex flex-col lg:flex-row min-h-0">
-            {/* Left: Context */}
-            <div className="lg:w-[260px] lg:border-r lg:border-border p-4 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto bg-background/50 shrink-0">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Context</p>
-              <ContextPanel entity={entity} entityType={entityType} moneyResult={moneyResult} oppResult={oppResult} tasks={tasks} recentFubActivities={recentFubActivities} />
+            {/* Left: Context — collapsible on mobile */}
+            <div className="lg:w-[260px] lg:border-r lg:border-border lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto bg-background/50 shrink-0">
+              {/* Mobile toggle — hidden on desktop */}
+              <button
+                className="lg:hidden w-full flex items-center justify-between px-4 py-2.5 border-b border-border hover:bg-accent/30 transition-colors"
+                onClick={() => setContextOpen(o => !o)}
+              >
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Context</span>
+                {contextOpen
+                  ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                  : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                }
+              </button>
+              {/* Content — always visible on desktop, toggle on mobile */}
+              <div className={cn('p-4', 'lg:block', contextOpen ? 'block' : 'hidden lg:block')}>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 hidden lg:block">Context</p>
+                <ContextPanel entity={entity} entityType={entityType} moneyResult={moneyResult} oppResult={oppResult} tasks={tasks} recentFubActivities={recentFubActivities} />
+              </div>
             </div>
 
             {/* Right: Execution */}
