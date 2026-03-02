@@ -13,6 +13,7 @@ import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
 import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
 import { ClientFitPanel } from '@/components/ClientFitPanel';
+import { ClientCommitmentPanel } from '@/components/ClientCommitmentPanel';
 import { FubContextStrip } from '@/components/FubContextStrip';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -554,6 +555,14 @@ export function ActionWorkspaceDrawer({
                     entity={entity}
                   />
                 )}
+                {context.entityType === 'lead' && (
+                  <ClientCommitmentPanel
+                    lead={entity as Lead}
+                    oppResult={oppResult ?? null}
+                    fubProfile={fubProfile}
+                    tasks={(tasks || []).map(t => ({ relatedLeadId: t.relatedLeadId, completedAt: t.completedAt ?? undefined }))}
+                  />
+                )}
                 <LocalIntelBriefPanel
                   entityId={context.entityId}
                   entityType={context.entityType}
@@ -563,7 +572,6 @@ export function ActionWorkspaceDrawer({
                 />
               </div>
             )}
-
             {/* ── PREFERENCES TAB ─────────────────────────────────── */}
             {activeTab === 'prefs' && entity && (
               <ClientPreferencesPanel
