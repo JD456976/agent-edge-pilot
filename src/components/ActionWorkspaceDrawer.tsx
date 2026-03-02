@@ -196,7 +196,18 @@ export function ActionWorkspaceDrawer({
       .not('note', 'is', null)
       .order('created_at', { ascending: false })
       .limit(20);
-    setSavedNotes((data || []) as any);
+    const raw = (data || []) as Array<{ id: string; note: string; created_at: string }>;
+    // Deduplicate consecutive identical notes within 1 hour
+    const deduped = raw.filter((note, index) => {
+      if (index === 0) return true;
+      const prev = raw[index - 1];
+      if (note.note === prev.note) {
+        const timeDiff = Math.abs(new Date(note.created_at).getTime() - new Date(prev.created_at).getTime());
+        return timeDiff > 60 * 60 * 1000;
+      }
+      return true;
+    });
+    setSavedNotes(deduped.slice(0, 15));
   }, []);
 
   // Derive FUB person ID
@@ -414,7 +425,12 @@ export function ActionWorkspaceDrawer({
                 <SheetTitle className="text-base leading-tight">{context.entityName}</SheetTitle>
                 <SheetDescription className="text-xs mt-0.5">{entityContextLabel}</SheetDescription>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                {fubProfile?.stage && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {fubProfile.stage}
+                  </Badge>
+                )}
                 <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', CONFIDENCE_STYLE[context.confidence.level])}>
                   {context.confidence.level}
                 </span>
@@ -496,12 +512,23 @@ export function ActionWorkspaceDrawer({
             {/* ── INTEL TAB ────────────────────────────────────────── */}
             {activeTab === 'intel' && entity && (
               <div className="space-y-4">
-                <LocalIntelBriefPanel
-                  entityId={context.entityId}
-                  entityType={context.entityType}
-                  entityName={context.entityName}
-                  entity={entity}
-                />
+                {/* Quick Actions strip — leads only */}
+                {context.entityType === 'lead' && (
+                  <div className="flex gap-2 flex-wrap">
+                    <Button size="sm" variant="outline" className="text-xs h-7 gap-1.5"
+                      onClick={() => setActiveTab('call')}>
+                      <Phone className="h-3 w-3" /> Call
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-xs h-7 gap-1.5"
+                      onClick={() => setActiveTab('text')}>
+                      <MessageSquare className="h-3 w-3" /> Text
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-xs h-7 gap-1.5"
+                      onClick={() => setActiveTab('task')}>
+                      <ListTodo className="h-3 w-3" /> Add Task
+                    </Button>
+                  </div>
+                )}
                 {context.entityType === 'lead' && (
                   <ClientFitPanel
                     entityId={context.entityId}
@@ -510,6 +537,13 @@ export function ActionWorkspaceDrawer({
                     entity={entity}
                   />
                 )}
+                <LocalIntelBriefPanel
+                  entityId={context.entityId}
+                  entityType={context.entityType}
+                  entityName={context.entityName}
+                  entity={entity}
+                  externalPersonProfile={fubProfile}
+                />
               </div>
             )}
 
@@ -996,7 +1030,7 @@ export function ActionWorkspaceDrawer({
                 {savedNotes.length > 0 && (
                   <div className="space-y-2 pt-2 border-t border-border">
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Saved Notes</p>
-                    {savedNotes.map(n => (
+                {savedNotes.map(n => (
                       <div key={n.id} className="text-xs p-2.5 rounded-md border border-border bg-muted/30 group/note">
                         <div className="flex items-start justify-between gap-2">
                           <p className="text-foreground whitespace-pre-wrap flex-1">{n.note}</p>
@@ -1016,6 +1050,11 @@ export function ActionWorkspaceDrawer({
                         </p>
                       </div>
                     ))}
+                    {savedNotes.length >= 15 && (
+                      <p className="text-[10px] text-muted-foreground text-center py-1">
+                        Showing 15 most recent notes
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
