@@ -461,7 +461,24 @@ export function ActionWorkspaceDrawer({
                 />
               </div>
             )}
-            {/* Recent FUB Activity */}
+            {/* Milestone checklist for deals */}
+            {context.entityType === 'deal' && (entity as any)?.milestoneStatus && (
+              <div className="mt-2 space-y-1">
+                <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">Milestones</p>
+                {(['inspection', 'financing', 'appraisal'] as const).map(key => {
+                  const val = (entity as any).milestoneStatus?.[key] || 'unknown';
+                  const colors: Record<string, string> = { unknown: 'text-amber-500', scheduled: 'text-blue-500', ordered: 'text-blue-500', preapproved: 'text-blue-500', complete: 'text-green-500', approved: 'text-green-500' };
+                  return (
+                    <div key={key} className="flex items-center justify-between text-[11px]">
+                      <span className="capitalize text-muted-foreground">{key}</span>
+                      <span className={cn('capitalize font-medium', colors[val] || 'text-muted-foreground')}>
+                        {val.replace('_', ' ')}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             {recentFubActivities.length > 0 && (
               <div className="mt-2 space-y-1">
                 <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">Recent Activity</p>

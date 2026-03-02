@@ -110,6 +110,7 @@ import { UpcomingEventsPanel } from '@/components/UpcomingEventsPanel';
 import { DailyPulseBar } from '@/components/DailyPulseBar';
 import { IntelligenceLibrary } from '@/components/IntelligenceLibrary';
 import { ShowingPrepCard } from '@/components/ShowingPrepCard';
+import { DealCloseCountdown } from '@/components/DealCloseCountdown';
 import type { RiskLevel, Deal, Lead, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 const SNOOZE_STORAGE_KEY = 'dp-snooze-counts';
@@ -354,6 +355,18 @@ export default function CommandCenter() {
     }
     return null;
   }, [fubAppointments, leads]);
+
+  // Deals closing within 14 days
+  const closingDeals = useMemo(() => {
+    const now = new Date();
+    return deals
+      .filter(d => {
+        if (d.stage === 'closed') return false;
+        const daysLeft = Math.ceil((new Date(d.closeDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        return daysLeft >= 0 && daysLeft <= 14;
+      })
+      .sort((a, b) => new Date(a.closeDate).getTime() - new Date(b.closeDate).getTime());
+  }, [deals]);
 
   const panels = useMemo(() => buildCommandCenterPanels(leads, deals, tasks, alerts), [leads, deals, tasks, alerts]);
 
@@ -1220,6 +1233,17 @@ export default function CommandCenter() {
           onCreateTask={(title, leadId) => handleAutopilotCreateTask(title, undefined, leadId)}
         />
       )}
+
+      {/* Deal Close Countdown — deals closing within 14 days */}
+      {closingDeals.map(deal => (
+        <DealCloseCountdown
+          key={deal.id}
+          deal={deal}
+          moneyResult={moneyResults.find(r => r.dealId === deal.id) || null}
+          onCreateTask={(title, dealId) => handleAutopilotCreateTask(title, dealId, undefined)}
+          onOpenDeal={handleOpenDeal}
+        />
+      ))}
 
       {/* Income Control Meter */}
       <IncomeControlMeter
