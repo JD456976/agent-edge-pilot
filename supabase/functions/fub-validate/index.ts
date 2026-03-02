@@ -69,10 +69,15 @@ Deno.serve(async (req) => {
 
     const account = await fubResponse.json();
 
-    await serviceClient
-      .from("crm_integrations")
-      .update({ status: "connected", last_validated_at: now, updated_at: now })
-      .eq("user_id", userId);
+    // Upsert the crm_integrations row so wipe → validate restores connection
+    await serviceClient.from("crm_integrations").upsert({
+      user_id: userId,
+      provider: "follow_up_boss",
+      status: "connected",
+      api_key_last4: apiKey.slice(-4),
+      last_validated_at: now,
+      updated_at: now,
+    }, { onConflict: "user_id" });
 
     // Update sync state
     await serviceClient.from("fub_sync_state").upsert({

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Rocket, Sparkles, LayoutDashboard, Building2, Target, Shield, Zap } from 'lucide-react';
+import { Rocket, Sparkles, LayoutDashboard, Building2, Target, Shield, Zap, Link2, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +31,8 @@ const featureItem = {
   animate: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 24 } },
 };
 
+const TOTAL_STEPS = 4;
+
 export function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const { user } = useAuth();
   const { seedDemoData, hasData } = useData();
@@ -38,6 +41,12 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const [seeding, setSeeding] = useState(false);
   const [direction, setDirection] = useState(1);
   const isAdmin = user?.role === 'admin';
+
+  // FUB connection state
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [apiKeySaving, setApiKeySaving] = useState(false);
+  const [apiKeyConnected, setApiKeyConnected] = useState(false);
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null);
 
   const goToStep = (next: number) => {
     setDirection(next > step ? 1 : -1);
@@ -77,6 +86,27 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
     goToStep(2);
   };
 
+  const handleConnectFub = async () => {
+    if (!apiKeyInput.trim()) return;
+    setApiKeySaving(true);
+    setApiKeyError(null);
+    try {
+      const { callEdgeFunction } = await import('@/lib/edgeClient');
+      await callEdgeFunction('fub-save-key', { api_key: apiKeyInput.trim() });
+      const result = await callEdgeFunction<{ valid: boolean; account?: { name: string } }>('fub-validate');
+      if (result?.valid) {
+        setApiKeyConnected(true);
+        setApiKeyInput('');
+      } else {
+        setApiKeyError('Key saved but validation failed. You can continue and reconnect later in Settings > Sync.');
+      }
+    } catch (err: any) {
+      setApiKeyError('Invalid key or connection failed. Check your FUB API key and try again.');
+    } finally {
+      setApiKeySaving(false);
+    }
+  };
+
   const finishOnboarding = async () => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (authUser) {
@@ -104,7 +134,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
       >
         {/* Progress bar */}
         <div className="flex items-center justify-center gap-2 mb-6">
-          {[1, 2, 3].map(s => (
+          {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map(s => (
             <motion.div
               key={s}
               className="h-1.5 rounded-full bg-primary"
@@ -206,10 +236,78 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
             </motion.div>
           )}
 
-          {/* Step 3: Quick orientation */}
+          {/* Step 3: Connect FUB */}
           {step === 3 && (
             <motion.div
-              key="step3"
+              key="step3-fub"
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+              className="text-center space-y-4"
+            >
+              <motion.div variants={iconPulse} initial="initial" animate="animate" className="mx-auto h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center ring-4 ring-primary/5">
+                <Link2 className="h-7 w-7 text-primary" />
+              </motion.div>
+              <h2 className="text-lg font-bold">Connect Follow Up Boss</h2>
+              <p className="text-sm text-muted-foreground">
+                Your API key lets Agent Pilot import your leads, deals, and appointments — and push activity back to FUB automatically.
+              </p>
+
+              {!apiKeyConnected ? (
+                <div className="space-y-3 pt-2">
+                  <div className="rounded-lg bg-muted/50 p-3 text-left border border-border/30">
+                    <p className="text-xs font-medium text-foreground mb-1">How to find your API key:</p>
+                    <p className="text-xs text-muted-foreground">In FUB → click your name (top right) → Admin → API → copy the key</p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Input
+                      type="password"
+                      placeholder="Paste your FUB API key"
+                      value={apiKeyInput}
+                      onChange={(e) => { setApiKeyInput(e.target.value); setApiKeyError(null); }}
+                      className="flex-1"
+                    />
+                    <Button onClick={handleConnectFub} disabled={apiKeySaving || !apiKeyInput.trim()}>
+                      {apiKeySaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connect'}
+                    </Button>
+                  </div>
+
+                  {apiKeyError && (
+                    <p className="text-xs text-destructive text-left">{apiKeyError}</p>
+                  )}
+
+                  <Button
+                    variant="ghost"
+                    className="w-full text-muted-foreground text-xs"
+                    onClick={() => goToStep(4)}
+                  >
+                    Skip for now — I'll connect later in Sync settings
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center gap-3 rounded-lg bg-primary/5 border border-primary/20 p-3">
+                    <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
+                    <div className="text-left">
+                      <p className="text-sm font-medium">Follow Up Boss connected!</p>
+                      <p className="text-xs text-muted-foreground">You can now import your leads and deals from the Sync page.</p>
+                    </div>
+                  </div>
+                  <Button className="w-full" onClick={() => goToStep(4)}>
+                    Continue →
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Step 4: Quick orientation */}
+          {step === 4 && (
+            <motion.div
+              key="step4"
               variants={stepVariants}
               initial="enter"
               animate="center"

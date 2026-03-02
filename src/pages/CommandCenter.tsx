@@ -1088,6 +1088,22 @@ export default function CommandCenter() {
           <p className="text-sm text-muted-foreground">{today}</p>
         </div>
 
+        {/* Recovery banner: FUB connected but no data */}
+        {hasFubIntegration && (
+          <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 p-3 mb-4">
+            <div className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 text-primary" />
+              <div>
+                <p className="text-sm font-medium">FUB is connected</p>
+                <p className="text-xs text-muted-foreground">Go to Sync to import your leads, deals, and appointments</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => navigate('/?workspace=sync')}>
+              Import Now
+            </Button>
+          </div>
+        )}
+
         {/* Getting Started Checklist */}
         <GettingStartedChecklist
           hasCrmConnected={hasFubIntegration}
