@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import {
-  Flame, TrendingDown, TrendingUp, Eye, AlertTriangle,
-  ChevronDown, ChevronUp, Target, Clock, DollarSign,
-  UserCheck, UserX, Zap, ShieldAlert, Activity,
+  Flame, Eye, AlertTriangle,
+  ChevronDown, ChevronUp, Target, DollarSign,
+  UserCheck, UserX, Zap, Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
