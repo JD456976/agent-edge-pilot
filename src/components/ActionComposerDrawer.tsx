@@ -27,6 +27,9 @@ import { toast } from '@/hooks/use-toast';
 import { ActivityTrail } from '@/components/ActivityTrail';
 import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
 import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
+import { ClientFitPanel } from '@/components/ClientFitPanel';
+import { ClientCommitmentPanel } from '@/components/ClientCommitmentPanel';
+import type { FubPersonProfile } from '@/lib/intelAnalyzer';
 import type { Deal, Lead, Task, TaskType } from '@/types';
 import type { MoneyModelResult } from '@/lib/moneyModel';
 import type { OpportunityHeatResult } from '@/lib/leadMoneyModel';
@@ -321,6 +324,7 @@ export function ActionComposerDrawer({
   const [textSent, setTextSent] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [recentFubActivities, setRecentFubActivities] = useState<Array<{ activity_type: string; direction?: string; body_preview?: string; subject?: string; occurred_at: string; duration_seconds?: number }>>([]);
+  const [fubProfile, setFubProfile] = useState<FubPersonProfile | null>(null);
 
   // Derive FUB person ID
   useEffect(() => {
@@ -337,6 +341,7 @@ export function ActionComposerDrawer({
   useEffect(() => {
     if (!entity || !open || !fubPersonId) {
       setRecentFubActivities([]);
+      setFubProfile(null);
       return;
     }
     let cancelled = false;
@@ -348,8 +353,11 @@ export function ActionComposerDrawer({
           entity_id: (entity as any).id,
           limit: 25,
         });
-        if (!cancelled && result?.activities) setRecentFubActivities(result.activities);
-      } catch { /* non-critical */ }
+        if (!cancelled && result) {
+          setRecentFubActivities(result.activities || []);
+          if (result.personProfile) setFubProfile(result.personProfile as FubPersonProfile);
+        }
+    } catch { /* non-critical */ }
     })();
     return () => { cancelled = true; };
   }, [entity, open, fubPersonId]);
@@ -917,12 +925,31 @@ export function ActionComposerDrawer({
 
                 {/* INTEL */}
                 {activeTab === 'intel' && entity && (
-                  <LocalIntelBriefPanel
-                    entityId={context.entityId}
-                    entityType={context.entityType}
-                    entityName={context.entityName}
-                    entity={entity}
-                  />
+                  <div className="space-y-4">
+                    {context.entityType === 'lead' && (
+                      <ClientFitPanel
+                        entityId={context.entityId}
+                        entityType="lead"
+                        entityName={context.entityName}
+                        entity={entity}
+                      />
+                    )}
+                    {context.entityType === 'lead' && (
+                      <ClientCommitmentPanel
+                        lead={entity as Lead}
+                        oppResult={oppResult ?? null}
+                        fubProfile={fubProfile}
+                        tasks={(tasks || []).map(t => ({ relatedLeadId: t.relatedLeadId, completedAt: t.completedAt ?? undefined }))}
+                      />
+                    )}
+                    <LocalIntelBriefPanel
+                      entityId={context.entityId}
+                      entityType={context.entityType}
+                      entityName={context.entityName}
+                      entity={entity}
+                      externalPersonProfile={fubProfile}
+                    />
+                  </div>
                 )}
 
                 {/* PREFERENCES */}
