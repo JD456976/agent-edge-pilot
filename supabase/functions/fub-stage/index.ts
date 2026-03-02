@@ -42,6 +42,25 @@ async function fetchFubById(apiKey: string, endpoint: string, id: string) {
 }
 
 function normalizeLead(p: any) {
+  // Map FUB stage to lead temperature
+  const stageToTemp = (stage: string | undefined): string | null => {
+    if (!stage) return null;
+    const s = stage.toLowerCase();
+    if (s.includes('hot') || s.includes('active') || s.includes('appointment set') || s.includes('showing')) return 'hot';
+    if (s.includes('warm') || s.includes('engaged') || s.includes('nurture')) return 'warm';
+    if (s.includes('cold') || s.includes('unresponsive') || s.includes('dead')) return 'cold';
+    return null;
+  };
+
+  // Extract FUB tags — they come as an array of strings or objects with a 'name' field
+  const rawTags: string[] = [];
+  if (Array.isArray(p.tags)) {
+    for (const t of p.tags) {
+      if (typeof t === 'string') rawTags.push(t);
+      else if (t?.name) rawTags.push(t.name);
+    }
+  }
+
   return {
     name: [p.firstName, p.lastName].filter(Boolean).join(" ") || "Unknown",
     email: p.emails?.[0]?.value || "",
@@ -50,6 +69,8 @@ function normalizeLead(p: any) {
     engagementScore: 0,
     lastContactAt: p.lastActivity || p.updated || p.created || null,
     createdAt: p.created || null,
+    fubTags: rawTags,
+    leadTemperature: stageToTemp(p.stage),
   };
 }
 
