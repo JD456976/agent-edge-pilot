@@ -111,6 +111,7 @@ import { DailyPulseBar } from '@/components/DailyPulseBar';
 import { IntelligenceLibrary } from '@/components/IntelligenceLibrary';
 import { ShowingPrepCard } from '@/components/ShowingPrepCard';
 import { DealCloseCountdown } from '@/components/DealCloseCountdown';
+import { PostShowingComposer } from '@/components/PostShowingComposer';
 import type { RiskLevel, Deal, Lead, CommandCenterAction, CommandCenterDealAtRisk, CommandCenterOpportunity, CommandCenterSpeedAlert } from '@/types';
 
 const SNOOZE_STORAGE_KEY = 'dp-snooze-counts';
@@ -173,6 +174,8 @@ export default function CommandCenter() {
   const [panelFilter, setPanelFilter] = useState('');
   const [showCSVImport, setShowCSVImport] = useState(false);
   const [fubAppointments, setFubAppointments] = useState<any[]>([]);
+  const [showPostShowing, setShowPostShowing] = useState(false);
+  const [postShowingContext, setPostShowingContext] = useState<{ lead: Lead; propertyAddress?: string } | null>(null);
 
   // Pinned panels
   const { pinnedPanels, togglePin, isPinned, sortWithPins } = usePinnedPanels();
@@ -1719,9 +1722,55 @@ export default function CommandCenter() {
         entityType={touchTarget.entityType}
         entityId={touchTarget.entityId}
         entityTitle={touchTarget.entityTitle}
-        onClose={() => {setShowLogTouch(false);setTouchTarget(null);}} />
-
+        onClose={() => {setShowLogTouch(false);setTouchTarget(null);}}
+        onLogged={(touchType: string) => {
+          if (touchType === 'showing' && touchTarget.entityType === 'lead') {
+            const lead = leads.find(l => l.id === touchTarget.entityId);
+            if (lead) {
+              const matchingAppt = fubAppointments.find(a => a.related_lead_id === lead.id);
+              setPostShowingContext({
+                lead,
+                propertyAddress: matchingAppt?.location || undefined,
+              });
+              setTimeout(() => setShowPostShowing(true), 300);
+            }
+          }
+        }}
+      />
       }
+
+      {/* Post-Showing Follow-up Composer */}
+      {postShowingContext && (
+        <PostShowingComposer
+          open={showPostShowing}
+          onClose={() => { setShowPostShowing(false); setPostShowingContext(null); }}
+          lead={postShowingContext.lead}
+          propertyAddress={postShowingContext.propertyAddress}
+          agentName={user?.name}
+          onSendText={async (text) => {
+            try {
+              await navigator.clipboard.writeText(text);
+              toast({ description: 'Text copied to clipboard — paste into your messaging app', duration: 3000 });
+            } catch {}
+          }}
+          onSendEmail={async (subject, body) => {
+            try {
+              await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
+              toast({ description: 'Email copied to clipboard', duration: 3000 });
+            } catch {}
+          }}
+          onCreateFollowUpTask={(title, dueAt) => {
+            addTask({
+              title,
+              type: 'follow_up',
+              dueAt,
+              relatedLeadId: postShowingContext.lead.id,
+              assignedToUserId: user?.id || '',
+            });
+            toast({ description: `Follow-up task created for ${postShowingContext.lead.name}`, duration: 3000 });
+          }}
+        />
+      )}
 
       {/* End of Day Review Drawer */}
       <EndOfDayReviewDrawer

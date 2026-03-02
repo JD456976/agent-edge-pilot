@@ -33,9 +33,10 @@ interface Props {
   entityId: string;
   entityTitle: string;
   onTouchLogged?: () => void;
+  onLogged?: (touchType: string) => void;
 }
 
-export function LogTouchModal({ open, onClose, entityType, entityId, entityTitle, onTouchLogged }: Props) {
+export function LogTouchModal({ open, onClose, entityType, entityId, entityTitle, onTouchLogged, onLogged }: Props) {
   const { user } = useAuth();
   const { addTask, refreshData } = useData();
   const [touchType, setTouchType] = useState<TouchType>('call');
@@ -139,6 +140,7 @@ export function LogTouchModal({ open, onClose, entityType, entityId, entityTitle
       // Show success inline instead of closing
       setSaved(true);
       onTouchLogged?.();
+      onLogged?.(touchType);
       
       // Background refresh (don't await, don't close)
       refreshData().catch(() => {});
