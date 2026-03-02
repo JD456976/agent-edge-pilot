@@ -154,7 +154,7 @@ export function LogTouchModal({ open, onClose, entityType, entityId, entityTitle
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-base">Log Touch</DialogTitle>
           <DialogDescription className="text-xs">{entityTitle}</DialogDescription>

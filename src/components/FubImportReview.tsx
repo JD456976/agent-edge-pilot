@@ -302,7 +302,8 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
         </TabsList>
 
         <TabsContent value="leads">
-          <Table>
+          <div className="overflow-x-auto -mx-1 px-1">
+          <Table className="min-w-[480px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Status</TableHead>
@@ -326,10 +327,12 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
               ))}
             </TableBody>
           </Table>
+          </div>
         </TabsContent>
 
         <TabsContent value="deals">
-          <Table>
+          <div className="overflow-x-auto -mx-1 px-1">
+          <Table className="min-w-[480px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Status</TableHead>
@@ -353,10 +356,12 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
               ))}
             </TableBody>
           </Table>
+          </div>
         </TabsContent>
 
         <TabsContent value="tasks">
-          <Table>
+          <div className="overflow-x-auto -mx-1 px-1">
+          <Table className="min-w-[480px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Status</TableHead>
@@ -380,6 +385,7 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
               ))}
             </TableBody>
           </Table>
+          </div>
         </TabsContent>
       </Tabs>
 

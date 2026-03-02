@@ -189,7 +189,7 @@ export function ActionDetailDrawer({ item, onClose, onComplete, onWorkEntity, sn
       <div className="fixed inset-0 bg-background/60 backdrop-blur-sm z-40" onClick={onClose} />
 
       {/* Drawer */}
-      <div className="fixed inset-x-0 bottom-0 md:inset-y-0 md:left-auto md:right-0 md:w-96 bg-card border-t md:border-l border-border z-50 flex flex-col max-h-[85vh] md:max-h-full rounded-t-2xl md:rounded-none animate-fade-in" style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingRight: 'env(safe-area-inset-right, 0px)' }}>
+      <div className="fixed inset-x-0 bottom-0 md:inset-y-0 md:left-auto md:right-0 md:w-96 bg-card border-t md:border-l border-border z-50 flex flex-col max-h-[90dvh] md:max-h-full rounded-t-2xl md:rounded-none animate-fade-in" style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingRight: 'env(safe-area-inset-right, 0px)' }}>
         {/* Header */}
         <div className="flex items-start justify-between p-4 border-b border-border">
           <div className="min-w-0 flex-1">
