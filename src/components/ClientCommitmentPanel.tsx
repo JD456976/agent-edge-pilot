@@ -58,13 +58,22 @@ function assessCommitment(
   const signals: CommitmentSignal[] = [];
   const now = new Date();
 
-  // 1. Temperature signal
+  // 1. Temperature signal — but check if activity data contradicts a stale CRM label
+  const hasRecentActivity = fubActivities.length >= 5;
+  const hasInbound = fubActivities.filter(a => a.direction === 'inbound').length >= 1;
+  const activityContradictsCold = hasRecentActivity || hasInbound;
+
   if (lead.leadTemperature === 'hot') {
     signals.push({ label: 'Hot temperature', impact: 'positive', weight: 8, reasoning: 'CRM stage indicates active intent — this person is in buying/selling mode.' });
   } else if (lead.leadTemperature === 'warm') {
     signals.push({ label: 'Warm temperature', impact: 'positive', weight: 4, reasoning: 'Some interest shown but not yet in active decision-making mode.' });
   } else if (lead.leadTemperature === 'cold') {
-    signals.push({ label: 'Cold temperature', impact: 'negative', weight: -6, reasoning: 'CRM stage is cold — historically unresponsive or disengaged.' });
+    if (activityContradictsCold) {
+      // Activity data overrides stale CRM label — reduce penalty significantly
+      signals.push({ label: 'CRM label cold (overridden by activity)', impact: 'neutral', weight: -1, reasoning: 'CRM stage says cold, but recent activity and engagement contradict this — likely a stale label.' });
+    } else {
+      signals.push({ label: 'Cold temperature', impact: 'negative', weight: -6, reasoning: 'CRM stage is cold — historically unresponsive or disengaged.' });
+    }
   }
 
   // 2. Tag-based intent analysis
@@ -160,8 +169,30 @@ function assessCommitment(
 
   // 6. Has upcoming tasks?
   const hasTask = tasks.some(t => t.relatedLeadId === lead.id && !t.completedAt);
-  if (!hasTask) {
+  if (hasTask) {
+    signals.push({ label: 'Scheduled follow-up exists', impact: 'positive', weight: 4, reasoning: 'An active follow-up task is planned — this relationship is being actively managed.' });
+  } else {
     signals.push({ label: 'No scheduled follow-up', impact: 'negative', weight: -2, reasoning: 'No tasks planned means this person could fall through the cracks.' });
+  }
+
+  // 6b. Follow-up language in recent activity
+  if (fubActivities.length > 0) {
+    const followUpLanguage = fubActivities.slice(0, 10).filter(a => {
+      const body = (a.body_preview || '').toLowerCase();
+      const subj = (a.subject || '').toLowerCase();
+      return body.includes('follow up') || body.includes('follow-up') || body.includes('coordinate') ||
+             body.includes('get back to') || body.includes('touch base') || body.includes('reconnect') ||
+             body.includes('circle back') || body.includes('returns') || body.includes('check in') ||
+             subj.includes('follow up') || subj.includes('follow-up');
+    });
+    if (followUpLanguage.length > 0) {
+      signals.push({
+        label: 'Follow-up intent in conversations',
+        impact: 'positive',
+        weight: 5,
+        reasoning: 'Recent communications contain follow-up language — both parties expect continued contact.',
+      });
+    }
   }
 
   // 7. Lead age vs activity
