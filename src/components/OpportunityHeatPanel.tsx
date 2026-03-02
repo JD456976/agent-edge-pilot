@@ -9,6 +9,7 @@ import { CommissionDefaultsModal } from '@/components/CommissionDefaultsModal';
 import { LogTouchModal } from '@/components/LogTouchModal';
 import { ActivityTrail } from '@/components/ActivityTrail';
 import { relativeTime } from '@/lib/relativeTime';
+import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { Lead, Task } from '@/types';
@@ -25,6 +26,7 @@ interface Props {
   tasks: Task[];
   userId: string;
   onStartAction?: (lead: Lead, result: OpportunityHeatResult) => void;
+  onOpenLead?: (lead: Lead) => void;
   leadChanges?: Map<string, RankChange>;
   oppWeights?: OpportunityScoringWeights;
 }
@@ -49,11 +51,12 @@ const CONFIDENCE_STYLE: Record<string, string> = {
 
 // ── Drawer ──────────────────────────────────────────────────────────
 
-function OpportunityDrawer({ result, lead, onClose, onStartAction }: {
+function OpportunityDrawer({ result, lead, onClose, onStartAction, onOpenLead }: {
   result: OpportunityHeatResult;
   lead: Lead;
   onClose: () => void;
   onStartAction: (lead: Lead, result: OpportunityHeatResult) => void;
+  onOpenLead?: (lead: Lead) => void;
 }) {
   const [showTouch, setShowTouch] = useState(false);
   const heat = HEAT_BADGE[result.heatLevel];
@@ -69,7 +72,10 @@ function OpportunityDrawer({ result, lead, onClose, onStartAction }: {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <Flame className="h-4 w-4 text-opportunity shrink-0" />
-              <h3 className="text-sm font-bold leading-tight truncate">{lead.name}</h3>
+              <h3
+                className={cn("text-sm font-bold leading-tight truncate", onOpenLead && "cursor-pointer hover:text-primary transition-colors underline-offset-2 hover:underline")}
+                onClick={(e) => { if (onOpenLead) { e.stopPropagation(); onClose(); onOpenLead(lead); } }}
+              >{lead.name}</h3>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               {lead.source} · <Badge variant="outline" className={`text-[10px] ${heat.className}`}>{heat.label}</Badge>
@@ -192,7 +198,7 @@ function OpportunityDrawer({ result, lead, onClose, onStartAction }: {
 
 // ── Main Panel ──────────────────────────────────────────────────────
 
-export function OpportunityHeatPanel({ leads, tasks, userId, onStartAction, leadChanges, oppWeights }: Props) {
+export function OpportunityHeatPanel({ leads, tasks, userId, onStartAction, onOpenLead, leadChanges, oppWeights }: Props) {
   const [showDefaultsModal, setShowDefaultsModal] = useState(false);
   const [drawerResult, setDrawerResult] = useState<OpportunityHeatResult | null>(null);
   const [drawerLead, setDrawerLead] = useState<Lead | null>(null);
@@ -282,7 +288,10 @@ export function OpportunityHeatPanel({ leads, tasks, userId, onStartAction, lead
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className="text-sm font-medium leading-tight truncate">{lead.name}</p>
+                    <p
+                      className={cn("text-sm font-medium leading-tight truncate", onOpenLead && "hover:text-primary hover:underline underline-offset-2")}
+                      onClick={(e) => { if (onOpenLead) { e.stopPropagation(); onOpenLead(lead); } }}
+                    >{lead.name}</p>
                     {leadChanges?.get(result.leadId) && (
                       <span className="text-[10px] px-1 py-0 rounded bg-primary/10 text-primary">Changed</span>
                     )}
@@ -327,6 +336,7 @@ export function OpportunityHeatPanel({ leads, tasks, userId, onStartAction, lead
           lead={drawerLead}
           onClose={() => { setDrawerResult(null); setDrawerLead(null); }}
           onStartAction={handleStartAction}
+          onOpenLead={onOpenLead}
         />
       )}
     </div>

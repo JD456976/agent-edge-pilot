@@ -142,7 +142,7 @@ const LEVEL_STYLE: Record<FailureLevel, { label: string; className: string }> = 
   critical: { label: 'Critical', className: 'text-urgent border-urgent/50' },
 };
 
-export function DealFailurePanel({ deals, tasks, moneyResults, onCreateTask }: Props) {
+export function DealFailurePanel({ deals, tasks, moneyResults, onCreateTask, onOpenDeal }: Props) {
   const now = useMemo(() => new Date(), []);
 
   const predictions = useMemo(() => {
@@ -177,7 +177,10 @@ export function DealFailurePanel({ deals, tasks, moneyResults, onCreateTask }: P
           return (
             <div key={pred.dealId} className="rounded-md border border-border p-3 space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium truncate flex-1 min-w-0">{pred.dealTitle}</p>
+                <p
+                  className={cn("text-sm font-medium truncate flex-1 min-w-0", onOpenDeal && "cursor-pointer hover:text-primary hover:underline underline-offset-2")}
+                  onClick={() => onOpenDeal?.(pred.dealId)}
+                >{pred.dealTitle}</p>
                 <Badge variant="outline" className={cn('text-[10px] shrink-0 ml-2', style.className)}>
                   {style.label}
                 </Badge>

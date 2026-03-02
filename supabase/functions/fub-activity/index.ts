@@ -206,9 +206,9 @@ Deno.serve(async (req) => {
         occurred_at: a.occurred_at,
       }));
 
-      // Upsert to avoid duplicates
+      // Upsert to avoid duplicates (uses unique index on user_id, fub_id, activity_type, occurred_at)
       await serviceClient.from("fub_activity_log").upsert(rows, {
-        onConflict: "id",
+        onConflict: "user_id,fub_id,activity_type,occurred_at",
         ignoreDuplicates: true,
       });
     }

@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { DollarSign, Shield, ChevronRight, Settings, Plus, AlertTriangle, Bug, Wrench } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { PanelHelpTooltip } from '@/components/PanelHelpTooltip';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +20,7 @@ interface Props {
   refreshData?: () => Promise<void>;
   userId: string;
   onSelect: (result: MoneyModelResult, deal: Deal) => void;
+  onOpenDeal?: (deal: Deal) => void;
   onAddCommissionToDeals?: () => void;
   dealChanges?: Map<string, RankChange>;
   riskWeights?: RiskScoringWeights;
@@ -51,7 +53,7 @@ function confidenceBadge(confidence: string): string {
 
 type EmptyReason = 'no_deals' | 'no_defaults' | 'no_price' | 'no_participant';
 
-export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddCommissionToDeals, refreshData, dealChanges, riskWeights }: Props) {
+export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onOpenDeal, onAddCommissionToDeals, refreshData, dealChanges, riskWeights }: Props) {
   const [showDefaultsModal, setShowDefaultsModal] = useState(false);
   const [showDebugDrawer, setShowDebugDrawer] = useState(false);
   const [showBackfillModal, setShowBackfillModal] = useState(false);
@@ -255,7 +257,10 @@ export function MoneyAtRiskPanel({ deals, participants, userId, onSelect, onAddC
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-sm font-medium leading-tight truncate">{deal.title}</p>
+                        <p
+                          className={cn("text-sm font-medium leading-tight truncate", onOpenDeal && "hover:text-primary hover:underline underline-offset-2")}
+                          onClick={(e) => { if (onOpenDeal) { e.stopPropagation(); onOpenDeal(deal); } }}
+                        >{deal.title}</p>
                         {dealChanges?.get(result.dealId) && (
                           <span className="text-[10px] px-1 py-0 rounded bg-primary/10 text-primary">Changed</span>
                         )}
