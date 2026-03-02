@@ -32,7 +32,7 @@ export function OpenHouseQRCodes() {
     // the published domain is publicly accessible.
     const origin = window.location.origin;
     const isPreview = origin.includes('.lovableproject.com') || origin.includes('-preview--');
-    const base = isPreview ? 'https://agent-edge-pilot.lovable.app' : origin;
+    const base = isPreview ? 'https://deal-pilot-cr.lovable.app' : origin;
     return `${base}/visit/${token}`;
   };
 
