@@ -7,6 +7,7 @@ import {
   ArrowRight, Zap as ZapIcon, Radio, LayoutGrid, ExternalLink
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -223,6 +224,16 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity,
 
       <div className="p-4 space-y-5">
 
+        {/* Load FUB Activity CTA when no data yet */}
+        {isFub && fubActivities.length === 0 && !fetchingFub && (
+          <div className="rounded-md bg-muted/50 border border-border p-3 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">No FUB activity loaded yet.</span>
+            <button onClick={fetchFromFub} className="text-xs font-medium px-3 py-1.5 rounded-md border border-border bg-background hover:bg-accent transition-colors">
+              Load FUB Activity
+            </button>
+          </div>
+        )}
+
         {/* ═══ RELATIONSHIP HEALTH SCORE ═══ */}
         <HealthScoreBar health={insights.health} />
 
@@ -314,7 +325,15 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity,
         {/* ═══ SUMMARY STATS ═══ */}
         <div className="grid grid-cols-4 gap-2">
           <StatBox label="Duration" value={insights.relationshipDuration > 0 ? `${insights.relationshipDuration}d` : '—'} />
-          <StatBox label="Last Contact" value={insights.daysSinceLastContact !== null ? `${insights.daysSinceLastContact}d ago` : '—'} />
+          <StatBox
+            label="Last Contact"
+            value={insights.daysSinceLastContact !== null ? `${insights.daysSinceLastContact}d ago` : '—'}
+            className={
+              insights.daysSinceLastContact !== null && insights.daysSinceLastContact > 14 ? 'text-destructive font-medium' :
+              insights.daysSinceLastContact !== null && insights.daysSinceLastContact > 7 ? 'text-warning' :
+              undefined
+            }
+          />
           <StatBox label="Avg Gap" value={insights.avgFrequency ? `${insights.avgFrequency}d` : '—'} />
           <StatBox label="Total" value={`${insights.totalEvents}`} />
         </div>
@@ -796,11 +815,11 @@ function Sparkline({ data }: { data: Array<{ week: string; count: number }> }) {
   );
 }
 
-function StatBox({ label, value }: { label: string; value: string }) {
+function StatBox({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
     <div className="rounded-md border border-border bg-background/50 px-2 py-1.5 text-center">
       <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{label}</p>
-      <p className="text-sm font-semibold mt-0.5">{value}</p>
+      <p className={cn('text-sm font-semibold mt-0.5', className)}>{value}</p>
     </div>
   );
 }
