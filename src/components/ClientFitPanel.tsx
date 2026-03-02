@@ -73,6 +73,7 @@ export function ClientFitPanel({ entityId, entityType, entityName, entity }: Pro
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [clientIdentityId, setClientIdentityId] = useState<string | null>(null);
   const [noFubLink, setNoFubLink] = useState(false);
+  const [fubNotConnected, setFubNotConnected] = useState(false);
   const [showAllFlags, setShowAllFlags] = useState(false);
 
   const fubId = (() => {
@@ -81,7 +82,28 @@ export function ClientFitPanel({ entityId, entityType, entityName, entity }: Pro
   })();
 
   useEffect(() => {
-    if (!fubId || !user) { setNoFubLink(true); setLoading(false); return; }
+    if (!user) { setLoading(false); return; }
+    if (!fubId) {
+      // Check if user has FUB connected at all
+      let cancelled = false;
+      (async () => {
+        const { data: integration } = await supabase
+          .from('crm_integrations')
+          .select('status')
+          .eq('user_id', user.id)
+          .eq('provider', 'follow_up_boss')
+          .maybeSingle();
+        if (cancelled) return;
+        if (!integration || integration.status !== 'connected') {
+          setFubNotConnected(true);
+        } else {
+          // FUB is connected but this entity wasn't imported from FUB
+          setNoFubLink(true);
+        }
+        setLoading(false);
+      })();
+      return () => { cancelled = true; };
+    }
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -132,8 +154,8 @@ export function ClientFitPanel({ entityId, entityType, entityName, entity }: Pro
     }
   };
 
-  // No FUB link
-  if (noFubLink) {
+  // Not connected to FUB at all
+  if (fubNotConnected) {
     return (
       <div className="rounded-lg border border-border bg-card p-3">
         <div className="flex items-center gap-2">
@@ -147,6 +169,27 @@ export function ClientFitPanel({ entityId, entityType, entityName, entity }: Pro
           <p className="text-xs text-muted-foreground">
             Connect to Follow Up Boss to enable Client Fit scoring.
             This analysis is built entirely from your FUB communication history.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // FUB is connected but this entity doesn't have enough data
+  if (noFubLink) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-3">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span className="text-xs font-semibold">Client Fit</span>
+          </div>
+        </div>
+        <div className="mt-2 flex items-start gap-2">
+          <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            Not enough FUB activity data for this contact to generate a Client Fit score.
+            More interactions will unlock this analysis.
           </p>
         </div>
       </div>

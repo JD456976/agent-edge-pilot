@@ -81,7 +81,10 @@ export function DealCloseCountdown({ deal, moneyResult, onCreateTask, onOpenDeal
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <Calendar className="h-4 w-4 text-primary shrink-0" />
-          <span className="text-sm font-medium truncate">{deal.title}</span>
+          <span
+            className={cn("text-sm font-medium truncate", onOpenDeal && "cursor-pointer hover:text-primary hover:underline underline-offset-2")}
+            onClick={(e) => { if (onOpenDeal) { e.stopPropagation(); onOpenDeal(deal); } }}
+          >{deal.title}</span>
         </div>
         <div className="text-right shrink-0">
           <p className={cn('text-lg font-bold leading-tight', urgencyConfig.text)}>

@@ -814,6 +814,7 @@ export default function CommandCenter() {
             participants={dealParticipants}
             userId={user?.id || ''}
             onSelect={handleMoneySelect}
+            onOpenDeal={handleOpenDeal}
             onAddCommissionToDeals={() => navigate('/?workspace=work')}
             refreshData={refreshData}
             dealChanges={dealChanges}
@@ -827,6 +828,7 @@ export default function CommandCenter() {
             tasks={tasks}
             userId={user?.id || ''}
             onStartAction={handleOpportunityAction}
+            onOpenLead={handleOpenLead}
             leadChanges={leadChanges}
             oppWeights={oppWeights} />);
 
@@ -914,7 +916,11 @@ export default function CommandCenter() {
             deals={deals}
             tasks={tasks}
             moneyResults={moneyResults}
-            onCreateTask={(title, dealId) => handleAutopilotCreateTask(title, dealId)} />);
+            onCreateTask={(title, dealId) => handleAutopilotCreateTask(title, dealId)}
+            onOpenDeal={(dealId) => {
+              const deal = deals.find(d => d.id === dealId);
+              if (deal) handleOpenDeal(deal);
+            }} />);
 
 
       case 'ghosting-risk':
@@ -927,7 +933,11 @@ export default function CommandCenter() {
               setTouchTarget({ entityType, entityId, entityTitle });
               setShowLogTouch(true);
             }}
-            onCreateTask={(title, leadId) => handleAutopilotCreateTask(title, undefined, leadId)} />);
+            onCreateTask={(title, leadId) => handleAutopilotCreateTask(title, undefined, leadId)}
+            onOpenLead={(leadId) => {
+              const lead = leads.find(l => l.id === leadId);
+              if (lead) handleOpenLead(lead);
+            }} />);
 
 
       case 'referral-conversion':

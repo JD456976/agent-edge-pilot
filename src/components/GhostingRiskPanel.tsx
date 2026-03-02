@@ -13,6 +13,7 @@ interface Props {
   deals: Deal[];
   onLogTouch: (entityType: 'lead', entityId: string, entityTitle: string) => void;
   onCreateTask: (title: string, leadId: string) => void;
+  onOpenLead?: (leadId: string) => void;
 }
 
 interface GhostingResult {
@@ -86,7 +87,7 @@ function computeGhostingScore(lead: Lead, tasks: Task[], deals: Deal[], now: Dat
   };
 }
 
-export function GhostingRiskPanel({ leads, tasks, deals, onLogTouch, onCreateTask }: Props) {
+export function GhostingRiskPanel({ leads, tasks, deals, onLogTouch, onCreateTask, onOpenLead }: Props) {
   const now = useMemo(() => new Date(), []);
 
   const results = useMemo(() => {
@@ -113,7 +114,10 @@ export function GhostingRiskPanel({ leads, tasks, deals, onLogTouch, onCreateTas
           <div key={r.leadId} className="rounded-md border border-border p-3 space-y-2">
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">{r.leadName}</p>
+                <p
+                  className={cn("text-sm font-medium truncate", onOpenLead && "cursor-pointer hover:text-primary hover:underline underline-offset-2")}
+                  onClick={() => onOpenLead?.(r.leadId)}
+                >{r.leadName}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{r.signals[0]}</p>
               </div>
               <Badge variant="outline" className={cn('text-[10px] shrink-0 ml-2',
