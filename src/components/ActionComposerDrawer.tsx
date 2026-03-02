@@ -147,12 +147,13 @@ function PostActionBar({ onLogTouch, onScheduleFollowUp, onDone }: {
 
 // ── Context Panel ────────────────────────────────────────────────────
 
-function ContextPanel({ entity, entityType, moneyResult, oppResult, tasks: entityTasks }: {
+function ContextPanel({ entity, entityType, moneyResult, oppResult, tasks: entityTasks, recentFubActivities }: {
   entity: Deal | Lead;
   entityType: 'deal' | 'lead';
   moneyResult?: MoneyModelResult | null;
   oppResult?: OpportunityHeatResult | null;
   tasks?: Task[];
+  recentFubActivities?: Array<{ activity_type: string; direction?: string; body_preview?: string; subject?: string; occurred_at: string; duration_seconds?: number }>;
 }) {
   const relatedTasks = useMemo(() => {
     if (!entityTasks) return [];
@@ -161,6 +162,25 @@ function ContextPanel({ entity, entityType, moneyResult, oppResult, tasks: entit
       return t.relatedLeadId === entity.id;
     }).filter(t => !t.completedAt).slice(0, 5);
   }, [entityTasks, entity.id, entityType]);
+
+  const lead = entityType === 'lead' ? entity as Lead : null;
+  const activities = recentFubActivities || [];
+
+  // Derive engagement from FUB activity if local score is 0
+  const effectiveEngagement = useMemo(() => {
+    if (!lead) return 0;
+    if (lead.engagementScore > 0) return lead.engagementScore;
+    if (activities.length === 0) return 0;
+    return Math.min(100, activities.length * 4);
+  }, [lead?.engagementScore, activities.length]);
+
+  const lastContactDays = useMemo(() => {
+    if (!lead) return 999;
+    const candidates = [lead.lastContactAt, (lead as any).lastTouchedAt].filter(Boolean).map(d => new Date(d!).getTime());
+    if (activities.length > 0) candidates.push(new Date(activities[0].occurred_at).getTime());
+    if (candidates.length === 0) return 999;
+    return Math.floor((Date.now() - Math.max(...candidates)) / (1000 * 60 * 60 * 24));
+  }, [lead?.lastContactAt, activities]);
 
   if (entityType === 'deal') {
     const deal = entity as Deal;
@@ -239,28 +259,34 @@ function ContextPanel({ entity, entityType, moneyResult, oppResult, tasks: entit
     );
   }
 
-  const lead = entity as Lead;
+  const tempColor = lead!.leadTemperature === 'hot' ? 'bg-urgent/15 text-urgent border-urgent/30' :
+    lead!.leadTemperature === 'warm' ? 'bg-warning/15 text-warning border-warning/30' :
+    'bg-muted text-muted-foreground border-border';
+
+  const contactColor = lastContactDays > 14 ? 'text-urgent' : lastContactDays > 7 ? 'text-warning' : 'text-muted-foreground';
+
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-md border border-border p-2">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Temp</p>
-          <p className={cn('text-xs font-semibold capitalize', lead.leadTemperature === 'hot' ? 'text-urgent' : lead.leadTemperature === 'warm' ? 'text-warning' : 'text-muted-foreground')}>
-            {lead.leadTemperature || 'Cold'}
-          </p>
-        </div>
-        <div className="rounded-md border border-border p-2">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Engagement</p>
-          <p className="text-xs font-semibold">{lead.engagementScore}</p>
-        </div>
-        <div className="rounded-md border border-border p-2">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Source</p>
-          <p className="text-xs">{lead.source || '—'}</p>
-        </div>
-        <div className="rounded-md border border-border p-2">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Last Contact</p>
-          <p className="text-xs">{daysSince(lead.lastContactAt)}d ago</p>
-        </div>
+      {/* Compact Intel Strip */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize', tempColor)}>
+          {lead!.leadTemperature || 'cold'}
+        </span>
+        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+          <span className="font-medium text-foreground">{effectiveEngagement}</span>
+          <span className="w-10 h-1.5 rounded-full bg-muted overflow-hidden inline-block align-middle">
+            <span className="block h-full rounded-full bg-primary/60 transition-all" style={{ width: `${Math.min(100, effectiveEngagement)}%` }} />
+          </span>
+        </span>
+        {lead!.source && (
+          <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+            {lead!.source}
+          </span>
+        )}
+        <span className={cn('inline-flex items-center gap-0.5 text-[10px] ml-auto', contactColor)}>
+          <Clock className="h-2.5 w-2.5" />
+          {lastContactDays === 0 ? 'Today' : `${lastContactDays}d ago`}
+        </span>
       </div>
 
       {oppResult && oppResult.opportunityValue > 0 && (
@@ -274,8 +300,8 @@ function ContextPanel({ entity, entityType, moneyResult, oppResult, tasks: entit
         </div>
       )}
 
-      {lead.notes && (
-        <p className="text-[10px] text-muted-foreground line-clamp-3">{lead.notes}</p>
+      {lead!.notes && (
+        <p className="text-[10px] text-muted-foreground line-clamp-3">{lead!.notes}</p>
       )}
 
       {relatedTasks.length > 0 && (
@@ -580,7 +606,7 @@ export function ActionComposerDrawer({
             {/* Left: Context */}
             <div className="lg:w-[260px] lg:border-r lg:border-border p-4 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto bg-background/50 shrink-0">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Context</p>
-              <ContextPanel entity={entity} entityType={entityType} moneyResult={moneyResult} oppResult={oppResult} tasks={tasks} />
+              <ContextPanel entity={entity} entityType={entityType} moneyResult={moneyResult} oppResult={oppResult} tasks={tasks} recentFubActivities={recentFubActivities} />
             </div>
 
             {/* Right: Execution */}
