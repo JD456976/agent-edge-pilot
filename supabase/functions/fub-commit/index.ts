@@ -76,24 +76,45 @@ Deno.serve(async (req) => {
 
       try {
         if (resolution === "create_new") {
+          // Build the full tag list: real FUB tags + "fub-import" marker
+          const fubTags: string[] = Array.isArray(norm.fubTags) ? norm.fubTags : [];
+          const allTags = ['fub-import', ...fubTags.filter((t: string) => t && t.trim())];
+
           await svc.from("leads").insert({
             assigned_to_user_id: userId,
             name: norm.name || "Unknown",
             source: norm.source || "FUB Import",
             engagement_score: norm.engagementScore || 0,
             last_contact_at: norm.lastContactAt || new Date().toISOString(),
-            status_tags: ["fub-import"],
+            status_tags: allTags,
+            lead_temperature: norm.leadTemperature || null,
             imported_from: `fub:${sl.fub_id}`,
             import_run_id: import_run_id,
             imported_at: importedAt,
           });
           committed.leads++;
         } else if (resolution === "match_existing" && sl.matched_lead_id) {
-          await svc.from("leads").update({
+          // Fetch existing tags to merge
+          const { data: existingLead } = await svc.from('leads')
+            .select('status_tags, lead_temperature')
+            .eq('id', sl.matched_lead_id)
+            .single();
+
+          const existingTags: string[] = (existingLead as any)?.status_tags || [];
+          const newFubTags: string[] = Array.isArray(norm.fubTags) ? norm.fubTags : [];
+          const mergedTags = Array.from(new Set([...existingTags, ...newFubTags]));
+
+          const updates: any = {
             source: norm.source || undefined,
             last_contact_at: norm.lastContactAt || undefined,
             last_activity_at: new Date().toISOString(),
-          }).eq("id", sl.matched_lead_id).eq("assigned_to_user_id", userId);
+            status_tags: mergedTags,
+          };
+          // Only update temperature if FUB gave us one and we don't have one yet
+          if (norm.leadTemperature && !(existingLead as any)?.lead_temperature) {
+            updates.lead_temperature = norm.leadTemperature;
+          }
+          await svc.from("leads").update(updates).eq("id", sl.matched_lead_id).eq("assigned_to_user_id", userId);
           committed.leads++;
         }
       } catch (e: any) {

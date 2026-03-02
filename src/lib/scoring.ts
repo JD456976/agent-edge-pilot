@@ -39,6 +39,20 @@ const TAG_SCORE_BOOSTS: Record<string, number> = {
   'cash_buyer': 18,
   'repeat_client': 10,
   'referral': 8,
+  // Zillow / RealScout / source-specific intent signals
+  'zillow': 8,
+  'zillow preferred': 12,
+  'realscout': 6,
+  'realscout property viewed': 12,
+  'open house info viewed': 8,
+  'mortgage': 10,
+  'appointment set': 15,
+  'showing': 12,
+  'market vip': 10,
+  're-engaged': 8,
+  'reassign': -3,
+  'dead pond': -8,
+  'no call': -3,
 };
 
 /**
@@ -60,7 +74,7 @@ export function computeTagScoreAdjustment(tags: string[]): { adjustment: number;
     }
   }
   
-  return { adjustment: Math.max(-10, Math.min(30, adjustment)), matchedTags };
+  return { adjustment: Math.max(-15, Math.min(40, adjustment)), matchedTags };
 }
 
 export function calculatePriorityScore(task: Task, lead?: Lead, deal?: Deal): number {
