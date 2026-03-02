@@ -6,6 +6,7 @@ import "./index.css";
 
 function Root() {
   const [splashDone, setSplashDone] = useState(() => {
+    if (window.location.pathname.startsWith('/visit/')) return true;
     if (sessionStorage.getItem('dp_splash_shown')) return true;
     return false;
   });
