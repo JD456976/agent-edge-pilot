@@ -40,6 +40,7 @@ export interface Lead {
   importRunId?: string | null;
   importedAt?: string | null;
   lastTouchedAt?: string;
+  snoozeUntil?: string | null;
 }
 
 export interface Deal {
