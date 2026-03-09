@@ -284,7 +284,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Mobile bottom tabs — show 4 primary + More menu */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 border-t border-border bg-card z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-center justify-around h-14 px-2">
-          {items.slice(0, 4).map(item => {
+          {items.map(item => {
             const key = item.workspace ?? item.path ?? 'home';
             return (
               <button
@@ -292,7 +292,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 onClick={() => handleNavClick(item)}
                 aria-label={item.label}
                 className={cn(
-                  'flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg transition-colors min-w-0',
+                  'flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg transition-colors min-w-0 min-h-[44px] justify-center',
                   isActive(item) && 'text-primary',
                   !isActive(item) && 'text-muted-foreground'
                 )}
@@ -302,39 +302,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
               </button>
             );
           })}
-          {/* More menu for overflow items */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                aria-label="More"
-                className={cn(
-                  'flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg transition-colors min-w-0',
-                  items.slice(4).some(i => isActive(i)) ? 'text-primary' : 'text-muted-foreground'
-                )}
-              >
-                <MoreHorizontal className="h-5 w-5" />
-                <span className="text-[10px] font-medium">More</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent side="top" align="end" className="w-48 p-1.5">
-              {items.slice(4).map(item => {
-                const key = item.workspace ?? item.path ?? 'overflow';
-                return (
-                  <button
-                    key={key}
-                    onClick={() => handleNavClick(item)}
-                    className={cn(
-                      'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm transition-colors',
-                      isActive(item) ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                    )}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </PopoverContent>
-          </Popover>
         </div>
       </nav>
 
