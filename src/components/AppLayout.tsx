@@ -33,7 +33,7 @@ import { NotificationPermissionPrompt } from '@/components/NotificationPermissio
 import { DemoBanner } from '@/components/DemoBanner';
 import { MobileSearchOverlay } from '@/components/MobileSearchOverlay';
 
-const PaywallLazy = lazy(() => import('@/pages/Paywall'));
+// Paywall removed
 
 type NavItem = { label: string; icon: React.ElementType } & (
   | { path: string; workspace?: undefined }
