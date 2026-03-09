@@ -239,8 +239,6 @@ export function useCommandCenterData(
   }, [overdueTasks, dueSoonTasks, stabilityResult.score]);
 
   // Predictive signals
-  const { hasCriticalFailureRisk } = require('@/components/DealFailurePanel');
-  const { hasHighGhostingRisk } = require('@/components/GhostingRiskPanel');
   const predictiveSignals = useMemo(() => {
     const signals: { type: 'failure' | 'ghosting'; label: string; severity: 'high' | 'medium' }[] = [];
     if (hasCriticalFailureRisk(deals, tasks, moneyResults)) {
