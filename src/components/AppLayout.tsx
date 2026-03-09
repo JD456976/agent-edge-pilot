@@ -33,7 +33,7 @@ import { NotificationPermissionPrompt } from '@/components/NotificationPermissio
 import { DemoBanner } from '@/components/DemoBanner';
 import { MobileSearchOverlay } from '@/components/MobileSearchOverlay';
 
-const PaywallLazy = lazy(() => import('@/pages/Paywall'));
+// Paywall removed
 
 type NavItem = { label: string; icon: React.ElementType } & (
   | { path: string; workspace?: undefined }
@@ -382,14 +382,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Keyboard shortcut hint for new users */}
       <KeyboardShortcutHint />
 
-      {/* Paywall modal triggered by restricted mode */}
-      {showPaywall && (
-        <Suspense fallback={<div className="fixed inset-0 z-50 bg-background flex items-center justify-center"><p className="text-sm text-muted-foreground">Loading…</p></div>}>
-          <div className="fixed inset-0 z-50 bg-background">
-            <PaywallLazy onDismiss={() => setShowPaywall(false)} showDismiss />
-          </div>
-        </Suspense>
-      )}
+      {/* Paywall removed */}
 
       {/* Notification permission rationale prompt */}
       {showNotifPrompt && (
