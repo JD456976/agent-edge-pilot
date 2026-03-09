@@ -1209,6 +1209,7 @@ export type Database = {
           outcome_note: string | null
           seed_batch_id: string | null
           seeded: boolean
+          snooze_until: string | null
           source: string
           status_tags: string[] | null
         }
@@ -1236,6 +1237,7 @@ export type Database = {
           outcome_note?: string | null
           seed_batch_id?: string | null
           seeded?: boolean
+          snooze_until?: string | null
           source?: string
           status_tags?: string[] | null
         }
@@ -1263,6 +1265,7 @@ export type Database = {
           outcome_note?: string | null
           seed_batch_id?: string | null
           seeded?: boolean
+          snooze_until?: string | null
           source?: string
           status_tags?: string[] | null
         }
@@ -1826,6 +1829,8 @@ export type Database = {
           onboarding_completed: boolean
           organization_id: string | null
           status: string
+          target_min_price: number | null
+          target_zip_codes: string | null
           theme_preference: string
           updated_at: string
           user_id: string
@@ -1848,6 +1853,8 @@ export type Database = {
           onboarding_completed?: boolean
           organization_id?: string | null
           status?: string
+          target_min_price?: number | null
+          target_zip_codes?: string | null
           theme_preference?: string
           updated_at?: string
           user_id: string
@@ -1870,6 +1877,8 @@ export type Database = {
           onboarding_completed?: boolean
           organization_id?: string | null
           status?: string
+          target_min_price?: number | null
+          target_zip_codes?: string | null
           theme_preference?: string
           updated_at?: string
           user_id?: string
