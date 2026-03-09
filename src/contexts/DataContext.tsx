@@ -41,6 +41,7 @@ function mapLead(row: any): Lead {
     importRunId: row.import_run_id || null,
     importedAt: row.imported_at || null,
     lastTouchedAt: row.last_touched_at || undefined,
+    snoozeUntil: row.snooze_until || null,
   };
 }
 
