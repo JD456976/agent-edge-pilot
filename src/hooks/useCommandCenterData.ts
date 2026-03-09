@@ -4,6 +4,8 @@ import { computeMoneyModelBatch, suggestAction, type MoneyModelResult } from '@/
 import { computeOpportunityBatch, type OpportunityHeatResult, type UserCommissionDefaults } from '@/lib/leadMoneyModel';
 import { computeForecastBatch } from '@/lib/forecastModel';
 import { computeStabilityScore, type StabilityInputs } from '@/lib/stabilityModel';
+import { hasCriticalFailureRisk } from '@/components/DealFailurePanel';
+import { hasHighGhostingRisk } from '@/components/GhostingRiskPanel';
 import { computeStrategicOverview, hasUserSetBudget } from '@/lib/strategicEngine';
 import { computeIncomePatterns } from '@/lib/incomePatternsEngine';
 import { buildCommandCenterPanels } from '@/lib/intelligenceEngine';
