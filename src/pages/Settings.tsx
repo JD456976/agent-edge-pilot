@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { TargetMarketSettings } from '@/components/TargetMarketSettings';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar, Volume2, Trash2, AlertTriangle, Shield, FileText, HelpCircle, ExternalLink, Camera, Bell, BellOff, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -309,6 +310,9 @@ export default function Settings() {
         onUpdate={updateStrategicSettings}
         onReset={resetStrategicSettings}
       />
+
+      {/* Target Market */}
+      <TargetMarketSettings />
 
       {/* Self-Optimizing Mode */}
       <SelfOptimizingSettingsPanel

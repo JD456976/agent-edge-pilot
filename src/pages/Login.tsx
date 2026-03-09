@@ -151,7 +151,7 @@ export default function Login() {
               <img src={appIcon} alt="Deal Pilot" className="h-14 w-14" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight">Deal Pilot</h1>
-            <p className="text-sm text-muted-foreground mt-1">Your real estate command center</p>
+            <p className="text-sm text-muted-foreground mt-1">Know your money. Protect your deals.</p>
           </div>
 
           {/* Desktop heading */}
