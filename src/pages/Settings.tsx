@@ -310,6 +310,9 @@ export default function Settings() {
         onReset={resetStrategicSettings}
       />
 
+      {/* Target Market */}
+      <TargetMarketSettings />
+
       {/* Self-Optimizing Mode */}
       <SelfOptimizingSettingsPanel
         prefs={selfOptPrefs}
