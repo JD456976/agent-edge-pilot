@@ -15,7 +15,7 @@ import { WorkspaceOverlayShell } from "@/components/WorkspaceOverlayShell";
 import { EntitlementProvider } from "@/contexts/EntitlementContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import Login from "@/pages/Login";
-import CommandCenter from "@/pages/CommandCenter";
+import BetaHomeScreen from "@/components/BetaHomeScreen";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import Work from "@/pages/Work";
 import Sync from "@/pages/Sync";
