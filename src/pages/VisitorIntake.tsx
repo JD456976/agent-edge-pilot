@@ -5,20 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { MapPin, CheckCircle2, User, Loader2 } from 'lucide-react';
-import { callEdgeFunction } from '@/lib/edgeClient';
-
-interface FieldDef {
-  field_key: string;
-  field_label: string;
-  field_type: string;
-  is_required: boolean;
-  options: string[] | null;
-  sort_order: number;
-}
 
 export default function VisitorIntake() {
   const { token } = useParams<{ token: string }>();
@@ -27,56 +15,43 @@ export default function VisitorIntake() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [openHouse, setOpenHouse] = useState<any>(null);
-  const [fields, setFields] = useState<FieldDef[]>([]);
-  const [values, setValues] = useState<Record<string, string>>({});
+
+  // Form fields
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [workingWithAgent, setWorkingWithAgent] = useState('');
 
   useEffect(() => {
-    loadForm();
-  }, [token]);
+    (async () => {
+      try {
+        const { data: oh, error: ohErr } = await supabase
+          .from('open_houses')
+          .select('*')
+          .eq('intake_token', token)
+          .eq('status', 'active')
+          .maybeSingle();
 
-  const loadForm = async () => {
-    try {
-      // Fetch open house by token (public, no auth needed — use anon key)
-      const { data: oh, error: ohErr } = await supabase
-        .from('open_houses')
-        .select('*')
-        .eq('intake_token', token)
-        .eq('status', 'active')
-        .maybeSingle();
-
-      if (ohErr || !oh) {
-        setError('This open house link is no longer active.');
-        setLoading(false);
-        return;
+        if (ohErr || !oh) {
+          setError('This open house link is no longer active.');
+          setLoading(false);
+          return;
+        }
+        setOpenHouse(oh);
+      } catch {
+        setError('Failed to load form.');
       }
-
-      setOpenHouse(oh);
-
-      const { data: flds, error: fErr } = await supabase
-        .from('open_house_fields')
-        .select('field_key, field_label, field_type, is_required, options, sort_order')
-        .eq('open_house_id', oh.id)
-        .order('sort_order');
-
-      if (fErr) throw fErr;
-      setFields((flds || []).map(f => ({ ...f, options: f.options as unknown as string[] | null })));
-    } catch (e: any) {
-      setError('Failed to load form.');
-    }
-    setLoading(false);
-  };
+      setLoading(false);
+    })();
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!openHouse) return;
 
-    // Validate required
-    for (const f of fields) {
-      if (f.is_required && !values[f.field_key]?.trim()) {
-        setError(`${f.field_label} is required.`);
-        return;
-      }
-    }
+    // Validate
+    if (!fullName.trim()) { setError('Please enter your name.'); return; }
+    if (!phone.trim() && !email.trim()) { setError('Please enter a phone number or email address.'); return; }
 
     setSubmitting(true);
     setError('');
@@ -92,10 +67,15 @@ export default function VisitorIntake() {
           },
           body: JSON.stringify({
             intake_token: token,
-            full_name: values.full_name || '',
-            email: values.email || '',
-            phone: values.phone || '',
-            responses: values,
+            full_name: fullName.trim(),
+            email: email.trim(),
+            phone: phone.trim(),
+            responses: {
+              full_name: fullName.trim(),
+              email: email.trim(),
+              phone: phone.trim(),
+              working_with_agent: workingWithAgent,
+            },
           }),
         }
       );
@@ -110,48 +90,6 @@ export default function VisitorIntake() {
       setError(err.message || 'Failed to submit');
     }
     setSubmitting(false);
-  };
-
-  const renderField = (f: FieldDef) => {
-    const val = values[f.field_key] || '';
-    const onChange = (v: string) => setValues(prev => ({ ...prev, [f.field_key]: v }));
-
-    switch (f.field_type) {
-      case 'yes_no':
-        return (
-          <RadioGroup value={val} onValueChange={onChange} className="flex gap-4">
-            <div className="flex items-center gap-2">
-              <RadioGroupItem value="Yes" id={`${f.field_key}-yes`} />
-              <Label htmlFor={`${f.field_key}-yes`} className="text-sm">Yes</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <RadioGroupItem value="No" id={`${f.field_key}-no`} />
-              <Label htmlFor={`${f.field_key}-no`} className="text-sm">No</Label>
-            </div>
-          </RadioGroup>
-        );
-      case 'dropdown':
-      case 'multiple_choice':
-        return (
-          <Select value={val} onValueChange={onChange}>
-            <SelectTrigger className="h-10"><SelectValue placeholder="Select..." /></SelectTrigger>
-            <SelectContent>
-              {(f.options || []).map(opt => (
-                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-      case 'number':
-        return <Input type="number" value={val} onChange={e => onChange(e.target.value)} className="h-10" />;
-      case 'date':
-        return <Input type="date" value={val} onChange={e => onChange(e.target.value)} className="h-10" />;
-      default:
-        if (f.field_key === 'visitor_notes' || f.field_key === 'areas_interest') {
-          return <Textarea value={val} onChange={e => onChange(e.target.value)} rows={2} />;
-        }
-        return <Input type={f.field_key === 'email' ? 'email' : f.field_key === 'phone' ? 'tel' : 'text'} value={val} onChange={e => onChange(e.target.value)} className="h-10" />;
-    }
   };
 
   if (loading) {
@@ -218,19 +156,70 @@ export default function VisitorIntake() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {fields.map(f => (
-              <div key={f.field_key}>
-                <Label className="text-sm">
-                  {f.field_label}
-                  {f.is_required && <span className="text-destructive ml-0.5">*</span>}
-                </Label>
-                <div className="mt-1">{renderField(f)}</div>
-              </div>
-            ))}
+            {/* Full Name */}
+            <div>
+              <Label className="text-sm">Full Name <span className="text-destructive">*</span></Label>
+              <Input
+                type="text"
+                placeholder="Your name"
+                value={fullName}
+                onChange={e => setFullName(e.target.value)}
+                className="h-11 mt-1"
+                required
+              />
+            </div>
+
+            {/* Phone */}
+            <div>
+              <Label className="text-sm">Phone</Label>
+              <Input
+                type="tel"
+                placeholder="(555) 555-1234"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                className="h-11 mt-1"
+              />
+            </div>
+
+            {/* Email */}
+            <div>
+              <Label className="text-sm">Email</Label>
+              <Input
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="h-11 mt-1"
+              />
+              <p className="text-[10px] text-muted-foreground mt-0.5">Phone or email required</p>
+            </div>
+
+            {/* Working with agent */}
+            <div>
+              <Label className="text-sm">Are you currently working with a real estate agent?</Label>
+              <RadioGroup
+                value={workingWithAgent}
+                onValueChange={setWorkingWithAgent}
+                className="flex gap-4 mt-2"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="Yes" id="agent-yes" />
+                  <Label htmlFor="agent-yes" className="text-sm">Yes</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="No" id="agent-no" />
+                  <Label htmlFor="agent-no" className="text-sm">No</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="Just Looking" id="agent-looking" />
+                  <Label htmlFor="agent-looking" className="text-sm">Just Looking</Label>
+                </div>
+              </RadioGroup>
+            </div>
 
             {error && <p className="text-xs text-destructive">{error}</p>}
 
-            <Button type="submit" className="w-full" disabled={submitting}>
+            <Button type="submit" className="w-full h-11 min-h-[44px]" disabled={submitting}>
               {submitting ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Submitting...</> : 'Sign In'}
             </Button>
           </form>

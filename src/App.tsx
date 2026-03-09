@@ -123,7 +123,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={loading ? null : (user ? <Navigate to="/" replace /> : <Login />)} />
-      <Route path="/" element={<ProtectedRoute><CommandCenter /></ProtectedRoute>} />
+      <Route path="/" element={<ProtectedRoute><BetaHomeScreen /></ProtectedRoute>} />
       <Route path="/visit/:token" element={<React.Suspense fallback={<div className="min-h-screen bg-background" />}><VisitorIntakeLazy /></React.Suspense>} />
       <Route path="/pipeline" element={<Navigate to="/?workspace=work" replace />} />
       <Route path="/tasks" element={<Navigate to="/?workspace=work" replace />} />
