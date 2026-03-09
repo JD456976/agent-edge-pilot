@@ -209,7 +209,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <SyncStatusIndicator onManualSync={() => runSync(false)} syncing={syncing} />
+        {/* Sync indicator removed — auto sync only */}
         <CollapsibleUtilities toggleTheme={toggleTheme} theme={theme} handleLogout={handleLogout} />
       </aside>
 
