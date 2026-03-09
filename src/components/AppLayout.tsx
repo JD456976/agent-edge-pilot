@@ -42,11 +42,8 @@ type NavItem = { label: string; icon: React.ElementType } & (
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
-  { workspace: 'work', label: 'Tasks', icon: Briefcase },
-  { workspace: 'calendar', label: 'Calendar', icon: CalendarDays },
   { workspace: 'openhouse', label: 'Open House', icon: Home },
   { workspace: 'sync', label: 'CRM', icon: RefreshCw },
-  { workspace: 'insights', label: 'Reports', icon: BarChart3 },
   { workspace: 'settings', label: 'Settings', icon: Settings },
 ];
 
