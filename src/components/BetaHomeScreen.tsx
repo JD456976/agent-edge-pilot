@@ -385,6 +385,7 @@ export default function BetaHomeScreen() {
       {/* Execution drawer */}
       {executionEntity && (
         <ActionComposerDrawer
+          open={!!executionEntity}
           entity={executionEntity.entity}
           entityType={executionEntity.entityType}
           onClose={() => setExecutionEntity(null)}
