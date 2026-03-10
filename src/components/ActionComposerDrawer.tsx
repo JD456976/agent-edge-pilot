@@ -649,62 +649,44 @@ export function ActionComposerDrawer({
 
               <div className="px-4 py-4 space-y-4">
                 {/* CALL */}
-                {activeTab === 'call' && callBrief && (
+                {activeTab === 'call' && (
                   <div className="space-y-4">
-                    <div className="rounded-md border border-primary/10 bg-primary/5 p-3">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Goal</p>
-                      <p className="text-sm font-medium">{callBrief.desiredOutcome}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Talking Points</p>
-                      <ol className="space-y-1.5">
-                        {callBrief.conversationFlow.map((step, i) => (
-                          <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
-                            <span className="text-[10px] font-mono text-primary shrink-0 mt-0.5">{i + 1}.</span>{step}
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-                    {callBrief.keyRisks.length > 0 && callBrief.keyRisks[0] !== 'No active risk flags' && (
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Watch For</p>
-                        {callBrief.keyRisks.map((r, i) => (
-                          <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground mb-1">
-                            <Shield className="h-3 w-3 text-warning shrink-0 mt-0.5" />{r}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {objections.length > 0 && (
-                      <div>
-                        <button onClick={() => setShowObjections(!showObjections)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-                          {showObjections ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                          Objection Responses ({objections.length})
-                        </button>
-                        {showObjections && (
-                          <div className="space-y-2 mt-2">
-                            {objections.map((obj, i) => (
-                              <div key={i} className="rounded-md border border-border bg-background/50 p-2.5 space-y-1">
-                                <p className="text-xs font-medium">{obj.objection}</p>
-                                <p className="text-xs text-muted-foreground">{obj.response}</p>
-                              </div>
+                    {/* Native dialer trigger */}
+                    {(() => {
+                      const phone = fubProfile?.phones?.[0];
+                      return phone ? (
+                        <a href={`tel:${phone}`} className="flex items-center justify-center gap-2 w-full h-12 min-h-[48px] rounded-lg bg-primary text-primary-foreground font-semibold text-base">
+                          <Phone className="h-5 w-5" /> Call {context.entityName}
+                        </a>
+                      ) : (
+                        <div className="rounded-lg border border-border bg-muted/30 p-4 text-center space-y-2">
+                          <Phone className="h-5 w-5 mx-auto text-muted-foreground" />
+                          <p className="text-sm font-medium">No phone number on file</p>
+                          <p className="text-xs text-muted-foreground">Add a phone number in Follow Up Boss to enable calling.</p>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Call brief */}
+                    {callBrief && (
+                      <>
+                        <div className="rounded-md border border-primary/10 bg-primary/5 p-3">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Goal</p>
+                          <p className="text-sm font-medium">{callBrief.desiredOutcome}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Talking Points</p>
+                          <ol className="space-y-1.5">
+                            {callBrief.conversationFlow.map((step, i) => (
+                              <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                                <span className="text-[10px] font-mono text-primary shrink-0 mt-0.5">{i + 1}.</span>{step}
+                              </li>
                             ))}
-                          </div>
-                        )}
-                      </div>
+                          </ol>
+                        </div>
+                      </>
                     )}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Script</p>
-                        <Button size="sm" variant="ghost" className="text-xs h-6" onClick={() => handleCopy(draft.callPoints.join('\n'), 'script')}>
-                          {copiedField === 'script' ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-                          {copiedField === 'script' ? 'Copied' : 'Copy'}
-                        </Button>
-                      </div>
-                      <div className="rounded-md border border-border bg-background/50 p-2.5 text-xs text-muted-foreground space-y-1">
-                        {draft.callPoints.map((p, i) => <p key={i}>• {p}</p>)}
-                      </div>
-                    </div>
+
                     {!callOutcomeLogged && (
                       <div className="border-t border-border pt-3">
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Log Outcome</p>
