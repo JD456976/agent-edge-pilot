@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
 
     // Load existing local data
     const [{ data: existingLeads }, { data: existingDeals }, { data: existingTasks }] = await Promise.all([
-      svc.from("leads").select("id, name, source, imported_from, last_modified_at, lead_temperature, notes").eq("assigned_to_user_id", userId),
+      svc.from("leads").select("id, name, source, imported_from, last_modified_at, lead_temperature, notes, removed_from_fub").eq("assigned_to_user_id", userId),
       svc.from("deals").select("id, title, price, stage, close_date, imported_from, last_modified_at").eq("assigned_to_user_id", userId),
       svc.from("tasks").select("id, title, completed_at, due_at, imported_from, type").eq("assigned_to_user_id", userId),
     ]);
@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
       dealsByTitle.set(d.title?.toLowerCase()?.trim(), d);
     }
 
-    const autoImported = { leads: 0, deals: 0, tasks_synced: 0 };
+    const autoImported: Record<string, number> = { leads: 0, deals: 0, tasks_synced: 0, leads_removed: 0, deals_removed: 0 };
     const conflicts: any[] = [];
 
     // Process people
@@ -242,6 +242,49 @@ Deno.serve(async (req) => {
         });
         if (!insertErr) autoImported.deals++;
       }
+    }
+
+    // Reconcile removed leads — flag any FUB-imported leads no longer in FUB response
+    const fubPeopleIds = new Set(rawPeople.map((p: any) => String(p.id)));
+    const leadsToRemove: string[] = [];
+    for (const [fubId, local] of leadsByFubId) {
+      if (!fubPeopleIds.has(fubId)) {
+        leadsToRemove.push(local.id);
+      }
+    }
+    if (leadsToRemove.length > 0) {
+      await svc.from("leads").update({
+        removed_from_fub: true,
+        removed_from_fub_at: new Date().toISOString(),
+      }).in("id", leadsToRemove);
+      autoImported.leads_removed = leadsToRemove.length;
+    }
+
+    // Reconcile removed deals
+    const fubDealIds = new Set(rawDeals.map((d: any) => String(d.id)));
+    const dealsToRemove: string[] = [];
+    for (const [fubId, local] of dealsByFubId) {
+      if (!fubDealIds.has(fubId)) {
+        dealsToRemove.push(local.id);
+      }
+    }
+    if (dealsToRemove.length > 0) {
+      await svc.from("deals").update({
+        removed_from_fub: true,
+        removed_from_fub_at: new Date().toISOString(),
+      }).in("id", dealsToRemove);
+      autoImported.deals_removed = dealsToRemove.length;
+    }
+
+    // Un-flag leads that reappear in FUB (e.g. reassigned back)
+    const reappearedLeads = (existingLeads || []).filter(
+      (l: any) => l.removed_from_fub && l.imported_from?.startsWith("fub:") && fubPeopleIds.has(l.imported_from.replace("fub:", ""))
+    );
+    if (reappearedLeads.length > 0) {
+      await svc.from("leads").update({
+        removed_from_fub: false,
+        removed_from_fub_at: null,
+      }).in("id", reappearedLeads.map((l: any) => l.id));
     }
 
     // Process tasks — sync completion status from FUB

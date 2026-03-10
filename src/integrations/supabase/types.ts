@@ -494,6 +494,8 @@ export type Database = {
           outcome_note: string | null
           price: number
           referral_fee_percent: number | null
+          removed_from_fub: boolean
+          removed_from_fub_at: string | null
           risk_flags: string[] | null
           risk_level: Database["public"]["Enums"]["risk_level"]
           seed_batch_id: string | null
@@ -524,6 +526,8 @@ export type Database = {
           outcome_note?: string | null
           price?: number
           referral_fee_percent?: number | null
+          removed_from_fub?: boolean
+          removed_from_fub_at?: string | null
           risk_flags?: string[] | null
           risk_level?: Database["public"]["Enums"]["risk_level"]
           seed_batch_id?: string | null
@@ -554,6 +558,8 @@ export type Database = {
           outcome_note?: string | null
           price?: number
           referral_fee_percent?: number | null
+          removed_from_fub?: boolean
+          removed_from_fub_at?: string | null
           risk_flags?: string[] | null
           risk_level?: Database["public"]["Enums"]["risk_level"]
           seed_batch_id?: string | null
@@ -1207,6 +1213,8 @@ export type Database = {
           notes: string | null
           organization_id: string | null
           outcome_note: string | null
+          removed_from_fub: boolean
+          removed_from_fub_at: string | null
           seed_batch_id: string | null
           seeded: boolean
           snooze_until: string | null
@@ -1235,6 +1243,8 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           outcome_note?: string | null
+          removed_from_fub?: boolean
+          removed_from_fub_at?: string | null
           seed_batch_id?: string | null
           seeded?: boolean
           snooze_until?: string | null
@@ -1263,6 +1273,8 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           outcome_note?: string | null
+          removed_from_fub?: boolean
+          removed_from_fub_at?: string | null
           seed_batch_id?: string | null
           seeded?: boolean
           snooze_until?: string | null
