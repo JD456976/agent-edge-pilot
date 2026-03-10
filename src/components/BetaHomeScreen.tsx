@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { BetaGettingStarted } from '@/components/BetaGettingStarted';
 import { IncomeControlMeter } from '@/components/IncomeControlMeter';
 import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
-import { LogTouchModal } from '@/components/LogTouchModal';
+// LogTouchModal removed from home screen quick actions — used only in person record tabs
 import { useCommandCenterData } from '@/hooks/useCommandCenterData';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { toast } from '@/hooks/use-toast';
@@ -185,8 +185,7 @@ export default function BetaHomeScreen() {
   const [targetMarket, setTargetMarket] = useState<TargetMarket>({ zipCodes: [], minPrice: null });
   const [incomeExpanded, setIncomeExpanded] = useState(false);
   const [executionEntity, setExecutionEntity] = useState<any>(null);
-  const [showLogTouch, setShowLogTouch] = useState(false);
-  const [touchTarget, setTouchTarget] = useState<any>(null);
+  // LogTouch state removed — quick actions use native tel/sms/mailto
   const [snoozeLeadId, setSnoozeLeadId] = useState<string | null>(null);
   const [snoozeDate, setSnoozeDate] = useState('');
 
@@ -235,8 +234,18 @@ export default function BetaHomeScreen() {
       setSnoozeLeadId(lead.id);
       return;
     }
-    setTouchTarget({ entityType: 'lead' as const, entityId: lead.id, entityTitle: lead.name });
-    setShowLogTouch(true);
+    const phone = (lead as any).phone as string | undefined;
+    const email = (lead as any).email as string | undefined;
+    if (type === 'call') {
+      if (phone) { window.location.href = `tel:${phone}`; }
+      else { toast({ description: 'No phone on file — update in FUB' }); }
+    } else if (type === 'text') {
+      if (phone) { window.location.href = `sms:${phone}`; }
+      else { toast({ description: 'No phone on file — update in FUB' }); }
+    } else if (type === 'email') {
+      if (email) { window.location.href = `mailto:${email}`; }
+      else { toast({ description: 'No email on file — update in FUB' }); }
+    }
   }, []);
 
   const handleSnoozeConfirm = useCallback(async () => {
@@ -393,17 +402,6 @@ export default function BetaHomeScreen() {
         />
       )}
 
-      {/* Log touch modal */}
-      {showLogTouch && touchTarget && (
-        <LogTouchModal
-          open={showLogTouch}
-          onClose={() => setShowLogTouch(false)}
-          entityType={touchTarget.entityType}
-          entityId={touchTarget.entityId}
-          entityTitle={touchTarget.entityTitle}
-          onTouchLogged={() => refreshData()}
-        />
-      )}
     </div>
   );
 }
