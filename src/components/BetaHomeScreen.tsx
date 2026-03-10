@@ -185,8 +185,7 @@ export default function BetaHomeScreen() {
   const [targetMarket, setTargetMarket] = useState<TargetMarket>({ zipCodes: [], minPrice: null });
   const [incomeExpanded, setIncomeExpanded] = useState(false);
   const [executionEntity, setExecutionEntity] = useState<any>(null);
-  const [showLogTouch, setShowLogTouch] = useState(false);
-  const [touchTarget, setTouchTarget] = useState<any>(null);
+  // LogTouch state removed — quick actions use native tel/sms/mailto
   const [snoozeLeadId, setSnoozeLeadId] = useState<string | null>(null);
   const [snoozeDate, setSnoozeDate] = useState('');
 
