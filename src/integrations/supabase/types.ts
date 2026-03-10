@@ -1207,6 +1207,8 @@ export type Database = {
           notes: string | null
           organization_id: string | null
           outcome_note: string | null
+          removed_from_fub: boolean
+          removed_from_fub_at: string | null
           seed_batch_id: string | null
           seeded: boolean
           snooze_until: string | null
@@ -1235,6 +1237,8 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           outcome_note?: string | null
+          removed_from_fub?: boolean
+          removed_from_fub_at?: string | null
           seed_batch_id?: string | null
           seeded?: boolean
           snooze_until?: string | null
@@ -1263,6 +1267,8 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           outcome_note?: string | null
+          removed_from_fub?: boolean
+          removed_from_fub_at?: string | null
           seed_batch_id?: string | null
           seeded?: boolean
           snooze_until?: string | null
