@@ -19,6 +19,8 @@ export interface FubActivity {
 export interface FubPersonProfile {
   tags?: string[];
   addresses?: Array<{ type?: string; street?: string; city?: string; state?: string; code?: string }>;
+  emails?: string[];
+  phones?: string[];
   stage?: string | null;
   source?: string | null;
   created?: string | null;
