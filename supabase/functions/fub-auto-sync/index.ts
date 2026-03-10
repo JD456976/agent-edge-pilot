@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
       dealsByTitle.set(d.title?.toLowerCase()?.trim(), d);
     }
 
-    const autoImported = { leads: 0, deals: 0, tasks_synced: 0 };
+    const autoImported: Record<string, number> = { leads: 0, deals: 0, tasks_synced: 0, leads_removed: 0, deals_removed: 0 };
     const conflicts: any[] = [];
 
     // Process people
