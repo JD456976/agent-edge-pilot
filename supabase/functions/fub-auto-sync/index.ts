@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
 
     // Load existing local data
     const [{ data: existingLeads }, { data: existingDeals }, { data: existingTasks }] = await Promise.all([
-      svc.from("leads").select("id, name, source, imported_from, last_modified_at, lead_temperature, notes").eq("assigned_to_user_id", userId),
+      svc.from("leads").select("id, name, source, imported_from, last_modified_at, lead_temperature, notes, removed_from_fub").eq("assigned_to_user_id", userId),
       svc.from("deals").select("id, title, price, stage, close_date, imported_from, last_modified_at").eq("assigned_to_user_id", userId),
       svc.from("tasks").select("id, title, completed_at, due_at, imported_from, type").eq("assigned_to_user_id", userId),
     ]);
