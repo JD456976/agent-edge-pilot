@@ -286,10 +286,11 @@ export default function BetaHomeScreen() {
 
       {/* 2. Priority Lead Card */}
       {priorityLead && (
-        <PriorityLeadCard
+          <PriorityLeadCard
           lead={priorityLead.lead}
           score={priorityLead.score}
           onAction={(type) => handleLeadAction(priorityLead.lead, type)}
+          onTapName={() => handleOpenLeadDetail(priorityLead.lead)}
         />
       )}
 
