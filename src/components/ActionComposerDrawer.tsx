@@ -729,6 +729,22 @@ export function ActionComposerDrawer({
                 {/* TEXT */}
                 {activeTab === 'text' && (
                   <div className="space-y-3">
+                    {/* Native SMS trigger */}
+                    {(() => {
+                      const phone = fubProfile?.phones?.[0];
+                      return phone ? (
+                        <a href={`sms:${phone}`} className="flex items-center justify-center gap-2 w-full h-12 min-h-[48px] rounded-lg bg-primary text-primary-foreground font-semibold text-base">
+                          <MessageSquare className="h-5 w-5" /> Text {context.entityName}
+                        </a>
+                      ) : (
+                        <div className="rounded-lg border border-border bg-muted/30 p-4 text-center space-y-2">
+                          <MessageSquare className="h-5 w-5 mx-auto text-muted-foreground" />
+                          <p className="text-sm font-medium">No phone number on file</p>
+                          <p className="text-xs text-muted-foreground">Add a phone number in Follow Up Boss to enable texting.</p>
+                        </div>
+                      );
+                    })()}
+
                     <div className="flex items-center justify-between">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Templates</p>
                       {fubPersonId && (
