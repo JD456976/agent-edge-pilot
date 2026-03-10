@@ -235,8 +235,18 @@ export default function BetaHomeScreen() {
       setSnoozeLeadId(lead.id);
       return;
     }
-    setTouchTarget({ entityType: 'lead' as const, entityId: lead.id, entityTitle: lead.name });
-    setShowLogTouch(true);
+    const phone = (lead as any).phone as string | undefined;
+    const email = (lead as any).email as string | undefined;
+    if (type === 'call') {
+      if (phone) { window.location.href = `tel:${phone}`; }
+      else { toast({ description: 'No phone on file — update in FUB' }); }
+    } else if (type === 'text') {
+      if (phone) { window.location.href = `sms:${phone}`; }
+      else { toast({ description: 'No phone on file — update in FUB' }); }
+    } else if (type === 'email') {
+      if (email) { window.location.href = `mailto:${email}`; }
+      else { toast({ description: 'No email on file — update in FUB' }); }
+    }
   }, []);
 
   const handleSnoozeConfirm = useCallback(async () => {
