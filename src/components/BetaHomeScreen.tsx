@@ -402,17 +402,6 @@ export default function BetaHomeScreen() {
         />
       )}
 
-      {/* Log touch modal */}
-      {showLogTouch && touchTarget && (
-        <LogTouchModal
-          open={showLogTouch}
-          onClose={() => setShowLogTouch(false)}
-          entityType={touchTarget.entityType}
-          entityId={touchTarget.entityId}
-          entityTitle={touchTarget.entityTitle}
-          onTouchLogged={() => refreshData()}
-        />
-      )}
     </div>
   );
 }
