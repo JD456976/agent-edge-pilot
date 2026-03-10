@@ -134,7 +134,7 @@ function PipelineCard({ lead, score, outsideTarget, onTap }: {
         )}
         <HeatBadge score={score} />
       </div>
-    </button>
+    </div>
   );
 }
 
