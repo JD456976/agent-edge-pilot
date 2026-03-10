@@ -649,62 +649,44 @@ export function ActionComposerDrawer({
 
               <div className="px-4 py-4 space-y-4">
                 {/* CALL */}
-                {activeTab === 'call' && callBrief && (
+                {activeTab === 'call' && (
                   <div className="space-y-4">
-                    <div className="rounded-md border border-primary/10 bg-primary/5 p-3">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Goal</p>
-                      <p className="text-sm font-medium">{callBrief.desiredOutcome}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Talking Points</p>
-                      <ol className="space-y-1.5">
-                        {callBrief.conversationFlow.map((step, i) => (
-                          <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
-                            <span className="text-[10px] font-mono text-primary shrink-0 mt-0.5">{i + 1}.</span>{step}
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-                    {callBrief.keyRisks.length > 0 && callBrief.keyRisks[0] !== 'No active risk flags' && (
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Watch For</p>
-                        {callBrief.keyRisks.map((r, i) => (
-                          <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground mb-1">
-                            <Shield className="h-3 w-3 text-warning shrink-0 mt-0.5" />{r}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {objections.length > 0 && (
-                      <div>
-                        <button onClick={() => setShowObjections(!showObjections)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-                          {showObjections ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                          Objection Responses ({objections.length})
-                        </button>
-                        {showObjections && (
-                          <div className="space-y-2 mt-2">
-                            {objections.map((obj, i) => (
-                              <div key={i} className="rounded-md border border-border bg-background/50 p-2.5 space-y-1">
-                                <p className="text-xs font-medium">{obj.objection}</p>
-                                <p className="text-xs text-muted-foreground">{obj.response}</p>
-                              </div>
+                    {/* Native dialer trigger */}
+                    {(() => {
+                      const phone = fubProfile?.phones?.[0];
+                      return phone ? (
+                        <a href={`tel:${phone}`} className="flex items-center justify-center gap-2 w-full h-12 min-h-[48px] rounded-lg bg-primary text-primary-foreground font-semibold text-base">
+                          <Phone className="h-5 w-5" /> Call {context.entityName}
+                        </a>
+                      ) : (
+                        <div className="rounded-lg border border-border bg-muted/30 p-4 text-center space-y-2">
+                          <Phone className="h-5 w-5 mx-auto text-muted-foreground" />
+                          <p className="text-sm font-medium">No phone number on file</p>
+                          <p className="text-xs text-muted-foreground">Add a phone number in Follow Up Boss to enable calling.</p>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Call brief */}
+                    {callBrief && (
+                      <>
+                        <div className="rounded-md border border-primary/10 bg-primary/5 p-3">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Goal</p>
+                          <p className="text-sm font-medium">{callBrief.desiredOutcome}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Talking Points</p>
+                          <ol className="space-y-1.5">
+                            {callBrief.conversationFlow.map((step, i) => (
+                              <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                                <span className="text-[10px] font-mono text-primary shrink-0 mt-0.5">{i + 1}.</span>{step}
+                              </li>
                             ))}
-                          </div>
-                        )}
-                      </div>
+                          </ol>
+                        </div>
+                      </>
                     )}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Script</p>
-                        <Button size="sm" variant="ghost" className="text-xs h-6" onClick={() => handleCopy(draft.callPoints.join('\n'), 'script')}>
-                          {copiedField === 'script' ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-                          {copiedField === 'script' ? 'Copied' : 'Copy'}
-                        </Button>
-                      </div>
-                      <div className="rounded-md border border-border bg-background/50 p-2.5 text-xs text-muted-foreground space-y-1">
-                        {draft.callPoints.map((p, i) => <p key={i}>• {p}</p>)}
-                      </div>
-                    </div>
+
                     {!callOutcomeLogged && (
                       <div className="border-t border-border pt-3">
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Log Outcome</p>
@@ -747,6 +729,22 @@ export function ActionComposerDrawer({
                 {/* TEXT */}
                 {activeTab === 'text' && (
                   <div className="space-y-3">
+                    {/* Native SMS trigger */}
+                    {(() => {
+                      const phone = fubProfile?.phones?.[0];
+                      return phone ? (
+                        <a href={`sms:${phone}`} className="flex items-center justify-center gap-2 w-full h-12 min-h-[48px] rounded-lg bg-primary text-primary-foreground font-semibold text-base">
+                          <MessageSquare className="h-5 w-5" /> Text {context.entityName}
+                        </a>
+                      ) : (
+                        <div className="rounded-lg border border-border bg-muted/30 p-4 text-center space-y-2">
+                          <MessageSquare className="h-5 w-5 mx-auto text-muted-foreground" />
+                          <p className="text-sm font-medium">No phone number on file</p>
+                          <p className="text-xs text-muted-foreground">Add a phone number in Follow Up Boss to enable texting.</p>
+                        </div>
+                      );
+                    })()}
+
                     <div className="flex items-center justify-between">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Templates</p>
                       {fubPersonId && (
@@ -819,6 +817,22 @@ export function ActionComposerDrawer({
                 {/* EMAIL */}
                 {activeTab === 'email' && draft && (
                   <div className="space-y-3">
+                    {/* Native mail trigger */}
+                    {(() => {
+                      const email = fubProfile?.emails?.[0];
+                      return email ? (
+                        <a href={`mailto:${email}?subject=${encodeURIComponent(draft.email.subject)}`} className="flex items-center justify-center gap-2 w-full h-12 min-h-[48px] rounded-lg bg-primary text-primary-foreground font-semibold text-base">
+                          <Mail className="h-5 w-5" /> Email {context.entityName}
+                        </a>
+                      ) : (
+                        <div className="rounded-lg border border-border bg-muted/30 p-4 text-center space-y-2">
+                          <Mail className="h-5 w-5 mx-auto text-muted-foreground" />
+                          <p className="text-sm font-medium">No email address on file</p>
+                          <p className="text-xs text-muted-foreground">Add an email address in Follow Up Boss to enable emailing.</p>
+                        </div>
+                      );
+                    })()}
+
                     <div>
                       <Label className="text-xs">Subject</Label>
                       <div className="flex items-center gap-2 mt-1">
@@ -968,20 +982,52 @@ export function ActionComposerDrawer({
                 {activeTab === 'intel' && entity && (
                   <div className="space-y-4">
                     {context.entityType === 'lead' && (
-                      <ClientFitPanel
-                        entityId={context.entityId}
-                        entityType="lead"
-                        entityName={context.entityName}
-                        entity={entity}
-                      />
-                    )}
-                    {context.entityType === 'lead' && (
                       <ClientCommitmentPanel
                         lead={entity as Lead}
                         oppResult={oppResult ?? null}
                         fubProfile={fubProfile}
                         tasks={(tasks || []).map(t => ({ relatedLeadId: t.relatedLeadId, completedAt: t.completedAt ?? undefined }))}
                         fubActivities={recentFubActivities}
+                      />
+                    )}
+
+                    {/* FUB Activity Summary */}
+                    <div className="rounded-lg border border-border p-3 space-y-2">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Activity Summary</p>
+                      {recentFubActivities.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="rounded-md bg-muted/30 p-2">
+                            <p className="text-muted-foreground">Last Contact</p>
+                            <p className="font-medium">{new Date(recentFubActivities[0].occurred_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                          </div>
+                          <div className="rounded-md bg-muted/30 p-2">
+                            <p className="text-muted-foreground">Total Activities</p>
+                            <p className="font-medium">{recentFubActivities.length}</p>
+                          </div>
+                          <div className="rounded-md bg-muted/30 p-2 col-span-2">
+                            <p className="text-muted-foreground">Most Recent</p>
+                            <p className="font-medium capitalize">{recentFubActivities[0].activity_type} · {recentFubActivities[0].direction === 'inbound' ? 'Incoming' : 'Outgoing'}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No FUB activity found for this lead.</p>
+                      )}
+                    </div>
+
+                    {/* Outside Target Badge */}
+                    {context.entityType === 'lead' && (() => {
+                      const lead = entity as Lead;
+                      // Check target market from profile (loaded via fubProfile zip)
+                      const fubZip = fubProfile?.zipCode;
+                      return fubZip ? null : null; // Target check is done at pipeline level
+                    })()}
+
+                    {context.entityType === 'lead' && (
+                      <ClientFitPanel
+                        entityId={context.entityId}
+                        entityType="lead"
+                        entityName={context.entityName}
+                        entity={entity}
                       />
                     )}
                     <LocalIntelBriefPanel
@@ -996,12 +1042,63 @@ export function ActionComposerDrawer({
 
                 {/* PREFERENCES */}
                 {activeTab === 'prefs' && entity && (
-                  <ClientPreferencesPanel
-                    entityId={context.entityId}
-                    entityType={context.entityType}
-                    entityName={context.entityName}
-                    entity={entity}
-                  />
+                  <div className="space-y-4">
+                    {/* Snooze Until */}
+                    {context.entityType === 'lead' && (
+                      <div className="rounded-lg border border-border p-3 space-y-2">
+                        <p className="text-xs font-medium flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Snooze / Return Date</p>
+                        <p className="text-[10px] text-muted-foreground">Hide this lead until a specific date, then it will automatically resurface.</p>
+                        {(entity as Lead).snoozeUntil && new Date((entity as Lead).snoozeUntil!) > new Date() && (
+                          <div className="text-xs text-warning font-medium">Currently snoozed until {new Date((entity as Lead).snoozeUntil!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                        )}
+                        <div className="flex gap-2">
+                          <Input
+                            type="date"
+                            min={new Date().toISOString().split('T')[0]}
+                            defaultValue={(entity as Lead).snoozeUntil ? new Date((entity as Lead).snoozeUntil!).toISOString().split('T')[0] : ''}
+                            className="h-10 text-sm flex-1"
+                            onChange={async (e) => {
+                              const val = e.target.value;
+                              if (!val) return;
+                              await supabase.from('leads').update({ snooze_until: new Date(val).toISOString() } as any).eq('id', (entity as Lead).id);
+                              toast({ description: 'Snooze date saved.' });
+                            }}
+                          />
+                          {(entity as Lead).snoozeUntil && (
+                            <Button variant="outline" size="sm" className="h-10 text-xs" onClick={async () => {
+                              await supabase.from('leads').update({ snooze_until: null } as any).eq('id', (entity as Lead).id);
+                              toast({ description: 'Snooze cleared.' });
+                            }}>Clear</Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Private Notes for this lead */}
+                    {context.entityType === 'lead' && (
+                      <div className="rounded-lg border border-border p-3 space-y-2">
+                        <p className="text-xs font-medium flex items-center gap-1.5"><StickyNote className="h-3.5 w-3.5" /> Notes for this lead</p>
+                        <p className="text-[10px] text-muted-foreground">Private notes about working style, preferences, or context.</p>
+                        <Textarea
+                          defaultValue={(entity as Lead).notes || ''}
+                          placeholder="E.g. Prefers evening calls, wants a pool, relocating from Dallas..."
+                          className="min-h-[80px] text-xs"
+                          onBlur={async (e) => {
+                            const val = e.target.value;
+                            await supabase.from('leads').update({ notes: val } as any).eq('id', (entity as Lead).id);
+                            toast({ description: 'Notes saved.' });
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    <ClientPreferencesPanel
+                      entityId={context.entityId}
+                      entityType={context.entityType}
+                      entityName={context.entityName}
+                      entity={entity}
+                    />
+                  </div>
                 )}
               </div>
             </div>

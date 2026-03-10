@@ -73,17 +73,18 @@ function isOutsideTarget(lead: Lead, target: TargetMarket): boolean {
   return false;
 }
 
-function PriorityLeadCard({ lead, score, onAction }: {
+function PriorityLeadCard({ lead, score, onAction, onTapName }: {
   lead: Lead;
   score: number;
   onAction: (type: 'call' | 'text' | 'email' | 'snooze') => void;
+  onTapName: () => void;
 }) {
   const returning = lead.snoozeUntil && new Date(lead.snoozeUntil) > new Date();
   return (
     <div className="rounded-xl border border-primary/20 bg-card p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="min-w-0">
-          <p className="text-base font-semibold truncate">{lead.name}</p>
+          <button onClick={onTapName} className="text-base font-semibold truncate text-primary hover:underline text-left">{lead.name}</button>
           <p className="text-xs text-muted-foreground truncate">{lead.notes || lead.source || 'No recent activity'}</p>
         </div>
         <HeatBadge score={score} />
@@ -118,12 +119,11 @@ function PipelineCard({ lead, score, outsideTarget, onTap }: {
   onTap: () => void;
 }) {
   return (
-    <button
-      onClick={onTap}
+    <div
       className="w-full text-left p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors flex items-center gap-3 min-h-[56px]"
     >
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{lead.name}</p>
+        <button onClick={onTap} className="text-sm font-medium truncate text-primary hover:underline text-left">{lead.name}</button>
         <p className="text-[11px] text-muted-foreground truncate">{lead.source || 'Direct'}</p>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
@@ -134,7 +134,7 @@ function PipelineCard({ lead, score, outsideTarget, onTap }: {
         )}
         <HeatBadge score={score} />
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -286,10 +286,11 @@ export default function BetaHomeScreen() {
 
       {/* 2. Priority Lead Card */}
       {priorityLead && (
-        <PriorityLeadCard
+          <PriorityLeadCard
           lead={priorityLead.lead}
           score={priorityLead.score}
           onAction={(type) => handleLeadAction(priorityLead.lead, type)}
+          onTapName={() => handleOpenLeadDetail(priorityLead.lead)}
         />
       )}
 
@@ -317,7 +318,7 @@ export default function BetaHomeScreen() {
           <p className="text-xs font-medium text-muted-foreground px-1">Snoozed ({snoozedLeads.length})</p>
           {snoozedLeads.map(l => (
             <div key={l.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-card/50 text-sm">
-              <span className="text-muted-foreground truncate">{l.name}</span>
+              <button onClick={() => handleOpenLeadDetail(l)} className="text-primary hover:underline truncate text-left">{l.name}</button>
               <Badge variant="outline" className="text-[9px] shrink-0">
                 <Clock className="h-2 w-2 mr-0.5" /> {new Date(l.snoozeUntil!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </Badge>
