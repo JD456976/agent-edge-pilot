@@ -982,20 +982,52 @@ export function ActionComposerDrawer({
                 {activeTab === 'intel' && entity && (
                   <div className="space-y-4">
                     {context.entityType === 'lead' && (
-                      <ClientFitPanel
-                        entityId={context.entityId}
-                        entityType="lead"
-                        entityName={context.entityName}
-                        entity={entity}
-                      />
-                    )}
-                    {context.entityType === 'lead' && (
                       <ClientCommitmentPanel
                         lead={entity as Lead}
                         oppResult={oppResult ?? null}
                         fubProfile={fubProfile}
                         tasks={(tasks || []).map(t => ({ relatedLeadId: t.relatedLeadId, completedAt: t.completedAt ?? undefined }))}
                         fubActivities={recentFubActivities}
+                      />
+                    )}
+
+                    {/* FUB Activity Summary */}
+                    <div className="rounded-lg border border-border p-3 space-y-2">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Activity Summary</p>
+                      {recentFubActivities.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="rounded-md bg-muted/30 p-2">
+                            <p className="text-muted-foreground">Last Contact</p>
+                            <p className="font-medium">{new Date(recentFubActivities[0].occurred_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                          </div>
+                          <div className="rounded-md bg-muted/30 p-2">
+                            <p className="text-muted-foreground">Total Activities</p>
+                            <p className="font-medium">{recentFubActivities.length}</p>
+                          </div>
+                          <div className="rounded-md bg-muted/30 p-2 col-span-2">
+                            <p className="text-muted-foreground">Most Recent</p>
+                            <p className="font-medium capitalize">{recentFubActivities[0].activity_type} · {recentFubActivities[0].direction === 'inbound' ? 'Incoming' : 'Outgoing'}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No FUB activity found for this lead.</p>
+                      )}
+                    </div>
+
+                    {/* Outside Target Badge */}
+                    {context.entityType === 'lead' && (() => {
+                      const lead = entity as Lead;
+                      // Check target market from profile (loaded via fubProfile zip)
+                      const fubZip = fubProfile?.zipCode;
+                      return fubZip ? null : null; // Target check is done at pipeline level
+                    })()}
+
+                    {context.entityType === 'lead' && (
+                      <ClientFitPanel
+                        entityId={context.entityId}
+                        entityType="lead"
+                        entityName={context.entityName}
+                        entity={entity}
                       />
                     )}
                     <LocalIntelBriefPanel
@@ -1010,12 +1042,63 @@ export function ActionComposerDrawer({
 
                 {/* PREFERENCES */}
                 {activeTab === 'prefs' && entity && (
-                  <ClientPreferencesPanel
-                    entityId={context.entityId}
-                    entityType={context.entityType}
-                    entityName={context.entityName}
-                    entity={entity}
-                  />
+                  <div className="space-y-4">
+                    {/* Snooze Until */}
+                    {context.entityType === 'lead' && (
+                      <div className="rounded-lg border border-border p-3 space-y-2">
+                        <p className="text-xs font-medium flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Snooze / Return Date</p>
+                        <p className="text-[10px] text-muted-foreground">Hide this lead until a specific date, then it will automatically resurface.</p>
+                        {(entity as Lead).snoozeUntil && new Date((entity as Lead).snoozeUntil!) > new Date() && (
+                          <div className="text-xs text-warning font-medium">Currently snoozed until {new Date((entity as Lead).snoozeUntil!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                        )}
+                        <div className="flex gap-2">
+                          <Input
+                            type="date"
+                            min={new Date().toISOString().split('T')[0]}
+                            defaultValue={(entity as Lead).snoozeUntil ? new Date((entity as Lead).snoozeUntil!).toISOString().split('T')[0] : ''}
+                            className="h-10 text-sm flex-1"
+                            onChange={async (e) => {
+                              const val = e.target.value;
+                              if (!val) return;
+                              await supabase.from('leads').update({ snooze_until: new Date(val).toISOString() } as any).eq('id', (entity as Lead).id);
+                              toast({ description: 'Snooze date saved.' });
+                            }}
+                          />
+                          {(entity as Lead).snoozeUntil && (
+                            <Button variant="outline" size="sm" className="h-10 text-xs" onClick={async () => {
+                              await supabase.from('leads').update({ snooze_until: null } as any).eq('id', (entity as Lead).id);
+                              toast({ description: 'Snooze cleared.' });
+                            }}>Clear</Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Private Notes for this lead */}
+                    {context.entityType === 'lead' && (
+                      <div className="rounded-lg border border-border p-3 space-y-2">
+                        <p className="text-xs font-medium flex items-center gap-1.5"><StickyNote className="h-3.5 w-3.5" /> Notes for this lead</p>
+                        <p className="text-[10px] text-muted-foreground">Private notes about working style, preferences, or context.</p>
+                        <Textarea
+                          defaultValue={(entity as Lead).notes || ''}
+                          placeholder="E.g. Prefers evening calls, wants a pool, relocating from Dallas..."
+                          className="min-h-[80px] text-xs"
+                          onBlur={async (e) => {
+                            const val = e.target.value;
+                            await supabase.from('leads').update({ notes: val } as any).eq('id', (entity as Lead).id);
+                            toast({ description: 'Notes saved.' });
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    <ClientPreferencesPanel
+                      entityId={context.entityId}
+                      entityType={context.entityType}
+                      entityName={context.entityName}
+                      entity={entity}
+                    />
+                  </div>
                 )}
               </div>
             </div>
