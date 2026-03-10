@@ -73,17 +73,18 @@ function isOutsideTarget(lead: Lead, target: TargetMarket): boolean {
   return false;
 }
 
-function PriorityLeadCard({ lead, score, onAction }: {
+function PriorityLeadCard({ lead, score, onAction, onTapName }: {
   lead: Lead;
   score: number;
   onAction: (type: 'call' | 'text' | 'email' | 'snooze') => void;
+  onTapName: () => void;
 }) {
   const returning = lead.snoozeUntil && new Date(lead.snoozeUntil) > new Date();
   return (
     <div className="rounded-xl border border-primary/20 bg-card p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="min-w-0">
-          <p className="text-base font-semibold truncate">{lead.name}</p>
+          <button onClick={onTapName} className="text-base font-semibold truncate text-primary hover:underline text-left">{lead.name}</button>
           <p className="text-xs text-muted-foreground truncate">{lead.notes || lead.source || 'No recent activity'}</p>
         </div>
         <HeatBadge score={score} />
