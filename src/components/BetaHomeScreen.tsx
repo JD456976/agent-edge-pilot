@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { BetaGettingStarted } from '@/components/BetaGettingStarted';
 import { IncomeControlMeter } from '@/components/IncomeControlMeter';
 import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
-import { LogTouchModal } from '@/components/LogTouchModal';
+// LogTouchModal removed from home screen quick actions — used only in person record tabs
 import { useCommandCenterData } from '@/hooks/useCommandCenterData';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { toast } from '@/hooks/use-toast';
