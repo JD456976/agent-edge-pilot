@@ -119,12 +119,11 @@ function PipelineCard({ lead, score, outsideTarget, onTap }: {
   onTap: () => void;
 }) {
   return (
-    <button
-      onClick={onTap}
+    <div
       className="w-full text-left p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors flex items-center gap-3 min-h-[56px]"
     >
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{lead.name}</p>
+        <button onClick={onTap} className="text-sm font-medium truncate text-primary hover:underline text-left">{lead.name}</button>
         <p className="text-[11px] text-muted-foreground truncate">{lead.source || 'Direct'}</p>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
