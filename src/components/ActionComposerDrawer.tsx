@@ -817,6 +817,22 @@ export function ActionComposerDrawer({
                 {/* EMAIL */}
                 {activeTab === 'email' && draft && (
                   <div className="space-y-3">
+                    {/* Native mail trigger */}
+                    {(() => {
+                      const email = fubProfile?.emails?.[0];
+                      return email ? (
+                        <a href={`mailto:${email}?subject=${encodeURIComponent(draft.email.subject)}`} className="flex items-center justify-center gap-2 w-full h-12 min-h-[48px] rounded-lg bg-primary text-primary-foreground font-semibold text-base">
+                          <Mail className="h-5 w-5" /> Email {context.entityName}
+                        </a>
+                      ) : (
+                        <div className="rounded-lg border border-border bg-muted/30 p-4 text-center space-y-2">
+                          <Mail className="h-5 w-5 mx-auto text-muted-foreground" />
+                          <p className="text-sm font-medium">No email address on file</p>
+                          <p className="text-xs text-muted-foreground">Add an email address in Follow Up Boss to enable emailing.</p>
+                        </div>
+                      );
+                    })()}
+
                     <div>
                       <Label className="text-xs">Subject</Label>
                       <div className="flex items-center gap-2 mt-1">
