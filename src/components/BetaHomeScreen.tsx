@@ -318,7 +318,7 @@ export default function BetaHomeScreen() {
           <p className="text-xs font-medium text-muted-foreground px-1">Snoozed ({snoozedLeads.length})</p>
           {snoozedLeads.map(l => (
             <div key={l.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-card/50 text-sm">
-              <span className="text-muted-foreground truncate">{l.name}</span>
+              <button onClick={() => handleOpenLeadDetail(l)} className="text-primary hover:underline truncate text-left">{l.name}</button>
               <Badge variant="outline" className="text-[9px] shrink-0">
                 <Clock className="h-2 w-2 mr-0.5" /> {new Date(l.snoozeUntil!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </Badge>
