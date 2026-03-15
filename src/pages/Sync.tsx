@@ -11,7 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, CheckCircle2, XCircle, AlertTriangle, Eye, Upload, Wifi, Link2 } from 'lucide-react';
+import {
+  Loader2, CheckCircle2, XCircle, AlertTriangle,
+  Link2, Users, RefreshCw, ChevronDown, ChevronUp,
+  ArrowDownToLine, ArrowUpToLine, History, Settings2
+} from 'lucide-react';
 import { FubSyncPreviewModal } from '@/components/FubSyncPreviewModal';
 import { EdgeErrorDisplay, EdgeDebugDrawer } from '@/components/EdgeErrorDisplay';
 import { callEdgeFunction, type EdgeFunctionError } from '@/lib/edgeClient';
@@ -31,6 +35,27 @@ interface IntegrationState {
   lastValidated: string | null;
 }
 
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function friendlyRunSummary(run: any) {
+  const counts = run.committed_counts || run.source_counts || {};
+  const leads = counts.leads || 0;
+  const deals = counts.deals || 0;
+  const tasks = counts.tasks || 0;
+  const parts: string[] = [];
+  if (leads) parts.push(`${leads} contact${leads !== 1 ? 's' : ''}`);
+  if (deals) parts.push(`${deals} deal${deals !== 1 ? 's' : ''}`);
+  if (tasks) parts.push(`${tasks} task${tasks !== 1 ? 's' : ''}`);
+  return parts.length ? parts.join(', ') : 'No records';
+}
+
 export default function Sync() {
   const { user, logAdminAction } = useAuth();
   const { leads, deals } = useData();
@@ -38,8 +63,6 @@ export default function Sync() {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [validating, setValidating] = useState(false);
-  const [healthChecking, setHealthChecking] = useState(false);
-  const [healthResult, setHealthResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -49,12 +72,14 @@ export default function Sync() {
   const [pastRuns, setPastRuns] = useState<any[]>([]);
   const [lastError, setLastError] = useState<EdgeFunctionError | null>(null);
   const [bulkPushOpen, setBulkPushOpen] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const loadIntegration = useCallback(async () => {
     if (!user) return;
     const [{ data: integData }, { data: runs }] = await Promise.all([
       supabase.from('crm_integrations' as any).select('status, api_key_last4, last_validated_at').eq('user_id', user.id).maybeSingle(),
-      supabase.from('fub_import_runs' as any).select('id, status, source_counts, created_at, mapping_version, undone_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10),
+      supabase.from('fub_import_runs' as any).select('id, status, source_counts, committed_counts, created_at, mapping_version, undone_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10),
     ]);
     if (integData) {
       setIntegration({
@@ -76,35 +101,38 @@ export default function Sync() {
       await callEdgeFunction('fub-save-key', { api_key: apiKeyInput.trim() });
       setApiKeyInput('');
       await logAdminAction('integration_saved', { provider: 'follow_up_boss' });
-      // Auto-validate after save
       const data = await callEdgeFunction<{ valid: boolean; account?: { name: string } }>('fub-validate');
       await loadIntegration();
       await logAdminAction(data.valid ? 'integration_validated_success' : 'integration_validated_failed', { provider: 'follow_up_boss' });
       toast({
-        title: data.valid ? 'Connected!' : 'Invalid key',
-        description: data.valid ? `Connected as ${data.account?.name || 'Unknown'}` : 'Please check your API key.',
+        title: data.valid ? 'Follow Up Boss connected!' : 'Invalid API key',
+        description: data.valid
+          ? `Signed in as ${data.account?.name || 'your account'}`
+          : 'Double-check your API key and try again.',
         variant: data.valid ? 'default' : 'destructive',
       });
     } catch (err: any) {
       if (err?.kind) setLastError(err);
-      toast({ title: 'Error', description: err?.message || 'Failed to save or validate key', variant: 'destructive' });
+      toast({ title: 'Connection failed', description: err?.message || 'Could not connect. Please try again.', variant: 'destructive' });
     } finally { setSaving(false); }
   };
 
-  const handleValidate = async () => {
+  const handleRevalidate = async () => {
     setValidating(true);
     setLastError(null);
     try {
       const data = await callEdgeFunction<{ valid: boolean; account?: { name: string } }>('fub-validate');
       await loadIntegration();
       toast({
-        title: data.valid ? 'Connection valid!' : 'Invalid key',
-        description: data.valid ? `Connected as ${data.account?.name || 'Unknown'}` : 'Please check your API key.',
+        title: data.valid ? 'Connection is working!' : 'Connection problem',
+        description: data.valid
+          ? `Signed in as ${data.account?.name || 'your account'}`
+          : 'Your API key may have changed. Please reconnect.',
         variant: data.valid ? 'default' : 'destructive',
       });
     } catch (err: any) {
       if (err?.kind) setLastError(err);
-      toast({ title: 'Validation failed', description: err?.message || 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Check failed', description: err?.message || 'Unknown error', variant: 'destructive' });
     } finally { setValidating(false); }
   };
 
@@ -128,19 +156,29 @@ export default function Sync() {
     try {
       const data = await callEdgeFunction<any>('fub-stage', { limit: 50 });
       setActiveRunId(data.import_run_id);
-      toast({ title: 'Import staged!', description: `${data.counts.leads.total} leads, ${data.counts.deals.total} deals, ${data.counts.tasks.total} tasks staged for review.` });
+      const c = data.counts;
+      toast({
+        title: 'Ready to review!',
+        description: `Found ${c.leads.total} contacts, ${c.deals.total} deals, and ${c.tasks.total} tasks from Follow Up Boss.`,
+      });
     } catch (err: any) {
       if (err?.kind) setLastError(err);
-      toast({ title: 'Staging failed', description: err?.message || 'Unknown error', variant: 'destructive' });
+      toast({ title: 'Sync failed', description: err?.message || 'Could not pull from Follow Up Boss. Please try again.', variant: 'destructive' });
     } finally { setStaging(false); }
   };
 
-  const statusBadge = () => {
+  const isConnected = integration.status === 'connected';
+
+  const connectionStatusBadge = () => {
     switch (integration.status) {
-      case 'connected': return <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30"><CheckCircle2 className="h-3 w-3 mr-1" />Connected</Badge>;
-      case 'invalid': return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Invalid</Badge>;
-      case 'error': return <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" />Error</Badge>;
-      default: return <Badge variant="outline" className="text-muted-foreground">Disconnected</Badge>;
+      case 'connected':
+        return <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 gap-1"><CheckCircle2 className="h-3 w-3" />Connected</Badge>;
+      case 'invalid':
+        return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" />Key Invalid</Badge>;
+      case 'error':
+        return <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" />Error</Badge>;
+      default:
+        return <Badge variant="outline" className="text-muted-foreground gap-1"><XCircle className="h-3 w-3" />Not Connected</Badge>;
     }
   };
 
@@ -150,67 +188,96 @@ export default function Sync() {
 
   return (
     <div className="max-w-3xl mx-auto animate-fade-in space-y-4">
-      {/* Connection */}
-      <section className="rounded-lg border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Link2 className="h-4 w-4" /> Follow Up Boss</h2>
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm">Status</span>
-          {statusBadge()}
+
+      {/* 1. Connection Card */}
+      <section className="rounded-lg border border-border bg-card p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <Link2 className="h-4 w-4 text-muted-foreground" />
+            Follow Up Boss
+          </h2>
+          {connectionStatusBadge()}
         </div>
-        {integration.last4 && <p className="text-xs text-muted-foreground mb-3">Key ending in ••••{integration.last4}</p>}
-        {integration.lastValidated && <p className="text-xs text-muted-foreground mb-3">Last validated: {new Date(integration.lastValidated).toLocaleString()}</p>}
-        {lastError && <div className="mb-3"><EdgeErrorDisplay error={lastError} functionName={lastError.details?.functionName || "fub-validate"} /></div>}
-        <div className="space-y-3">
-          <div>
-            <Label className="text-xs text-muted-foreground">API Key</Label>
-            <div className="flex gap-2 mt-1">
-              <Input type="password" placeholder="Paste your FUB API key" value={apiKeyInput} onChange={(e) => setApiKeyInput(e.target.value)} className="text-sm" />
-              <Button size="sm" onClick={handleSaveAndValidate} disabled={saving || !apiKeyInput.trim()}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connect'}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Saves & validates in one step. Encrypted server-side.</p>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" onClick={handleValidate} disabled={validating || (integration.status === 'disconnected' && !integration.last4)}>
-              {validating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />} Validate
-            </Button>
-            <Button size="sm" variant="outline" onClick={handleSyncPreview} disabled={integration.status !== 'connected'}>
-              <Eye className="h-4 w-4 mr-1" /> Preview
-            </Button>
-            <Button size="sm" variant="outline" onClick={async () => {
-              setHealthChecking(true); setHealthResult(null);
-              try {
-                const data = await callEdgeFunction<{ ok: boolean; requestId: string }>('health-check');
-                setHealthResult({ ok: true, message: `Connected (ID: ${data.requestId?.slice(0, 8) || 'ok'})` });
-              } catch (err: any) {
-                setHealthResult({ ok: false, message: err?.message || 'Connection failed' });
-              } finally { setHealthChecking(false); }
-            }} disabled={healthChecking}>
-              {healthChecking ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Wifi className="h-4 w-4 mr-1" />} Test
+
+        {isConnected && integration.last4 && (
+          <div className="flex items-center justify-between text-sm bg-emerald-500/5 border border-emerald-500/20 rounded-md px-3 py-2">
+            <span className="text-muted-foreground">
+              API key ending in <span className="font-mono font-medium text-foreground">••••{integration.last4}</span>
+              {integration.lastValidated && (
+                <span className="ml-2 text-xs">· last checked {timeAgo(integration.lastValidated)}</span>
+              )}
+            </span>
+            <Button size="sm" variant="ghost" onClick={handleRevalidate} disabled={validating} className="h-7 text-xs gap-1">
+              {validating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              Check
             </Button>
           </div>
-          {healthResult && (
-            <div className={`text-xs p-2 rounded-md ${healthResult.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-destructive/10 text-destructive'}`}>
-              {healthResult.ok ? <CheckCircle2 className="h-3 w-3 inline mr-1" /> : <XCircle className="h-3 w-3 inline mr-1" />}
-              {healthResult.message}
-            </div>
-          )}
-          {integration.status === 'connected' && <ImportDryRunPanel integration={{ status: integration.status, lastValidated: integration.lastValidated }} />}
+        )}
+
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">
+            {isConnected ? 'Replace API Key' : 'Paste your Follow Up Boss API Key'}
+          </Label>
           <div className="flex gap-2">
-            <Button size="sm" className="flex-1" onClick={handleStageImport} disabled={integration.status !== 'connected' || staging}>
-              {staging ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />} Stage Import
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setBulkPushOpen(true)} disabled={integration.status !== 'connected'}>
-              <Upload className="h-4 w-4 mr-1" /> Bulk Push
+            <Input
+              type="password"
+              placeholder="Your FUB API key…"
+              value={apiKeyInput}
+              onChange={(e) => setApiKeyInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && apiKeyInput.trim() && handleSaveAndValidate()}
+              className="text-sm"
+            />
+            <Button size="sm" onClick={handleSaveAndValidate} disabled={saving || !apiKeyInput.trim()}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : isConnected ? 'Update' : 'Connect'}
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Your key is encrypted and stored securely. Find it in FUB under Admin → API.
+          </p>
         </div>
+
+        {lastError && (
+          <EdgeErrorDisplay error={lastError} functionName={lastError.details?.functionName || 'fub-validate'} />
+        )}
         <EdgeDebugDrawer />
       </section>
 
-      {/* Drift & Watchlist */}
-      {integration.status === 'connected' && (
+      {/* 2. Sync Actions */}
+      {isConnected && (
+        <section className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            Sync Your Contacts &amp; Deals
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Pull your latest contacts, deals, and tasks from Follow Up Boss into Deal Pilot, or push Deal Pilot updates back.
+          </p>
+
+          <ImportDryRunPanel integration={{ status: integration.status, lastValidated: integration.lastValidated }} />
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button size="sm" className="gap-2" onClick={handleStageImport} disabled={staging}>
+              {staging
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Pulling from FUB…</>
+                : <><ArrowDownToLine className="h-4 w-4" /> Import from FUB</>
+              }
+            </Button>
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => setBulkPushOpen(true)}>
+              <ArrowUpToLine className="h-4 w-4" /> Push to FUB
+            </Button>
+          </div>
+
+          <button
+            onClick={handleSyncPreview}
+            className="text-xs text-muted-foreground underline-offset-2 hover:underline hover:text-foreground transition-colors"
+          >
+            Preview what will be imported first
+          </button>
+        </section>
+      )}
+
+      {/* 3. What's Changed */}
+      {isConnected && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <PanelErrorBoundary>
             <FubDriftCard hasIntegration onScopedStageComplete={(runId) => setActiveRunId(runId)} />
@@ -221,67 +288,113 @@ export default function Sync() {
         </div>
       )}
 
-      {/* Appointments, Smart Numbers & Tag Sync */}
-      {integration.status === 'connected' && (
+      {/* 4. Appointments & Call Analytics */}
+      {isConnected && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <PanelErrorBoundary>
-            <FubAppointmentsPanel hasIntegration={integration.status === 'connected'} />
+            <FubAppointmentsPanel hasIntegration={isConnected} />
           </PanelErrorBoundary>
           <PanelErrorBoundary>
-            <SmartNumberInsightsPanel hasIntegration={integration.status === 'connected'} />
+            <SmartNumberInsightsPanel hasIntegration={isConnected} />
           </PanelErrorBoundary>
         </div>
       )}
-      {integration.status === 'connected' && (
+
+      {/* 5. Tag Sync */}
+      {isConnected && (
         <PanelErrorBoundary>
-          <FubTagSyncPanel leads={leads} hasIntegration={integration.status === 'connected'} />
+          <FubTagSyncPanel leads={leads} hasIntegration={isConnected} />
         </PanelErrorBoundary>
       )}
 
-      {/* Import History */}
+      {/* 6. Recent Sync History */}
       {pastRuns.length > 0 && (
         <section className="rounded-lg border border-border bg-card p-4">
-          <h3 className="text-sm font-semibold mb-2">Import History</h3>
-          <div className="space-y-1">
-            {pastRuns.map((r: any) => (
-              <button key={r.id} onClick={() => setActiveRunId(r.id)} className="w-full flex items-center justify-between text-xs p-2 rounded-md hover:bg-muted/50 transition-colors">
-                <span className="font-mono text-muted-foreground">{r.id.slice(0, 8)}…</span>
-                <span className="text-muted-foreground">v{r.mapping_version || 1}</span>
-                <span className="text-muted-foreground">{new Date(r.created_at).toLocaleDateString()}</span>
-                <Badge variant={r.status === 'committed' ? 'default' : r.status === 'cancelled' ? 'secondary' : 'outline'} className="text-xs">
-                  {r.undone_at ? 'undone' : r.status}
-                </Badge>
-              </button>
-            ))}
-          </div>
+          <button
+            className="w-full flex items-center justify-between text-sm font-semibold"
+            onClick={() => setShowHistory((v) => !v)}
+          >
+            <span className="flex items-center gap-2">
+              <History className="h-4 w-4 text-muted-foreground" />
+              Recent Syncs
+            </span>
+            {showHistory ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+
+          {showHistory && (
+            <div className="mt-3 space-y-1">
+              {pastRuns.map((r: any) => (
+                <button
+                  key={r.id}
+                  onClick={() => setActiveRunId(r.id)}
+                  className="w-full flex items-center justify-between text-xs p-2.5 rounded-md hover:bg-muted/50 transition-colors text-left"
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium text-foreground">
+                      {new Date(r.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                    <span className="text-muted-foreground">{friendlyRunSummary(r)}</span>
+                  </div>
+                  <Badge
+                    variant={r.status === 'committed' ? 'default' : r.status === 'cancelled' ? 'secondary' : 'outline'}
+                    className="text-xs capitalize"
+                  >
+                    {r.undone_at ? 'Reversed' : r.status === 'committed' ? 'Imported' : r.status}
+                  </Badge>
+                </button>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
-      {/* Lead Routing */}
+      {/* 7. Lead Routing */}
       <PanelErrorBoundary>
         <LeadRoutingPanel />
       </PanelErrorBoundary>
 
-      {/* Import Matching Rules */}
-      <ImportMatchingRules />
+      {/* 8. Advanced Settings — collapsed by default */}
+      <section className="rounded-lg border border-border bg-card p-4">
+        <button
+          className="w-full flex items-center justify-between text-sm font-semibold"
+          onClick={() => setShowAdvanced((v) => !v)}
+        >
+          <span className="flex items-center gap-2">
+            <Settings2 className="h-4 w-4 text-muted-foreground" />
+            Advanced Settings
+          </span>
+          {showAdvanced ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </button>
 
-      {/* Sync Activity Log */}
-      <PanelErrorBoundary>
-        <FubSyncActivityLog />
-      </PanelErrorBoundary>
+        {showAdvanced && (
+          <div className="mt-4 space-y-4">
+            <ImportMatchingRules />
+            <PanelErrorBoundary>
+              <FubSyncActivityLog />
+            </PanelErrorBoundary>
+            <PanelErrorBoundary>
+              <WebhookConfigPanel hasIntegration={isConnected} />
+            </PanelErrorBoundary>
+            <PanelErrorBoundary>
+              <ImportHealthPanel />
+            </PanelErrorBoundary>
+          </div>
+        )}
+      </section>
 
-      {/* Webhook Configuration */}
-      <PanelErrorBoundary>
-        <WebhookConfigPanel hasIntegration={integration.status === 'connected'} />
-      </PanelErrorBoundary>
-
-      {/* Import Health (admin view) */}
-      <PanelErrorBoundary>
-        <ImportHealthPanel />
-      </PanelErrorBoundary>
-
-      <FubSyncPreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} data={previewData} loading={previewLoading} error={previewError} />
-      <BulkFubPushModal open={bulkPushOpen} onClose={() => setBulkPushOpen(false)} leads={leads} deals={deals} />
+      <FubSyncPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        data={previewData}
+        loading={previewLoading}
+        error={previewError}
+      />
+      <BulkFubPushModal
+        open={bulkPushOpen}
+        onClose={() => setBulkPushOpen(false)}
+        leads={leads}
+        deals={deals}
+      />
     </div>
   );
 }
