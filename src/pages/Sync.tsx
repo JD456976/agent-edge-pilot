@@ -11,10 +11,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Loader2, CheckCircle2, XCircle, AlertTriangle,
   Link2, Users, RefreshCw, ChevronDown, ChevronUp,
-  ArrowDownToLine, ArrowUpToLine, History, Settings2
+  ArrowDownToLine, ArrowUpToLine, History, Settings2,
+  Clock, Zap, AlertCircle,
 } from 'lucide-react';
 import { FubSyncPreviewModal } from '@/components/FubSyncPreviewModal';
 import { EdgeErrorDisplay, EdgeDebugDrawer } from '@/components/EdgeErrorDisplay';
@@ -27,7 +29,9 @@ import { WebhookConfigPanel } from '@/components/WebhookConfigPanel';
 import { FubTagSyncPanel } from '@/components/FubTagSyncPanel';
 import { BulkFubPushModal } from '@/components/BulkFubPushModal';
 import { FubSyncActivityLog } from '@/components/FubSyncActivityLog';
+import { SyncConflictDrawer } from '@/components/SyncConflictDrawer';
 import { useData } from '@/contexts/DataContext';
+import { useAutoSync, SYNC_INTERVAL_OPTIONS } from '@/hooks/useAutoSync';
 
 interface IntegrationState {
   status: 'disconnected' | 'connected' | 'invalid' | 'error';
@@ -35,9 +39,11 @@ interface IntegrationState {
   lastValidated: string | null;
 }
 
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
+function timeAgo(date: Date | string) {
+  const diff = Date.now() - new Date(date).getTime();
+  const secs = Math.floor(diff / 1000);
+  if (secs < 60) return 'just now';
+  const mins = Math.floor(secs / 60);
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
@@ -58,7 +64,7 @@ function friendlyRunSummary(run: any) {
 
 export default function Sync() {
   const { user, logAdminAction } = useAuth();
-  const { leads, deals } = useData();
+  const { leads, deals, refreshData } = useData();
   const [integration, setIntegration] = useState<IntegrationState>({ status: 'disconnected', last4: null, lastValidated: null });
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -74,6 +80,24 @@ export default function Sync() {
   const [bulkPushOpen, setBulkPushOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showConflicts, setShowConflicts] = useState(false);
+
+  // Auto-sync — wired into the same hook AppLayout uses
+  const {
+    syncing: autoSyncing,
+    conflicts,
+    lastSyncedAt,
+    intervalMinutes,
+    setIntervalMinutes,
+    runSync,
+    resolveConflict,
+    dismissConflict,
+  } = useAutoSync(refreshData);
+
+  // Auto-open conflict drawer when new conflicts arrive
+  useEffect(() => {
+    if (conflicts.length > 0) setShowConflicts(true);
+  }, [conflicts.length]);
 
   const loadIntegration = useCallback(async () => {
     if (!user) return;
@@ -111,6 +135,7 @@ export default function Sync() {
           : 'Double-check your API key and try again.',
         variant: data.valid ? 'default' : 'destructive',
       });
+      if (data.valid) runSync(true); // kick off first auto-sync right away
     } catch (err: any) {
       if (err?.kind) setLastError(err);
       toast({ title: 'Connection failed', description: err?.message || 'Could not connect. Please try again.', variant: 'destructive' });
@@ -189,7 +214,57 @@ export default function Sync() {
   return (
     <div className="max-w-3xl mx-auto animate-fade-in space-y-4">
 
-      {/* 1. Connection Card */}
+      {/* ── Auto-sync status bar ───────────────────────────────────── */}
+      {isConnected && (
+        <div className="rounded-lg border border-border bg-card px-4 py-2.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
+            {autoSyncing ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0 text-primary" />
+                <span className="truncate">Syncing with Follow Up Boss…</span>
+              </>
+            ) : (
+              <>
+                <Zap className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                <span className="truncate">
+                  {lastSyncedAt
+                    ? <>Auto-synced <strong className="text-foreground">{timeAgo(lastSyncedAt)}</strong></>
+                    : 'Auto-sync active'}
+                  {intervalMinutes > 0 && (
+                    <span className="ml-1 text-muted-foreground/60">
+                      · refreshes every {intervalMinutes < 60 ? `${intervalMinutes}m` : '1h'}
+                    </span>
+                  )}
+                </span>
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {conflicts.length > 0 && (
+              <button
+                onClick={() => setShowConflicts(true)}
+                className="flex items-center gap-1 text-xs text-warning hover:text-warning/80 transition-colors"
+              >
+                <AlertCircle className="h-3.5 w-3.5" />
+                {conflicts.length} to review
+              </button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => runSync(false)}
+              disabled={autoSyncing}
+              className="h-7 text-xs gap-1"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Sync now
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── 1. Connection Card ─────────────────────────────────────── */}
       <section className="rounded-lg border border-border bg-card p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold flex items-center gap-2">
@@ -201,10 +276,10 @@ export default function Sync() {
 
         {isConnected && integration.last4 && (
           <div className="flex items-center justify-between text-sm bg-emerald-500/5 border border-emerald-500/20 rounded-md px-3 py-2">
-            <span className="text-muted-foreground">
+            <span className="text-muted-foreground text-xs">
               API key ending in <span className="font-mono font-medium text-foreground">••••{integration.last4}</span>
               {integration.lastValidated && (
-                <span className="ml-2 text-xs">· last checked {timeAgo(integration.lastValidated)}</span>
+                <span className="ml-2">· last verified {timeAgo(integration.lastValidated)}</span>
               )}
             </span>
             <Button size="sm" variant="ghost" onClick={handleRevalidate} disabled={validating} className="h-7 text-xs gap-1">
@@ -236,21 +311,46 @@ export default function Sync() {
           </p>
         </div>
 
+        {/* Auto-sync frequency picker */}
+        {isConnected && (
+          <div className="flex items-center justify-between pt-1 border-t border-border">
+            <div className="flex items-center gap-2">
+              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Background sync frequency</span>
+            </div>
+            <Select
+              value={String(intervalMinutes)}
+              onValueChange={(v) => setIntervalMinutes(parseInt(v, 10))}
+            >
+              <SelectTrigger className="h-7 w-36 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SYNC_INTERVAL_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={String(opt.value)} className="text-xs">
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {lastError && (
           <EdgeErrorDisplay error={lastError} functionName={lastError.details?.functionName || 'fub-validate'} />
         )}
         <EdgeDebugDrawer />
       </section>
 
-      {/* 2. Sync Actions */}
+      {/* ── 2. Manual Sync Actions ─────────────────────────────────── */}
       {isConnected && (
         <section className="rounded-lg border border-border bg-card p-4 space-y-3">
           <h2 className="text-sm font-semibold flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
-            Sync Your Contacts &amp; Deals
+            Full Import
           </h2>
           <p className="text-xs text-muted-foreground">
-            Pull your latest contacts, deals, and tasks from Follow Up Boss into Deal Pilot, or push Deal Pilot updates back.
+            The background sync handles new contacts and updates automatically. Use a full import when you first connect, or to do a deep review of everything in FUB.
           </p>
 
           <ImportDryRunPanel integration={{ status: integration.status, lastValidated: integration.lastValidated }} />
@@ -276,7 +376,7 @@ export default function Sync() {
         </section>
       )}
 
-      {/* 3. What's Changed */}
+      {/* ── 3. What's Changed (Drift & Watchlist) ─────────────────── */}
       {isConnected && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <PanelErrorBoundary>
@@ -288,7 +388,7 @@ export default function Sync() {
         </div>
       )}
 
-      {/* 4. Appointments & Call Analytics */}
+      {/* ── 4. Appointments & Call Analytics ──────────────────────── */}
       {isConnected && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <PanelErrorBoundary>
@@ -300,14 +400,14 @@ export default function Sync() {
         </div>
       )}
 
-      {/* 5. Tag Sync */}
+      {/* ── 5. Tag Sync ───────────────────────────────────────────── */}
       {isConnected && (
         <PanelErrorBoundary>
           <FubTagSyncPanel leads={leads} hasIntegration={isConnected} />
         </PanelErrorBoundary>
       )}
 
-      {/* 6. Recent Sync History */}
+      {/* ── 6. Recent Sync History (collapsed) ────────────────────── */}
       {pastRuns.length > 0 && (
         <section className="rounded-lg border border-border bg-card p-4">
           <button
@@ -316,7 +416,7 @@ export default function Sync() {
           >
             <span className="flex items-center gap-2">
               <History className="h-4 w-4 text-muted-foreground" />
-              Recent Syncs
+              Import History
             </span>
             {showHistory ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
@@ -348,12 +448,12 @@ export default function Sync() {
         </section>
       )}
 
-      {/* 7. Lead Routing */}
+      {/* ── 7. Lead Routing ───────────────────────────────────────── */}
       <PanelErrorBoundary>
         <LeadRoutingPanel />
       </PanelErrorBoundary>
 
-      {/* 8. Advanced Settings — collapsed by default */}
+      {/* ── 8. Advanced Settings (collapsed) ──────────────────────── */}
       <section className="rounded-lg border border-border bg-card p-4">
         <button
           className="w-full flex items-center justify-between text-sm font-semibold"
@@ -382,6 +482,7 @@ export default function Sync() {
         )}
       </section>
 
+      {/* ── Modals ────────────────────────────────────────────────── */}
       <FubSyncPreviewModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
@@ -395,6 +496,14 @@ export default function Sync() {
         leads={leads}
         deals={deals}
       />
+      {showConflicts && (
+        <SyncConflictDrawer
+          conflicts={conflicts}
+          onResolve={resolveConflict}
+          onDismiss={dismissConflict}
+          onClose={() => setShowConflicts(false)}
+        />
+      )}
     </div>
   );
 }
