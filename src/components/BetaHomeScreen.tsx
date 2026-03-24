@@ -42,12 +42,12 @@ function SyncDot({ syncing, lastSync }: { syncing: boolean; lastSync: string | n
 }
 
 function HeatBadge({ score }: { score: number }) {
-  const variant = score >= 75 ? 'urgent' : score >= 50 ? 'warning' : 'secondary';
+  const bg = score >= 75 ? 'bg-urgent/15 text-urgent' : score >= 50 ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground';
   const label = score >= 75 ? 'Hot' : score >= 50 ? 'Warm' : 'Cool';
   return (
-    <Badge variant={variant as any} className="text-[10px] px-1.5 py-0 gap-0.5">
+    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium', bg)}>
       <Flame className="h-2.5 w-2.5" /> {score} · {label}
-    </Badge>
+    </span>
   );
 }
 
