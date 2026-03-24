@@ -302,10 +302,10 @@ export default function BetaHomeScreen() {
   return (
     <div className="max-w-lg mx-auto space-y-4">
       {/* 1. Slim Top Bar */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between pt-1">
+        <div className="min-w-0">
           <h1 className="text-lg font-bold leading-tight">{user?.name?.split(' ')[0] || 'Agent'}</h1>
-          <p className="text-xs text-muted-foreground">{today}</p>
+          <p className="text-[13px] text-muted-foreground">{today}</p>
         </div>
         <SyncDot syncing={syncing} lastSync={lastSync} />
       </div>
