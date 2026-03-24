@@ -85,7 +85,7 @@ export function WorkspaceOverlayShell({ title, subtitle, open, onClose, children
                   <span className="font-medium text-foreground">{title}</span>
                 </nav>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+              <Button variant="ghost" size="icon" className="h-10 w-10 min-h-[44px] min-w-[44px]" onClick={onClose}>
                 <X className="h-4 w-4" />
               </Button>
             </header>
