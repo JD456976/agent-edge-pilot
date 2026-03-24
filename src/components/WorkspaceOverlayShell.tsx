@@ -38,7 +38,7 @@ export function WorkspaceOverlayShell({ title, subtitle, open, onClose, children
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 bottom-14 lg:bottom-0 z-40 flex">
+        <div className="fixed inset-0 z-40 flex" style={{ bottom: 'env(safe-area-inset-bottom, 0px)' }}>
           {/* Dimmed backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
