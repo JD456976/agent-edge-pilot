@@ -42,12 +42,12 @@ function SyncDot({ syncing, lastSync }: { syncing: boolean; lastSync: string | n
 }
 
 function HeatBadge({ score }: { score: number }) {
-  const variant = score >= 75 ? 'urgent' : score >= 50 ? 'warning' : 'secondary';
+  const bg = score >= 75 ? 'bg-urgent/15 text-urgent' : score >= 50 ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground';
   const label = score >= 75 ? 'Hot' : score >= 50 ? 'Warm' : 'Cool';
   return (
-    <Badge variant={variant as any} className="text-[10px] px-1.5 py-0 gap-0.5">
+    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium', bg)}>
       <Flame className="h-2.5 w-2.5" /> {score} · {label}
-    </Badge>
+    </span>
   );
 }
 
@@ -99,16 +99,16 @@ function PriorityLeadCard({ lead, score, onAction, onTapName }: {
         </Badge>
       )}
       <div className="flex gap-2">
-        <Button size="sm" className="flex-1 h-11 min-h-[44px] text-sm font-medium" onClick={() => onAction('call')}>
+        <Button size="sm" className="flex-1 h-11 min-h-[44px] text-sm font-medium rounded-xl" onClick={() => onAction('call')}>
           <Phone className="h-4 w-4 mr-1.5" /> Call
         </Button>
-        <Button size="sm" variant="outline" className="h-11 min-h-[44px] min-w-[44px] flex-1 sm:flex-none" onClick={() => onAction('text')}>
+        <Button size="sm" variant="outline" className="h-11 min-h-[44px] w-11 rounded-full border-border/50 p-0 flex-none" onClick={() => onAction('text')}>
           <MessageSquare className="h-4 w-4" />
         </Button>
-        <Button size="sm" variant="outline" className="h-11 min-h-[44px] min-w-[44px] flex-1 sm:flex-none" onClick={() => onAction('email')}>
+        <Button size="sm" variant="outline" className="h-11 min-h-[44px] w-11 rounded-full border-border/50 p-0 flex-none" onClick={() => onAction('email')}>
           <Mail className="h-4 w-4" />
         </Button>
-        <Button size="sm" variant="ghost" className="h-11 min-h-[44px] min-w-[44px] flex-1 sm:flex-none text-muted-foreground" onClick={() => onAction('snooze')}>
+        <Button size="sm" variant="ghost" className="h-11 min-h-[44px] w-11 rounded-full p-0 flex-none text-muted-foreground" onClick={() => onAction('snooze')}>
           <Clock className="h-4 w-4" />
         </Button>
       </div>
@@ -359,10 +359,10 @@ export default function BetaHomeScreen() {
                 key={f.key}
                 onClick={() => setPipelineFilter(f.key)}
                 className={cn(
-                  'shrink-0 px-3 py-1.5 rounded-full text-[13px] font-medium transition-colors min-h-[36px] whitespace-nowrap',
+                  'shrink-0 px-3 py-1.5 rounded-full text-[13px] font-medium transition-all duration-150 min-h-[36px] whitespace-nowrap border',
                   pipelineFilter === f.key
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-accent'
+                    ? 'bg-primary/10 text-primary border-primary/30'
+                    : 'bg-transparent text-muted-foreground border-border hover:border-primary/20 hover:text-foreground'
                 )}
               >
                 {f.label}
