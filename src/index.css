@@ -317,4 +317,24 @@
   .bottom-sheet-handle {
     @apply w-10 h-1 rounded-full bg-muted-foreground/20 mx-auto mb-3;
   }
+
+  /* Voice FAB pulse animation */
+  .voice-fab-pulse {
+    animation: voice-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes voice-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4); }
+    50% { box-shadow: 0 0 0 8px hsl(var(--primary) / 0); }
+  }
+
+  /* Slide in from bottom for modals */
+  .animate-slide-in-bottom {
+    animation: slideInBottom 0.3s ease-out;
+  }
+
+  @keyframes slideInBottom {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
 }

@@ -47,6 +47,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Use tool calling for structured extraction
     const aiRes = await fetch(AI_GATEWAY_URL, {
       method: "POST",
       headers: {
@@ -54,50 +55,88 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "google/gemini-3-flash-preview",
         messages: [
           {
             role: "system",
-            content: `You are a real estate lead parser. Extract structured lead information from a voice transcription.
-Return ONLY valid JSON with these fields:
-{
-  "name": "Full name of the lead (required)",
-  "phone": "Phone number if mentioned, empty string if not",
-  "email": "Email if mentioned, empty string if not",
-  "source": "How they met (e.g. Open House, Referral, Cold Call). Default to 'Voice Capture' if unclear",
-  "notes": "A clean summary of all other details: what they're looking for, budget, timeline, preferences, etc."
-}
-Rules:
-- Extract phone numbers in any format and normalize to digits with dashes
-- If no name is clearly stated, use "Unknown Lead"
-- Keep notes concise but preserve all property preferences, budget info, and timeline details
-- Do not invent information not in the transcript`,
+            content: `You are a real estate lead data extractor. Extract structured lead information from a voice transcription by a real estate agent. Call the extract_lead function with the parsed data. If a field is not mentioned, leave it as an empty string. Normalize phone numbers with dashes. Convert spoken numbers to digits (e.g. "five hundred thousand" → "$500,000").`,
           },
           { role: "user", content: audio_text },
         ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "extract_lead",
+              description: "Extract structured lead information from voice transcription",
+              parameters: {
+                type: "object",
+                properties: {
+                  name: { type: "string", description: "Full name of the lead" },
+                  phone: { type: "string", description: "Phone number if mentioned" },
+                  email: { type: "string", description: "Email address if mentioned" },
+                  lead_type: { type: "string", enum: ["buyer", "seller", "both", "investor", "renter", ""], description: "Type of lead" },
+                  price_range: { type: "string", description: "Budget or price range mentioned (e.g. '$400K–$600K', 'around $500,000')" },
+                  bedrooms: { type: "string", description: "Number of bedrooms mentioned (e.g. '3', '3–4')" },
+                  neighborhood: { type: "string", description: "Neighborhood, city, or area mentioned" },
+                  source: { type: "string", description: "How they met or lead source (e.g. 'Referral from John Kim', 'Open House'). Default 'Voice Capture'" },
+                  notes: { type: "string", description: "Any other details: timeline, preferences, special requests" },
+                },
+                required: ["name"],
+                additionalProperties: false,
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "extract_lead" } },
         temperature: 0.2,
-        max_tokens: 400,
+        max_tokens: 500,
       }),
     });
 
     if (!aiRes.ok) {
+      if (aiRes.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limited" }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (aiRes.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted" }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const errText = await aiRes.text();
       throw new Error(`AI error (${aiRes.status}): ${errText}`);
     }
 
     const aiData = await aiRes.json();
-    const content = aiData.choices?.[0]?.message?.content || "";
 
-    let result: any;
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      result = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-    } catch {
-      result = null;
+    // Extract from tool call response
+    let result: any = null;
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    if (toolCall?.function?.arguments) {
+      try {
+        result = typeof toolCall.function.arguments === 'string'
+          ? JSON.parse(toolCall.function.arguments)
+          : toolCall.function.arguments;
+      } catch {
+        result = null;
+      }
+    }
+
+    // Fallback: try parsing from content
+    if (!result) {
+      const content = aiData.choices?.[0]?.message?.content || "";
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        result = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+      } catch {
+        result = null;
+      }
     }
 
     if (!result) {
-      result = { name: "", phone: "", email: "", source: "Voice Capture", notes: audio_text };
+      result = { name: "", phone: "", email: "", lead_type: "", price_range: "", bedrooms: "", neighborhood: "", source: "Voice Capture", notes: audio_text };
     }
 
     return new Response(
@@ -105,8 +144,12 @@ Rules:
         name: result.name || "",
         phone: result.phone || "",
         email: result.email || "",
+        lead_type: result.lead_type || "",
+        price_range: result.price_range || "",
+        bedrooms: result.bedrooms || "",
+        neighborhood: result.neighborhood || "",
         source: result.source || "Voice Capture",
-        notes: result.notes || audio_text,
+        notes: result.notes || "",
         raw_transcript: audio_text,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -114,8 +157,7 @@ Rules:
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return new Response(JSON.stringify({ error: message }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
