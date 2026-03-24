@@ -159,23 +159,25 @@ export default function ListingWriter() {
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Key Features</Label>
+          <Label className="text-[13px]">Key Features</Label>
           <Textarea
             placeholder="Open floor plan, quartz countertops, walk-in closet, covered patio..."
             rows={3}
             value={features}
             onChange={e => setFeatures(e.target.value)}
+            className="text-sm min-h-[44px]"
           />
-          <p className="text-[10px] text-muted-foreground">Separate with commas</p>
+          <p className="text-[13px] text-muted-foreground">Separate with commas</p>
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Agent's Selling Angle <span className="text-muted-foreground">(optional)</span></Label>
+          <Label className="text-[13px]">Agent's Selling Angle <span className="text-muted-foreground">(optional)</span></Label>
           <Input
             type="text"
             placeholder="Perfect starter home under $450K in top school district"
             value={angle}
             onChange={e => setAngle(e.target.value)}
+            className="h-11 min-h-[44px] text-sm"
           />
         </div>
 
