@@ -388,7 +388,7 @@ export default function BetaHomeScreen() {
       {/* Snoozed leads */}
       {snoozedLeads.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground px-1">Snoozed ({snoozedLeads.length})</p>
+          <p className="text-xs font-medium text-muted-foreground px-1 flex items-center gap-2"><span className="w-[3px] h-4 rounded-full bg-primary inline-block" />Snoozed ({snoozedLeads.length})</p>
           {snoozedLeads.map(l => (
             <div key={l.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-card/50 text-sm">
               <button onClick={() => handleOpenLeadDetail(l)} className="text-primary hover:underline truncate text-left">{l.name}</button>
