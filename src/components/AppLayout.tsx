@@ -43,6 +43,7 @@ type NavItem = { label: string; icon: React.ElementType } & (
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
   { workspace: 'openhouse', label: 'Open House', icon: Home },
+  { workspace: 'listingwriter', label: 'Listing Writer', icon: PenLine },
   { workspace: 'sync', label: 'CRM', icon: RefreshCw },
   { workspace: 'settings', label: 'Settings', icon: Settings },
 ];

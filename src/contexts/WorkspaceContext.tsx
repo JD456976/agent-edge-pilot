@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-export type WorkspaceType = 'work' | 'sync' | 'insights' | 'settings' | 'openhouse' | 'calendar';
+export type WorkspaceType = 'work' | 'sync' | 'insights' | 'settings' | 'openhouse' | 'calendar' | 'listingwriter';
 
 const SESSION_STORAGE_KEY = 'dp-last-workspace';
 
