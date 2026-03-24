@@ -26,6 +26,7 @@ import NotFound from "@/pages/NotFound";
 import Install from "@/pages/Install";
 import AppStoreAssets from "@/pages/AppStoreAssets";
 import OpenHouse from "@/pages/OpenHouse";
+import ListingWriter from "@/pages/ListingWriter";
 import { ReviewPrompt } from "@/components/ReviewPrompt";
 import { PWAUpdatePrompt } from "@/components/PWAUpdatePrompt";
 
