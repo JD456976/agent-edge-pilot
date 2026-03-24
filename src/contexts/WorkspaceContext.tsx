@@ -33,7 +33,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   // Sync from URL on mount / param change
   useEffect(() => {
-    const valid: WorkspaceType[] = ['work', 'sync', 'insights', 'settings', 'openhouse', 'calendar'];
+    const valid: WorkspaceType[] = ['work', 'sync', 'insights', 'settings', 'openhouse', 'calendar', 'listingwriter', 'commissioncoach'];
     const param = searchParams.get('workspace') as WorkspaceType | null;
     if (param && valid.includes(param)) {
       setActiveWorkspace(param);
