@@ -345,7 +345,7 @@ export default function BetaHomeScreen() {
       {/* 3. My Pipeline */}
       {allPipelineLeads.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-muted-foreground px-1">My Pipeline</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground px-1 flex items-center gap-2"><span className="w-[3px] h-4 rounded-full bg-primary inline-block" />My Pipeline</h2>
           <div className="flex gap-1.5 overflow-x-auto pb-1 px-1 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
             {([
               { key: 'all', label: 'All' },
