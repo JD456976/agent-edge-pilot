@@ -16,6 +16,7 @@ import { useCommandCenterData } from '@/hooks/useCommandCenterData';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { toast } from '@/hooks/use-toast';
 import type { Lead } from '@/types';
+import { computeRisk, RiskDot, RiskPanel } from '@/components/DealRiskRadar';
 
 interface TargetMarket {
   zipCodes: string[];
