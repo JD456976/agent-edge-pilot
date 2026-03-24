@@ -113,6 +113,7 @@ function PriorityLeadCard({ lead, score, onAction, onTapName }: {
         </Button>
       </div>
     </div>
+    </div>
   );
 }
 
