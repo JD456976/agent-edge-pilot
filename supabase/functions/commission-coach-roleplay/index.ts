@@ -26,9 +26,7 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -41,102 +39,184 @@ Deno.serve(async (req) => {
 
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
     if (!lovableKey) {
-      return new Response(
-        JSON.stringify({ error: "AI not configured" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify({ error: "AI not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     let systemPrompt: string;
     let userPrompt: string;
+    let maxTokens = 1000;
+    let useToolCalling = false;
+    let tools: any[] = [];
+    let toolChoice: any = undefined;
 
-    if (action === "presentation") {
-      const { agentName, yearsExp, avgSalePrice, marketingHighlights } = body;
-      systemPrompt =
-        "You are an expert real estate commission justification writer. Write a compelling, personalized commission justification document that an agent can share with sellers at listing appointments. Include sections for: Value Proposition, Marketing Investment, Track Record, Net Proceeds Comparison (agent-assisted vs FSBO), and a confident closing statement. Use the agent's details provided. Keep it professional, data-informed, and persuasive. Output plain text with clear section headers.";
-      userPrompt = `Agent: ${agentName}\nYears Experience: ${yearsExp || "Not specified"}\nAverage Sale Price: ${avgSalePrice || "Not specified"}\nMarketing Highlights: ${marketingHighlights || "Professional photography, MLS syndication, digital marketing"}`;
+    if (action === "build_case") {
+      const { agentName, propertyAddress, listingPrice, neighborhood, yearsAgent, homesSold, marketing } = body;
+      systemPrompt = `You are an expert real estate commission coach. Generate a personalized commission defense package for an agent preparing for a listing appointment.`;
+      userPrompt = `Agent: ${agentName}
+Property: ${propertyAddress || "Not specified"}
+Listing Price: ${listingPrice || "Not specified"}
+Neighborhood: ${neighborhood || "Not specified"}
+Years as Agent: ${yearsAgent || "Not specified"}
+Homes Sold: ${homesSold || "Not specified"}
+Marketing Capabilities: ${marketing || "Professional photography, MLS syndication"}
+
+Generate:
+1. A confident 3-4 paragraph justification script the agent can memorize, personalized to this property and price range
+2. 4-5 data-backed value points specific to this price range and market
+3. Rebuttals for these specific objections: "I found a 1% agent online", "My neighbor's agent only charged 2%", "The market is hot, I don't need marketing"`;
+
+      useToolCalling = true;
+      tools = [{
+        type: "function",
+        function: {
+          name: "build_case_result",
+          description: "Return the commission defense package",
+          parameters: {
+            type: "object",
+            properties: {
+              script: { type: "string", description: "The 3-4 paragraph justification script" },
+              valuePoints: { type: "array", items: { type: "string" }, description: "4-5 data-backed value points" },
+              objections: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    question: { type: "string" },
+                    rebuttal: { type: "string" },
+                  },
+                  required: ["question", "rebuttal"],
+                },
+                description: "Rebuttals for common objections",
+              },
+            },
+            required: ["script", "valuePoints", "objections"],
+          },
+        },
+      }];
+      toolChoice = { type: "function", function: { name: "build_case_result" } };
+      maxTokens = 1500;
+
+    } else if (action === "critique") {
+      const { sellerObjection, agentResponse } = body;
+      systemPrompt = `You are a tough, experienced real estate seller evaluating an agent's response to your commission objection. Score their response honestly and help them improve.`;
+      userPrompt = `Seller objection: "${sellerObjection}"
+Agent's response: "${agentResponse}"
+
+Score this response 1-10 (be tough but fair), explain specifically what was weak or missing, and write a stronger version they should use instead.`;
+
+      useToolCalling = true;
+      tools = [{
+        type: "function",
+        function: {
+          name: "critique_result",
+          description: "Return the critique of the agent's response",
+          parameters: {
+            type: "object",
+            properties: {
+              score: { type: "number", description: "Score 1-10" },
+              weak: { type: "string", description: "What was weak or missing in their response" },
+              stronger: { type: "string", description: "A stronger version of their response" },
+            },
+            required: ["score", "weak", "stronger"],
+          },
+        },
+      }];
+      toolChoice = { type: "function", function: { name: "critique_result" } };
+      maxTokens = 800;
+
     } else {
-      // Roleplay
-      const { difficulty, history } = body;
-      const difficultyDesc =
-        difficulty === "easy"
-          ? "a mildly skeptical seller who can be convinced with basic value statements"
-          : difficulty === "hard"
-          ? "an extremely tough, well-researched seller who has specific counter-arguments, quotes FSBO statistics, mentions flat-fee services, and pushes back aggressively on every point"
-          : "a moderately skeptical seller who asks pointed questions and needs real data to be convinced";
-
-      systemPrompt = `You are roleplaying as ${difficultyDesc}. You are interviewing a real estate agent about their commission. Stay in character. Be realistic. Ask tough questions about commission, marketing value, and why you shouldn't just sell FSBO or use a discount brokerage. Keep responses to 2-3 sentences. Never break character. Never give advice — you ARE the seller.`;
-
-      if (action === "start") {
-        userPrompt =
-          "Start the roleplay. You're a seller meeting this agent for a listing presentation. Open with a greeting and quickly get to your first commission-related question or concern.";
-      } else {
-        const historyText = (history || [])
-          .map(
-            (m: { role: string; content: string }) =>
-              `${m.role === "user" ? "Agent" : "Seller"}: ${m.content}`
-          )
-          .join("\n");
-        userPrompt = `Conversation so far:\n${historyText}\n\nRespond as the seller. Stay in character. Push back or ask a follow-up based on what the agent said.`;
-      }
+      return new Response(JSON.stringify({ error: "Unknown action" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
-    const aiResponse = await fetch(
-      "https://api.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${lovableKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          max_tokens: action === "presentation" ? 1500 : 300,
-          temperature: 0.8,
-        }),
-        signal: controller.signal,
-      }
-    );
+    const requestBody: any = {
+      model: "google/gemini-3-flash-preview",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      max_tokens: maxTokens,
+      temperature: 0.7,
+    };
+
+    if (useToolCalling) {
+      requestBody.tools = tools;
+      requestBody.tool_choice = toolChoice;
+    }
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal,
+    });
 
     clearTimeout(timeout);
 
     if (!aiResponse.ok) {
+      const status = aiResponse.status;
       const errText = await aiResponse.text();
-      console.error("AI API error:", aiResponse.status, errText);
-      return new Response(
-        JSON.stringify({ error: "AI request failed" }),
-        {
-          status: 502,
+      console.error("AI API error:", status, errText);
+
+      if (status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limited — please try again in a moment." }), {
+          status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+        });
+      }
+      if (status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted. Add funds in Settings > Workspace > Usage." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ error: "AI request failed" }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const aiData = await aiResponse.json();
-    const reply =
-      aiData.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.";
 
-    return new Response(JSON.stringify({ reply }), {
+    // Extract tool call result
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    if (toolCall) {
+      try {
+        const parsed = JSON.parse(toolCall.function.arguments);
+        return new Response(JSON.stringify({ result: parsed }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch {
+        return new Response(JSON.stringify({ error: "Failed to parse AI response" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Fallback to content
+    const reply = aiData.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.";
+    return new Response(JSON.stringify({ result: reply }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (err) {
     console.error("Commission coach error:", err);
-    return new Response(
-      JSON.stringify({ error: "Internal error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return new Response(JSON.stringify({ error: "Internal error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
