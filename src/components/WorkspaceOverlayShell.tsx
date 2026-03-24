@@ -57,7 +57,7 @@ export function WorkspaceOverlayShell({ title, subtitle, open, onClose, children
             exit={{ y: 12, opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
             className={cn(
-              'relative z-10 flex flex-col w-full bg-background',
+              'relative z-10 flex flex-col w-full h-full bg-background',
               'lg:ml-56',
             )}
             onClick={(e) => e.stopPropagation()}
