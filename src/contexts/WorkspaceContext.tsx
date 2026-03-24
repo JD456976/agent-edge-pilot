@@ -25,7 +25,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     if (paramWorkspace) return paramWorkspace;
     try {
       const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
-    const valid: WorkspaceType[] = ['work', 'sync', 'insights', 'settings', 'openhouse', 'calendar'];
+    const valid: WorkspaceType[] = ['work', 'sync', 'insights', 'settings', 'openhouse', 'calendar', 'listingwriter', 'commissioncoach'];
     if (stored && valid.includes(stored as WorkspaceType)) return stored as WorkspaceType;
     } catch {}
     return null;
