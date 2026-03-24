@@ -84,7 +84,8 @@ function PriorityLeadCard({ lead, score, onAction, onTapName }: {
 }) {
   const returning = lead.snoozeUntil && new Date(lead.snoozeUntil) > new Date();
   return (
-    <div className="rounded-xl border border-primary/20 bg-card p-4 space-y-3">
+    <div className="relative rounded-xl p-[2px] bg-gradient-to-r from-[hsl(243,75%,59%)] to-[hsl(263,70%,58%)]">
+    <div className="rounded-[10px] bg-card p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1 overflow-hidden">
           <button onClick={onTapName} className="text-base font-semibold truncate block w-full text-primary hover:underline text-left">{lead.name}</button>
@@ -112,6 +113,7 @@ function PriorityLeadCard({ lead, score, onAction, onTapName }: {
         </Button>
       </div>
     </div>
+    </div>
   );
 }
 
@@ -124,8 +126,10 @@ function PipelineCard({ lead, score, outsideTarget, onTap }: {
   const [expanded, setExpanded] = useState(false);
   const risk = useMemo(() => computeRisk(lead, score), [lead, score]);
 
+  const borderColor = score >= 80 ? 'border-l-opportunity' : score >= 60 ? 'border-l-warning' : 'border-l-muted-foreground/30';
+
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden transition-colors">
+    <div className={cn("rounded-xl border border-border bg-card overflow-hidden transition-all duration-200 hover:-translate-y-[1px] hover:shadow-md border-l-[3px]", borderColor)}>
       <div
         className="w-full text-left p-3 flex items-center gap-2 min-h-[56px] hover:bg-accent/50 cursor-pointer"
         onClick={() => setExpanded(e => !e)}
@@ -342,7 +346,7 @@ export default function BetaHomeScreen() {
       {/* 3. My Pipeline */}
       {allPipelineLeads.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-muted-foreground px-1">My Pipeline</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground px-1 flex items-center gap-2"><span className="w-[3px] h-4 rounded-full bg-primary inline-block" />My Pipeline</h2>
           <div className="flex gap-1.5 overflow-x-auto pb-1 px-1 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
             {([
               { key: 'all', label: 'All' },
@@ -384,7 +388,7 @@ export default function BetaHomeScreen() {
       {/* Snoozed leads */}
       {snoozedLeads.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground px-1">Snoozed ({snoozedLeads.length})</p>
+          <p className="text-xs font-medium text-muted-foreground px-1 flex items-center gap-2"><span className="w-[3px] h-4 rounded-full bg-primary inline-block" />Snoozed ({snoozedLeads.length})</p>
           {snoozedLeads.map(l => (
             <div key={l.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-card/50 text-sm">
               <button onClick={() => handleOpenLeadDetail(l)} className="text-primary hover:underline truncate text-left">{l.name}</button>
