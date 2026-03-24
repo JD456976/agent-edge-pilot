@@ -11,6 +11,7 @@ import { BetaGettingStarted } from '@/components/BetaGettingStarted';
 import { IncomeControlMeter } from '@/components/IncomeControlMeter';
 import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
 import { VoiceLeadCaptureFAB } from '@/components/VoiceLeadCaptureFAB';
+import { AIMorningBrief } from '@/components/AIMorningBrief';
 // LogTouchModal removed from home screen quick actions — used only in person record tabs
 import { useCommandCenterData } from '@/hooks/useCommandCenterData';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
