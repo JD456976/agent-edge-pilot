@@ -38,7 +38,7 @@ export function WorkspaceOverlayShell({ title, subtitle, open, onClose, children
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 bottom-14 lg:bottom-0 z-40 flex">
+        <div className="fixed inset-0 z-40 flex" style={{ bottom: 'env(safe-area-inset-bottom, 0px)' }}>
           {/* Dimmed backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -57,13 +57,13 @@ export function WorkspaceOverlayShell({ title, subtitle, open, onClose, children
             exit={{ y: 12, opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
             className={cn(
-              'relative z-10 flex flex-col w-full bg-background',
+              'relative z-10 flex flex-col w-full h-full bg-background',
               'lg:ml-56',
             )}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Top bar */}
-            <header className="flex items-center justify-between px-4 lg:px-6 h-14 border-b border-border bg-card shrink-0 pt-[env(safe-area-inset-top)]" style={{ minHeight: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
+            <header className="flex items-center justify-between px-4 lg:px-6 border-b border-border bg-card shrink-0" style={{ minHeight: 'calc(3.5rem + env(safe-area-inset-top, 0px))', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
               <div className="flex items-center gap-3">
                 <Button
                   variant="ghost"
@@ -85,7 +85,7 @@ export function WorkspaceOverlayShell({ title, subtitle, open, onClose, children
                   <span className="font-medium text-foreground">{title}</span>
                 </nav>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+              <Button variant="ghost" size="icon" className="h-10 w-10 min-h-[44px] min-w-[44px]" onClick={onClose}>
                 <X className="h-4 w-4" />
               </Button>
             </header>
@@ -101,7 +101,7 @@ export function WorkspaceOverlayShell({ title, subtitle, open, onClose, children
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1, duration: 0.2 }}
-              className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6"
+              className="flex-1 overflow-y-auto p-4 lg:p-6 pb-6"
             >
               {children}
             </motion.div>

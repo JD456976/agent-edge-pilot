@@ -110,32 +110,32 @@ export default function ListingWriter() {
 
       {/* Form */}
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">Bedrooms</Label>
-            <Input type="number" min={0} placeholder="3" value={bedrooms} onChange={e => setBedrooms(e.target.value)} />
+            <Label className="text-[13px]">Bedrooms</Label>
+            <Input type="number" min={0} placeholder="3" value={bedrooms} onChange={e => setBedrooms(e.target.value)} className="h-11 min-h-[44px] text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Bathrooms</Label>
-            <Input type="number" min={0} step={0.5} placeholder="2" value={bathrooms} onChange={e => setBathrooms(e.target.value)} />
+            <Label className="text-[13px]">Bathrooms</Label>
+            <Input type="number" min={0} step={0.5} placeholder="2" value={bathrooms} onChange={e => setBathrooms(e.target.value)} className="h-11 min-h-[44px] text-sm" />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">Square Footage</Label>
-            <Input type="number" min={0} placeholder="2,100" value={sqft} onChange={e => setSqft(e.target.value)} />
+            <Label className="text-[13px]">Square Footage</Label>
+            <Input type="number" min={0} placeholder="2,100" value={sqft} onChange={e => setSqft(e.target.value)} className="h-11 min-h-[44px] text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Listing Price</Label>
-            <Input type="text" placeholder="$425,000" value={price} onChange={e => setPrice(e.target.value)} />
+            <Label className="text-[13px]">Listing Price</Label>
+            <Input type="text" placeholder="$425,000" value={price} onChange={e => setPrice(e.target.value)} className="h-11 min-h-[44px] text-sm" />
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Property Type</Label>
+          <Label className="text-[13px]">Property Type</Label>
           <Select value={propertyType} onValueChange={setPropertyType}>
-            <SelectTrigger>
+            <SelectTrigger className="h-11 min-h-[44px] text-sm">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
@@ -147,48 +147,50 @@ export default function ListingWriter() {
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">Neighborhood / City</Label>
-            <Input type="text" placeholder="Westlake" value={neighborhood} onChange={e => setNeighborhood(e.target.value)} />
+            <Label className="text-[13px]">Neighborhood / City</Label>
+            <Input type="text" placeholder="Westlake" value={neighborhood} onChange={e => setNeighborhood(e.target.value)} className="h-11 min-h-[44px] text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Year Built</Label>
-            <Input type="number" min={1800} max={2030} placeholder="2018" value={yearBuilt} onChange={e => setYearBuilt(e.target.value)} />
+            <Label className="text-[13px]">Year Built</Label>
+            <Input type="number" min={1800} max={2030} placeholder="2018" value={yearBuilt} onChange={e => setYearBuilt(e.target.value)} className="h-11 min-h-[44px] text-sm" />
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Key Features</Label>
+          <Label className="text-[13px]">Key Features</Label>
           <Textarea
             placeholder="Open floor plan, quartz countertops, walk-in closet, covered patio..."
             rows={3}
             value={features}
             onChange={e => setFeatures(e.target.value)}
+            className="text-sm min-h-[44px]"
           />
-          <p className="text-[10px] text-muted-foreground">Separate with commas</p>
+          <p className="text-[13px] text-muted-foreground">Separate with commas</p>
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Agent's Selling Angle <span className="text-muted-foreground">(optional)</span></Label>
+          <Label className="text-[13px]">Agent's Selling Angle <span className="text-muted-foreground">(optional)</span></Label>
           <Input
             type="text"
             placeholder="Perfect starter home under $450K in top school district"
             value={angle}
             onChange={e => setAngle(e.target.value)}
+            className="h-11 min-h-[44px] text-sm"
           />
         </div>
 
         {/* Writing Style Pills */}
         <div className="space-y-1.5">
-          <Label className="text-xs">Writing Style</Label>
-          <div className="flex gap-2 flex-wrap">
+          <Label className="text-[13px]">Writing Style</Label>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
             {STYLES.map(s => (
               <button
                 key={s}
                 onClick={() => setStyle(s)}
                 className={cn(
-                  'px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors min-h-[36px]',
+                  'shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors min-h-[40px]',
                   style === s
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-accent'

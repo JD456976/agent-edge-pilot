@@ -84,15 +84,15 @@ function PriorityLeadCard({ lead, score, onAction, onTapName }: {
   const returning = lead.snoozeUntil && new Date(lead.snoozeUntil) > new Date();
   return (
     <div className="rounded-xl border border-primary/20 bg-card p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="min-w-0">
-          <button onClick={onTapName} className="text-base font-semibold truncate text-primary hover:underline text-left">{lead.name}</button>
-          <p className="text-xs text-muted-foreground truncate">{lead.notes || lead.source || 'No recent activity'}</p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <button onClick={onTapName} className="text-base font-semibold truncate block w-full text-primary hover:underline text-left">{lead.name}</button>
+          <p className="text-[13px] text-muted-foreground truncate">{lead.notes || lead.source || 'No recent activity'}</p>
         </div>
         <HeatBadge score={score} />
       </div>
       {returning && (
-        <Badge variant="outline" className="text-[10px]">
+        <Badge variant="outline" className="text-[11px]">
           <Clock className="h-2.5 w-2.5 mr-0.5" /> Returning {new Date(lead.snoozeUntil!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
         </Badge>
       )}
@@ -100,13 +100,13 @@ function PriorityLeadCard({ lead, score, onAction, onTapName }: {
         <Button size="sm" className="flex-1 h-11 min-h-[44px] text-sm font-medium" onClick={() => onAction('call')}>
           <Phone className="h-4 w-4 mr-1.5" /> Call
         </Button>
-        <Button size="sm" variant="outline" className="h-11 min-h-[44px] min-w-[44px]" onClick={() => onAction('text')}>
+        <Button size="sm" variant="outline" className="h-11 min-h-[44px] min-w-[44px] flex-1 sm:flex-none" onClick={() => onAction('text')}>
           <MessageSquare className="h-4 w-4" />
         </Button>
-        <Button size="sm" variant="outline" className="h-11 min-h-[44px] min-w-[44px]" onClick={() => onAction('email')}>
+        <Button size="sm" variant="outline" className="h-11 min-h-[44px] min-w-[44px] flex-1 sm:flex-none" onClick={() => onAction('email')}>
           <Mail className="h-4 w-4" />
         </Button>
-        <Button size="sm" variant="ghost" className="h-11 min-h-[44px] min-w-[44px] text-muted-foreground" onClick={() => onAction('snooze')}>
+        <Button size="sm" variant="ghost" className="h-11 min-h-[44px] min-w-[44px] flex-1 sm:flex-none text-muted-foreground" onClick={() => onAction('snooze')}>
           <Clock className="h-4 w-4" />
         </Button>
       </div>
@@ -126,23 +126,23 @@ function PipelineCard({ lead, score, outsideTarget, onTap }: {
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden transition-colors">
       <div
-        className="w-full text-left p-3 flex items-center gap-3 min-h-[56px] hover:bg-accent/50 cursor-pointer"
+        className="w-full text-left p-3 flex items-center gap-2 min-h-[56px] hover:bg-accent/50 cursor-pointer"
         onClick={() => setExpanded(e => !e)}
       >
         <RiskDot level={risk.level} />
-        <div className="flex-1 min-w-0">
-          <button onClick={(e) => { e.stopPropagation(); onTap(); }} className="text-sm font-medium truncate text-primary hover:underline text-left">{lead.name}</button>
-          <p className="text-[11px] text-muted-foreground truncate">{lead.source || 'Direct'}</p>
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <button onClick={(e) => { e.stopPropagation(); onTap(); }} className="text-sm font-medium truncate block w-full text-primary hover:underline text-left">{lead.name}</button>
+          <p className="text-[13px] text-muted-foreground truncate">{lead.source || 'Direct'}</p>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end max-w-[45%]">
           {outsideTarget && (
-            <Badge variant="warning" className="text-[9px] px-1 py-0">
-              <AlertTriangle className="h-2 w-2 mr-0.5" /> Outside Target
+            <Badge variant="warning" className="text-[9px] px-1 py-0 whitespace-nowrap">
+              <AlertTriangle className="h-2 w-2 mr-0.5" /> Outside
             </Badge>
           )}
           <HeatBadge score={score} />
           <ShieldAlert className={cn(
-            'h-3.5 w-3.5 transition-transform',
+            'h-3.5 w-3.5 transition-transform shrink-0',
             expanded && 'rotate-180',
             risk.level === 'healthy' ? 'text-opportunity' : risk.level === 'medium' ? 'text-warning' : 'text-urgent'
           )} />
@@ -302,10 +302,10 @@ export default function BetaHomeScreen() {
   return (
     <div className="max-w-lg mx-auto space-y-4">
       {/* 1. Slim Top Bar */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between pt-1">
+        <div className="min-w-0">
           <h1 className="text-lg font-bold leading-tight">{user?.name?.split(' ')[0] || 'Agent'}</h1>
-          <p className="text-xs text-muted-foreground">{today}</p>
+          <p className="text-[13px] text-muted-foreground">{today}</p>
         </div>
         <SyncDot syncing={syncing} lastSync={lastSync} />
       </div>
@@ -335,7 +335,7 @@ export default function BetaHomeScreen() {
       {allPipelineLeads.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-semibold text-muted-foreground px-1">My Pipeline</h2>
-          <div className="flex gap-1.5 overflow-x-auto pb-1 px-1 no-scrollbar">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 px-1 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
             {([
               { key: 'all', label: 'All' },
               { key: 'hot', label: 'Hot' },
@@ -347,7 +347,7 @@ export default function BetaHomeScreen() {
                 key={f.key}
                 onClick={() => setPipelineFilter(f.key)}
                 className={cn(
-                  'shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors min-h-[32px]',
+                  'shrink-0 px-3 py-1.5 rounded-full text-[13px] font-medium transition-colors min-h-[36px] whitespace-nowrap',
                   pipelineFilter === f.key
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-accent'
