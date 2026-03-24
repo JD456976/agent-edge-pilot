@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Phone, MessageSquare, Mail, Clock, ChevronDown, ChevronUp, Home, DollarSign, AlertTriangle, Flame } from 'lucide-react';
+import { Phone, MessageSquare, Mail, Clock, ChevronDown, ChevronUp, Home, DollarSign, AlertTriangle, Flame, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
