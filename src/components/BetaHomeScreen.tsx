@@ -188,6 +188,7 @@ export default function BetaHomeScreen() {
   // LogTouch state removed — quick actions use native tel/sms/mailto
   const [snoozeLeadId, setSnoozeLeadId] = useState<string | null>(null);
   const [snoozeDate, setSnoozeDate] = useState('');
+  const [pipelineFilter, setPipelineFilter] = useState<'all' | 'hot' | 'warm' | 'cool' | 'outside'>('all');
 
   // Load sync state + target market
   useEffect(() => {
@@ -223,7 +224,19 @@ export default function BetaHomeScreen() {
   }, [leads]);
 
   const priorityLead = scoredLeads[0] || null;
-  const pipelineLeads = scoredLeads.slice(1);
+  const allPipelineLeads = scoredLeads.slice(1);
+
+  const filteredPipelineLeads = useMemo(() => {
+    return allPipelineLeads.filter(({ lead, score }) => {
+      switch (pipelineFilter) {
+        case 'hot': return score >= 80;
+        case 'warm': return score >= 60 && score < 80;
+        case 'cool': return score < 60;
+        case 'outside': return isOutsideTarget(lead, targetMarket);
+        default: return true;
+      }
+    });
+  }, [allPipelineLeads, pipelineFilter, targetMarket]);
 
   const hasFubConnected = ccData.hasFubIntegration;
 
@@ -304,11 +317,35 @@ export default function BetaHomeScreen() {
       )}
 
       {/* 3. My Pipeline */}
-      {pipelineLeads.length > 0 && (
+      {allPipelineLeads.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-semibold text-muted-foreground px-1">My Pipeline</h2>
+          <div className="flex gap-1.5 overflow-x-auto pb-1 px-1 no-scrollbar">
+            {([
+              { key: 'all', label: 'All' },
+              { key: 'hot', label: 'Hot' },
+              { key: 'warm', label: 'Warm' },
+              { key: 'cool', label: 'Cool' },
+              { key: 'outside', label: 'Outside Target' },
+            ] as const).map(f => (
+              <button
+                key={f.key}
+                onClick={() => setPipelineFilter(f.key)}
+                className={cn(
+                  'shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors min-h-[32px]',
+                  pipelineFilter === f.key
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-accent'
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
           <div className="space-y-1.5">
-            {pipelineLeads.map(({ lead, score }) => (
+            {filteredPipelineLeads.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">No leads match this filter.</p>
+            ) : filteredPipelineLeads.map(({ lead, score }) => (
               <PipelineCard
                 key={lead.id}
                 lead={lead}
