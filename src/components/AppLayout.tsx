@@ -283,9 +283,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      {/* Mobile bottom tabs — show 4 primary + More menu */}
+      {/* Mobile bottom tabs — scrollable to fit all pages */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 border-t border-border bg-card z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-        <div className="flex items-center justify-around h-14 px-2">
+        <div className="flex items-center h-14 px-1 overflow-x-auto no-scrollbar">
           {items.map(item => {
             const key = item.workspace ?? item.path ?? 'home';
             return (
@@ -294,13 +294,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 onClick={() => handleNavClick(item)}
                 aria-label={item.label}
                 className={cn(
-                  'flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg transition-colors min-w-0 min-h-[44px] justify-center',
+                  'flex flex-col items-center gap-0.5 py-1 rounded-lg transition-colors min-w-0 min-h-[44px] justify-center flex-1 min-w-[56px]',
                   isActive(item) && 'text-primary',
                   !isActive(item) && 'text-muted-foreground'
                 )}
               >
                 <item.icon className="h-5 w-5" />
-                <span className="text-[10px] font-medium truncate">{item.label.split(' ')[0]}</span>
+                <span className="text-[10px] font-medium truncate max-w-[60px]">{item.label.length > 8 ? item.label.split(' ')[0] : item.label}</span>
               </button>
             );
           })}

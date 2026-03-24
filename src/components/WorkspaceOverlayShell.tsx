@@ -101,7 +101,7 @@ export function WorkspaceOverlayShell({ title, subtitle, open, onClose, children
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1, duration: 0.2 }}
-              className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6"
+              className="flex-1 overflow-y-auto p-4 lg:p-6 pb-6"
             >
               {children}
             </motion.div>

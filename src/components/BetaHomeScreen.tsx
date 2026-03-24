@@ -335,7 +335,7 @@ export default function BetaHomeScreen() {
       {allPipelineLeads.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-semibold text-muted-foreground px-1">My Pipeline</h2>
-          <div className="flex gap-1.5 overflow-x-auto pb-1 px-1 no-scrollbar">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 px-1 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
             {([
               { key: 'all', label: 'All' },
               { key: 'hot', label: 'Hot' },
@@ -347,7 +347,7 @@ export default function BetaHomeScreen() {
                 key={f.key}
                 onClick={() => setPipelineFilter(f.key)}
                 className={cn(
-                  'shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors min-h-[32px]',
+                  'shrink-0 px-3 py-1.5 rounded-full text-[13px] font-medium transition-colors min-h-[36px] whitespace-nowrap',
                   pipelineFilter === f.key
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-accent'

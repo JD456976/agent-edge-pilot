@@ -183,14 +183,14 @@ export default function ListingWriter() {
 
         {/* Writing Style Pills */}
         <div className="space-y-1.5">
-          <Label className="text-xs">Writing Style</Label>
-          <div className="flex gap-2 flex-wrap">
+          <Label className="text-[13px]">Writing Style</Label>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
             {STYLES.map(s => (
               <button
                 key={s}
                 onClick={() => setStyle(s)}
                 className={cn(
-                  'px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors min-h-[36px]',
+                  'shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors min-h-[40px]',
                   style === s
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-accent'
