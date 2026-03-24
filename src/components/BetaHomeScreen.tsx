@@ -224,7 +224,19 @@ export default function BetaHomeScreen() {
   }, [leads]);
 
   const priorityLead = scoredLeads[0] || null;
-  const pipelineLeads = scoredLeads.slice(1);
+  const allPipelineLeads = scoredLeads.slice(1);
+
+  const filteredPipelineLeads = useMemo(() => {
+    return allPipelineLeads.filter(({ lead, score }) => {
+      switch (pipelineFilter) {
+        case 'hot': return score >= 80;
+        case 'warm': return score >= 60 && score < 80;
+        case 'cool': return score < 60;
+        case 'outside': return isOutsideTarget(lead, targetMarket);
+        default: return true;
+      }
+    });
+  }, [allPipelineLeads, pipelineFilter, targetMarket]);
 
   const hasFubConnected = ccData.hasFubIntegration;
 
