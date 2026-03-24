@@ -127,7 +127,8 @@ function PipelineCard({ lead, score, outsideTarget, onTap }: {
   const risk = useMemo(() => computeRisk(lead, score), [lead, score]);
 
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden transition-colors">
+    const borderColor = score >= 80 ? 'border-l-opportunity' : score >= 60 ? 'border-l-warning' : 'border-l-muted-foreground/30';
+    <div className={cn("rounded-xl border border-border bg-card overflow-hidden transition-all duration-200 hover:-translate-y-[1px] hover:shadow-md border-l-[3px]", borderColor)}>
       <div
         className="w-full text-left p-3 flex items-center gap-2 min-h-[56px] hover:bg-accent/50 cursor-pointer"
         onClick={() => setExpanded(e => !e)}
