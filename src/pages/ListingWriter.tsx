@@ -133,9 +133,9 @@ export default function ListingWriter() {
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Property Type</Label>
+          <Label className="text-[13px]">Property Type</Label>
           <Select value={propertyType} onValueChange={setPropertyType}>
-            <SelectTrigger>
+            <SelectTrigger className="h-11 min-h-[44px] text-sm">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
