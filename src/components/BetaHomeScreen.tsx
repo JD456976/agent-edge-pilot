@@ -188,6 +188,7 @@ export default function BetaHomeScreen() {
   // LogTouch state removed — quick actions use native tel/sms/mailto
   const [snoozeLeadId, setSnoozeLeadId] = useState<string | null>(null);
   const [snoozeDate, setSnoozeDate] = useState('');
+  const [pipelineFilter, setPipelineFilter] = useState<'all' | 'hot' | 'warm' | 'cool' | 'outside'>('all');
 
   // Load sync state + target market
   useEffect(() => {
