@@ -321,6 +321,13 @@ export default function BetaHomeScreen() {
         onSetIncomeTarget={() => openWorkspace('settings')}
         onLoadDemo={seedDemoData}
       />
+      {/* AI Morning Brief */}
+      <AIMorningBrief
+        agentName={user?.name || 'Agent'}
+        leads={leads}
+        getHeatScore={getLeadHeatScore}
+        pipelineValue={`${leads.length} active leads, ${deals.length} deals in pipeline`}
+      />
 
       {/* 2. Priority Lead Card */}
       {priorityLead && (
