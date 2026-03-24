@@ -147,14 +147,14 @@ export default function ListingWriter() {
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">Neighborhood / City</Label>
-            <Input type="text" placeholder="Westlake" value={neighborhood} onChange={e => setNeighborhood(e.target.value)} />
+            <Label className="text-[13px]">Neighborhood / City</Label>
+            <Input type="text" placeholder="Westlake" value={neighborhood} onChange={e => setNeighborhood(e.target.value)} className="h-11 min-h-[44px] text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Year Built</Label>
-            <Input type="number" min={1800} max={2030} placeholder="2018" value={yearBuilt} onChange={e => setYearBuilt(e.target.value)} />
+            <Label className="text-[13px]">Year Built</Label>
+            <Input type="number" min={1800} max={2030} placeholder="2018" value={yearBuilt} onChange={e => setYearBuilt(e.target.value)} className="h-11 min-h-[44px] text-sm" />
           </div>
         </div>
 
