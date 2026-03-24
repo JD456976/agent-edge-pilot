@@ -11,6 +11,7 @@ import { BetaGettingStarted } from '@/components/BetaGettingStarted';
 import { IncomeControlMeter } from '@/components/IncomeControlMeter';
 import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
 import { VoiceLeadCaptureFAB } from '@/components/VoiceLeadCaptureFAB';
+import { AIMorningBrief } from '@/components/AIMorningBrief';
 // LogTouchModal removed from home screen quick actions — used only in person record tabs
 import { useCommandCenterData } from '@/hooks/useCommandCenterData';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -319,6 +320,13 @@ export default function BetaHomeScreen() {
         onConnectCrm={() => openWorkspace('sync')}
         onSetIncomeTarget={() => openWorkspace('settings')}
         onLoadDemo={seedDemoData}
+      />
+      {/* AI Morning Brief */}
+      <AIMorningBrief
+        agentName={user?.name || 'Agent'}
+        leads={leads}
+        getHeatScore={getLeadHeatScore}
+        pipelineValue={`${leads.length} active leads, ${deals.length} deals in pipeline`}
       />
 
       {/* 2. Priority Lead Card */}
