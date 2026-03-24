@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Phone, MessageSquare, Mail, Clock, ChevronDown, ChevronUp, Home, DollarSign, AlertTriangle, Flame } from 'lucide-react';
+import { Phone, MessageSquare, Mail, Clock, ChevronDown, ChevronUp, Home, DollarSign, AlertTriangle, Flame, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,7 @@ import { useCommandCenterData } from '@/hooks/useCommandCenterData';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { toast } from '@/hooks/use-toast';
 import type { Lead } from '@/types';
+import { computeRisk, RiskDot, RiskPanel } from '@/components/DealRiskRadar';
 
 interface TargetMarket {
   zipCodes: string[];
@@ -119,22 +120,35 @@ function PipelineCard({ lead, score, outsideTarget, onTap }: {
   outsideTarget: boolean;
   onTap: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const risk = useMemo(() => computeRisk(lead, score), [lead, score]);
+
   return (
-    <div
-      className="w-full text-left p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors flex items-center gap-3 min-h-[56px]"
-    >
-      <div className="flex-1 min-w-0">
-        <button onClick={onTap} className="text-sm font-medium truncate text-primary hover:underline text-left">{lead.name}</button>
-        <p className="text-[11px] text-muted-foreground truncate">{lead.source || 'Direct'}</p>
+    <div className="rounded-lg border border-border bg-card overflow-hidden transition-colors">
+      <div
+        className="w-full text-left p-3 flex items-center gap-3 min-h-[56px] hover:bg-accent/50 cursor-pointer"
+        onClick={() => setExpanded(e => !e)}
+      >
+        <RiskDot level={risk.level} />
+        <div className="flex-1 min-w-0">
+          <button onClick={(e) => { e.stopPropagation(); onTap(); }} className="text-sm font-medium truncate text-primary hover:underline text-left">{lead.name}</button>
+          <p className="text-[11px] text-muted-foreground truncate">{lead.source || 'Direct'}</p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {outsideTarget && (
+            <Badge variant="warning" className="text-[9px] px-1 py-0">
+              <AlertTriangle className="h-2 w-2 mr-0.5" /> Outside Target
+            </Badge>
+          )}
+          <HeatBadge score={score} />
+          <ShieldAlert className={cn(
+            'h-3.5 w-3.5 transition-transform',
+            expanded && 'rotate-180',
+            risk.level === 'healthy' ? 'text-opportunity' : risk.level === 'medium' ? 'text-warning' : 'text-urgent'
+          )} />
+        </div>
       </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        {outsideTarget && (
-          <Badge variant="warning" className="text-[9px] px-1 py-0">
-            <AlertTriangle className="h-2 w-2 mr-0.5" /> Outside Target
-          </Badge>
-        )}
-        <HeatBadge score={score} />
-      </div>
+      {expanded && <div className="px-3 pb-3"><RiskPanel lead={lead} risk={risk} /></div>}
     </div>
   );
 }
