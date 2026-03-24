@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { BetaGettingStarted } from '@/components/BetaGettingStarted';
 import { IncomeControlMeter } from '@/components/IncomeControlMeter';
 import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
+import { VoiceLeadCaptureFAB } from '@/components/VoiceLeadCaptureFAB';
 // LogTouchModal removed from home screen quick actions — used only in person record tabs
 import { useCommandCenterData } from '@/hooks/useCommandCenterData';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
@@ -439,6 +440,8 @@ export default function BetaHomeScreen() {
         />
       )}
 
+      {/* Voice Lead Capture FAB */}
+      <VoiceLeadCaptureFAB />
     </div>
   );
 }
