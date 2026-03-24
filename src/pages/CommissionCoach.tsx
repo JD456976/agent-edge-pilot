@@ -87,34 +87,34 @@ function PreListingPrep() {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5 col-span-2">
-          <Label className="text-xs">Your Name</Label>
-          <Input value={agentName} onChange={e => setAgentName(e.target.value)} className="h-10 text-sm" placeholder="Jane Smith" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label className="text-[13px]">Your Name</Label>
+          <Input value={agentName} onChange={e => setAgentName(e.target.value)} className="h-11 min-h-[44px] text-sm" placeholder="Jane Smith" />
         </div>
-        <div className="space-y-1.5 col-span-2">
-          <Label className="text-xs">Property Address</Label>
-          <Input value={propertyAddress} onChange={e => setPropertyAddress(e.target.value)} className="h-10 text-sm" placeholder="123 Maple St, Walpole MA" />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">Listing Price</Label>
-          <Input value={listingPrice} onChange={e => setListingPrice(e.target.value)} className="h-10 text-sm" placeholder="$525,000" />
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label className="text-[13px]">Property Address</Label>
+          <Input value={propertyAddress} onChange={e => setPropertyAddress(e.target.value)} className="h-11 min-h-[44px] text-sm" placeholder="123 Maple St, Walpole MA" />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Neighborhood</Label>
-          <Input value={neighborhood} onChange={e => setNeighborhood(e.target.value)} className="h-10 text-sm" placeholder="Walpole" />
+          <Label className="text-[13px]">Listing Price</Label>
+          <Input value={listingPrice} onChange={e => setListingPrice(e.target.value)} className="h-11 min-h-[44px] text-sm" placeholder="$525,000" />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Years as Agent</Label>
-          <Input value={yearsAgent} onChange={e => setYearsAgent(e.target.value)} className="h-10 text-sm" placeholder="8" />
+          <Label className="text-[13px]">Neighborhood</Label>
+          <Input value={neighborhood} onChange={e => setNeighborhood(e.target.value)} className="h-11 min-h-[44px] text-sm" placeholder="Walpole" />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Homes Sold</Label>
-          <Input value={homesSold} onChange={e => setHomesSold(e.target.value)} className="h-10 text-sm" placeholder="120" />
+          <Label className="text-[13px]">Years as Agent</Label>
+          <Input value={yearsAgent} onChange={e => setYearsAgent(e.target.value)} className="h-11 min-h-[44px] text-sm" placeholder="8" />
         </div>
-        <div className="space-y-1.5 col-span-2">
-          <Label className="text-xs">Unique Marketing Capabilities</Label>
-          <Input value={marketing} onChange={e => setMarketing(e.target.value)} className="h-10 text-sm" placeholder="Drone video, 3D Matterport tours, targeted social ads…" />
+        <div className="space-y-1.5">
+          <Label className="text-[13px]">Homes Sold</Label>
+          <Input value={homesSold} onChange={e => setHomesSold(e.target.value)} className="h-11 min-h-[44px] text-sm" placeholder="120" />
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label className="text-[13px]">Unique Marketing Capabilities</Label>
+          <Input value={marketing} onChange={e => setMarketing(e.target.value)} className="h-11 min-h-[44px] text-sm" placeholder="Drone video, 3D Matterport tours, targeted social ads…" />
         </div>
       </div>
 
