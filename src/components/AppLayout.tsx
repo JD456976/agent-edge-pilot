@@ -177,11 +177,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {hasSeededData && <DemoBanner />}
       {/* Desktop sidebar — lg breakpoint so landscape phones use mobile nav */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-56 lg:flex-col border-r border-border bg-sidebar z-30" data-tour="sidebar-nav">
-        <div className="flex items-center gap-2.5 px-4 h-14 border-b border-border">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shadow-sm shadow-primary/20">
-            <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
+        <div className="flex items-center gap-3 px-4 h-14 border-b border-border">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[hsl(243,75%,59%)] to-[hsl(263,70%,58%)] flex items-center justify-center shadow-md shadow-primary/20">
+            <LayoutDashboard className="h-4 w-4 text-white" />
           </div>
-          <span className="font-bold text-sm tracking-tight">Deal Pilot</span>
+          <span className="font-semibold text-sm tracking-[-0.02em]">Deal Pilot</span>
         </div>
         <nav className="flex-1 py-4 px-2 space-y-1">
           {items.map(item => {
