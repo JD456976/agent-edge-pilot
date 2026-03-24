@@ -126,23 +126,23 @@ function PipelineCard({ lead, score, outsideTarget, onTap }: {
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden transition-colors">
       <div
-        className="w-full text-left p-3 flex items-center gap-3 min-h-[56px] hover:bg-accent/50 cursor-pointer"
+        className="w-full text-left p-3 flex items-center gap-2 min-h-[56px] hover:bg-accent/50 cursor-pointer"
         onClick={() => setExpanded(e => !e)}
       >
         <RiskDot level={risk.level} />
-        <div className="flex-1 min-w-0">
-          <button onClick={(e) => { e.stopPropagation(); onTap(); }} className="text-sm font-medium truncate text-primary hover:underline text-left">{lead.name}</button>
-          <p className="text-[11px] text-muted-foreground truncate">{lead.source || 'Direct'}</p>
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <button onClick={(e) => { e.stopPropagation(); onTap(); }} className="text-sm font-medium truncate block w-full text-primary hover:underline text-left">{lead.name}</button>
+          <p className="text-[13px] text-muted-foreground truncate">{lead.source || 'Direct'}</p>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end max-w-[45%]">
           {outsideTarget && (
-            <Badge variant="warning" className="text-[9px] px-1 py-0">
-              <AlertTriangle className="h-2 w-2 mr-0.5" /> Outside Target
+            <Badge variant="warning" className="text-[9px] px-1 py-0 whitespace-nowrap">
+              <AlertTriangle className="h-2 w-2 mr-0.5" /> Outside
             </Badge>
           )}
           <HeatBadge score={score} />
           <ShieldAlert className={cn(
-            'h-3.5 w-3.5 transition-transform',
+            'h-3.5 w-3.5 transition-transform shrink-0',
             expanded && 'rotate-180',
             risk.level === 'healthy' ? 'text-opportunity' : risk.level === 'medium' ? 'text-warning' : 'text-urgent'
           )} />
