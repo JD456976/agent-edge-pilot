@@ -84,7 +84,8 @@ function PriorityLeadCard({ lead, score, onAction, onTapName }: {
 }) {
   const returning = lead.snoozeUntil && new Date(lead.snoozeUntil) > new Date();
   return (
-    <div className="rounded-xl border border-primary/20 bg-card p-4 space-y-3">
+    <div className="relative rounded-xl p-[2px] bg-gradient-to-r from-[hsl(243,75%,59%)] to-[hsl(263,70%,58%)]">
+    <div className="rounded-[10px] bg-card p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1 overflow-hidden">
           <button onClick={onTapName} className="text-base font-semibold truncate block w-full text-primary hover:underline text-left">{lead.name}</button>
