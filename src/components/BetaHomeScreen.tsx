@@ -440,6 +440,8 @@ export default function BetaHomeScreen() {
         />
       )}
 
+      {/* Voice Lead Capture FAB */}
+      <VoiceLeadCaptureFAB />
     </div>
   );
 }
