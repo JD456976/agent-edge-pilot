@@ -63,7 +63,7 @@ export function WorkspaceOverlayShell({ title, subtitle, open, onClose, children
             onClick={(e) => e.stopPropagation()}
           >
             {/* Top bar */}
-            <header className="flex items-center justify-between px-4 lg:px-6 h-14 border-b border-border bg-card shrink-0 pt-[env(safe-area-inset-top)]" style={{ minHeight: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
+            <header className="flex items-center justify-between px-4 lg:px-6 border-b border-border bg-card shrink-0" style={{ minHeight: 'calc(3.5rem + env(safe-area-inset-top, 0px))', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
               <div className="flex items-center gap-3">
                 <Button
                   variant="ghost"
