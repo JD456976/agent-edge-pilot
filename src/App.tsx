@@ -27,6 +27,7 @@ import Install from "@/pages/Install";
 import AppStoreAssets from "@/pages/AppStoreAssets";
 import OpenHouse from "@/pages/OpenHouse";
 import ListingWriter from "@/pages/ListingWriter";
+import CommissionCoach from "@/pages/CommissionCoach";
 import { ReviewPrompt } from "@/components/ReviewPrompt";
 import { PWAUpdatePrompt } from "@/components/PWAUpdatePrompt";
 
@@ -97,6 +98,7 @@ function WorkspaceOverlays() {
     calendar: { title: 'Calendar', subtitle: 'Appointments, tasks & milestones', Component: CalendarPage },
     openhouse: { title: 'Open House Intelligence', subtitle: 'Capture visitors and follow up', Component: OpenHouse },
     listingwriter: { title: 'Listing Writer', subtitle: 'AI-powered listing descriptions', Component: ListingWriter },
+    commissioncoach: { title: 'Commission Coach', subtitle: 'Defend your value and win listings', Component: CommissionCoach },
     sync: { title: 'Sync', subtitle: 'CRM integrations and imports', Component: Sync },
     insights: { title: 'Insights', subtitle: 'Forecast, stability, and review', Component: Insights },
     settings: { title: 'Settings', subtitle: 'Preferences and account', Component: Settings },
