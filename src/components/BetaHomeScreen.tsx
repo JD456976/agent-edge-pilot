@@ -359,10 +359,10 @@ export default function BetaHomeScreen() {
                 key={f.key}
                 onClick={() => setPipelineFilter(f.key)}
                 className={cn(
-                  'shrink-0 px-3 py-1.5 rounded-full text-[13px] font-medium transition-colors min-h-[36px] whitespace-nowrap',
+                  'shrink-0 px-3 py-1.5 rounded-full text-[13px] font-medium transition-all duration-150 min-h-[36px] whitespace-nowrap border',
                   pipelineFilter === f.key
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-accent'
+                    ? 'bg-primary/10 text-primary border-primary/30'
+                    : 'bg-transparent text-muted-foreground border-border hover:border-primary/20 hover:text-foreground'
                 )}
               >
                 {f.label}

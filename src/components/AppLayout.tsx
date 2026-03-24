@@ -223,11 +223,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <div className="w-full" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
           {/* Actual header content */}
           <div className="flex items-center justify-between px-3 h-14">
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-                <LayoutDashboard className="h-3.5 w-3.5 text-primary-foreground" />
+            <div className="flex items-center gap-2.5">
+              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[hsl(243,75%,59%)] to-[hsl(263,70%,58%)] flex items-center justify-center shadow-sm">
+                <LayoutDashboard className="h-3.5 w-3.5 text-white" />
               </div>
-              <span className="font-bold text-sm">Deal Pilot</span>
+              <span className="font-semibold text-sm tracking-[-0.02em]">Deal Pilot</span>
             </div>
             <div className="flex items-center gap-0.5">
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowMobileSearch(true)} aria-label="Search">
