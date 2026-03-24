@@ -110,25 +110,25 @@ export default function ListingWriter() {
 
       {/* Form */}
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">Bedrooms</Label>
-            <Input type="number" min={0} placeholder="3" value={bedrooms} onChange={e => setBedrooms(e.target.value)} />
+            <Label className="text-[13px]">Bedrooms</Label>
+            <Input type="number" min={0} placeholder="3" value={bedrooms} onChange={e => setBedrooms(e.target.value)} className="h-11 min-h-[44px] text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Bathrooms</Label>
-            <Input type="number" min={0} step={0.5} placeholder="2" value={bathrooms} onChange={e => setBathrooms(e.target.value)} />
+            <Label className="text-[13px]">Bathrooms</Label>
+            <Input type="number" min={0} step={0.5} placeholder="2" value={bathrooms} onChange={e => setBathrooms(e.target.value)} className="h-11 min-h-[44px] text-sm" />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">Square Footage</Label>
-            <Input type="number" min={0} placeholder="2,100" value={sqft} onChange={e => setSqft(e.target.value)} />
+            <Label className="text-[13px]">Square Footage</Label>
+            <Input type="number" min={0} placeholder="2,100" value={sqft} onChange={e => setSqft(e.target.value)} className="h-11 min-h-[44px] text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Listing Price</Label>
-            <Input type="text" placeholder="$425,000" value={price} onChange={e => setPrice(e.target.value)} />
+            <Label className="text-[13px]">Listing Price</Label>
+            <Input type="text" placeholder="$425,000" value={price} onChange={e => setPrice(e.target.value)} className="h-11 min-h-[44px] text-sm" />
           </div>
         </div>
 
