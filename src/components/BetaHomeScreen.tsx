@@ -99,16 +99,16 @@ function PriorityLeadCard({ lead, score, onAction, onTapName }: {
         </Badge>
       )}
       <div className="flex gap-2">
-        <Button size="sm" className="flex-1 h-11 min-h-[44px] text-sm font-medium" onClick={() => onAction('call')}>
+        <Button size="sm" className="flex-1 h-11 min-h-[44px] text-sm font-medium rounded-xl" onClick={() => onAction('call')}>
           <Phone className="h-4 w-4 mr-1.5" /> Call
         </Button>
-        <Button size="sm" variant="outline" className="h-11 min-h-[44px] min-w-[44px] flex-1 sm:flex-none" onClick={() => onAction('text')}>
+        <Button size="sm" variant="outline" className="h-11 min-h-[44px] w-11 rounded-full border-border/50 p-0 flex-none" onClick={() => onAction('text')}>
           <MessageSquare className="h-4 w-4" />
         </Button>
-        <Button size="sm" variant="outline" className="h-11 min-h-[44px] min-w-[44px] flex-1 sm:flex-none" onClick={() => onAction('email')}>
+        <Button size="sm" variant="outline" className="h-11 min-h-[44px] w-11 rounded-full border-border/50 p-0 flex-none" onClick={() => onAction('email')}>
           <Mail className="h-4 w-4" />
         </Button>
-        <Button size="sm" variant="ghost" className="h-11 min-h-[44px] min-w-[44px] flex-1 sm:flex-none text-muted-foreground" onClick={() => onAction('snooze')}>
+        <Button size="sm" variant="ghost" className="h-11 min-h-[44px] w-11 rounded-full p-0 flex-none text-muted-foreground" onClick={() => onAction('snooze')}>
           <Clock className="h-4 w-4" />
         </Button>
       </div>
