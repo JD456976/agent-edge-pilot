@@ -476,6 +476,7 @@ export type Database = {
           assigned_to_user_id: string | null
           cancelled_at: string | null
           close_date: string
+          close_probability: number
           closed_at: string | null
           commission_amount: number
           commission_rate: number | null
@@ -508,6 +509,7 @@ export type Database = {
           assigned_to_user_id?: string | null
           cancelled_at?: string | null
           close_date?: string
+          close_probability?: number
           closed_at?: string | null
           commission_amount?: number
           commission_rate?: number | null
@@ -540,6 +542,7 @@ export type Database = {
           assigned_to_user_id?: string | null
           cancelled_at?: string | null
           close_date?: string
+          close_probability?: number
           closed_at?: string | null
           commission_amount?: number
           commission_rate?: number | null

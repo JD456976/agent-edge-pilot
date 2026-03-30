@@ -1,0 +1,1 @@
+ALTER TABLE public.deals ADD COLUMN close_probability integer NOT NULL DEFAULT 70;
