@@ -24,7 +24,7 @@ import { GuidedTour } from '@/components/GuidedTour';
 import { WhatsNewModal } from '@/components/WhatsNewModal';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { SyncConflictDrawer } from '@/components/SyncConflictDrawer';
-import { AutoSyncProvider, useAutoSyncContext } from '@/contexts/AutoSyncContext';
+import { SyncProvider, useSyncContext } from '@/contexts/SyncContext';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { usePushNotifications, checkOverdueTasks } from '@/hooks/usePushNotifications';
 import { KeyboardShortcutHint } from '@/components/KeyboardShortcutHint';
