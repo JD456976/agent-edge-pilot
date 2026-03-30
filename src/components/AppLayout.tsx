@@ -111,7 +111,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const { canWrite, entitlementState } = useEntitlement();
   const [showPaywall, setShowPaywall] = useState(false);
   const [showConflicts, setShowConflicts] = useState(false);
-  const { syncing, conflicts, runSync, resolveConflict, dismissConflict } = useSyncContext();
+  const { isSyncing: syncing, conflicts, syncNow: runSync, resolveConflict, dismissConflict } = useSyncContext();
 
   // Auto-open conflict drawer when conflicts arrive
   useEffect(() => {
