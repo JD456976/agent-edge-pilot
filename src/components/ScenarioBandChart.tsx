@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import type { Deal, DealParticipant } from '@/types';
-import { computeForecastBatch } from '@/lib/forecastModel';
-import { cn } from '@/lib/utils';
+import { resolvePersonalCommission } from '@/lib/commissionResolver';
 
 interface Props {
   deals: Deal[];
@@ -14,12 +13,13 @@ interface Props {
 interface MonthPoint {
   label: string;
   month: number;
-  pessimistic: number;
-  expected: number;
   optimistic: number;
+  expected: number;
+  conservative: number;
 }
 
 function formatK(n: number) {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1000) return `$${(n / 1000).toFixed(0)}K`;
   return `$${n.toLocaleString()}`;
 }
@@ -30,10 +30,9 @@ export function ScenarioBandChart({ deals, participants, userId, annualTarget }:
     const activeDeals = deals.filter(d => d.stage !== 'closed');
     const closedDeals = deals.filter(d => d.stage === 'closed');
 
-    // Build 6-month projection
     const months: MonthPoint[] = [];
 
-    // Historical closed income for last 2 months
+    // Historical: last 2 months + current
     for (let offset = -2; offset <= 0; offset++) {
       const m = new Date(now.getFullYear(), now.getMonth() + offset, 1);
       const mEnd = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
@@ -45,53 +44,58 @@ export function ScenarioBandChart({ deals, participants, userId, annualTarget }:
       months.push({
         label: m.toLocaleDateString('en-US', { month: 'short' }),
         month: offset,
-        pessimistic: total,
-        expected: total,
         optimistic: total,
+        expected: total,
+        conservative: total,
       });
     }
 
-    // Future months: use pipeline probability
-    const forecast = computeForecastBatch(deals, participants, userId);
-    if (!forecast) return months;
-
-    for (let offset = 1; offset <= 5; offset++) {
+    // Future 6 months using close_probability
+    for (let offset = 1; offset <= 6; offset++) {
       const m = new Date(now.getFullYear(), now.getMonth() + offset, 1);
       const mEnd = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
 
-      let pessimistic = 0;
-      let expected = 0;
       let optimistic = 0;
+      let expected = 0;
+      let conservative = 0;
 
-      for (const contrib of forecast.topContributors) {
-        const closeDate = new Date(contrib.closeDate);
-        if (closeDate >= m && closeDate <= mEnd) {
-          const commission = contrib.expectedPersonalCommission;
-          const prob = contrib.stageProbability;
+      for (const deal of activeDeals) {
+        const closeDate = new Date(deal.closeDate);
+        if (closeDate < m || closeDate > mEnd) continue;
 
-          // Pessimistic: only high-probability deals at reduced rate
-          pessimistic += commission * Math.max(0, prob - 0.2);
-          // Expected: probability-weighted
-          expected += commission * prob;
-          // Optimistic: boosted probability
-          optimistic += commission * Math.min(1, prob + 0.2);
+        const comm = deal.userCommission ?? deal.commission ?? 0;
+        const prob = (deal.closeProbability ?? 70) / 100;
+
+        // Optimistic (emerald, solid): all deals close at full value
+        optimistic += comm;
+
+        // Expected (indigo, solid): weighted by close probability
+        expected += comm * prob;
+
+        // Conservative (amber, dashed): only 70%+ probability deals
+        if (prob >= 0.7) {
+          conservative += comm * prob;
         }
       }
 
       months.push({
         label: m.toLocaleDateString('en-US', { month: 'short' }),
         month: offset,
-        pessimistic: Math.round(pessimistic),
-        expected: Math.round(expected),
         optimistic: Math.round(optimistic),
+        expected: Math.round(expected),
+        conservative: Math.round(conservative),
       });
     }
 
     return months;
   }, [deals, participants, userId]);
 
+  const futureData = data.filter(d => d.month > 0);
+  const totalOptimistic = futureData.reduce((s, d) => s + d.optimistic, 0);
+  const totalExpected = futureData.reduce((s, d) => s + d.expected, 0);
+  const totalConservative = futureData.reduce((s, d) => s + d.conservative, 0);
+
   const monthlyTarget = annualTarget ? Math.round(annualTarget / 12) : undefined;
-  const maxVal = Math.max(...data.map(d => d.optimistic), monthlyTarget ?? 0);
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
@@ -101,20 +105,21 @@ export function ScenarioBandChart({ deals, participants, userId, annualTarget }:
         <h3 className="text-sm font-semibold tracking-[-0.02em] text-foreground">
           Income Scenarios
         </h3>
+        <span className="ml-auto text-[11px] text-muted-foreground">Next 6 months</span>
       </div>
 
       {/* Legend */}
       <div className="flex items-center gap-4 mb-3 text-[11px]">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-1.5 rounded-full bg-emerald-500" />
-          <span className="text-muted-foreground">Optimistic</span>
+          <span className="text-muted-foreground">Best Case</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-1.5 rounded-full bg-indigo-500" />
           <span className="text-muted-foreground">Expected</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-1.5 rounded-full bg-amber-500" />
+          <div className="w-3 h-0.5 rounded-full bg-amber-500 border-t border-dashed border-amber-500" />
           <span className="text-muted-foreground">Conservative</span>
         </div>
       </div>
@@ -130,10 +135,6 @@ export function ScenarioBandChart({ deals, participants, userId, annualTarget }:
             <linearGradient id="expectedGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#6366F1" stopOpacity={0.3} />
               <stop offset="100%" stopColor="#6366F1" stopOpacity={0.05} />
-            </linearGradient>
-            <linearGradient id="pessimisticGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#F59E0B" stopOpacity={0.15} />
-              <stop offset="100%" stopColor="#F59E0B" stopOpacity={0.02} />
             </linearGradient>
           </defs>
 
@@ -160,7 +161,7 @@ export function ScenarioBandChart({ deals, participants, userId, annualTarget }:
             }}
             formatter={(value: number, name: string) => [
               formatK(value),
-              name === 'optimistic' ? 'Optimistic' : name === 'expected' ? 'Expected' : 'Conservative',
+              name === 'optimistic' ? 'Best Case' : name === 'expected' ? 'Expected' : 'Conservative',
             ]}
             labelStyle={{ color: '#94A3B8', marginBottom: 4 }}
           />
@@ -180,15 +181,17 @@ export function ScenarioBandChart({ deals, participants, userId, annualTarget }:
             />
           )}
 
+          {/* Optimistic — emerald solid */}
           <Area
             type="monotone"
             dataKey="optimistic"
             stroke="#10B981"
-            strokeWidth={1.5}
+            strokeWidth={2}
             fill="url(#optimisticGrad)"
             dot={false}
             activeDot={{ r: 3, strokeWidth: 0 }}
           />
+          {/* Expected — indigo solid */}
           <Area
             type="monotone"
             dataKey="expected"
@@ -198,42 +201,34 @@ export function ScenarioBandChart({ deals, participants, userId, annualTarget }:
             dot={false}
             activeDot={{ r: 4, stroke: '#6366F1', strokeWidth: 2, fill: '#1E293B' }}
           />
+          {/* Conservative — amber dashed */}
           <Area
             type="monotone"
-            dataKey="pessimistic"
+            dataKey="conservative"
             stroke="#F59E0B"
             strokeWidth={1.5}
-            fill="url(#pessimisticGrad)"
+            strokeDasharray="6 3"
+            fill="none"
             dot={false}
             activeDot={{ r: 3, strokeWidth: 0 }}
           />
         </AreaChart>
       </ResponsiveContainer>
 
-      {/* Summary pills */}
+      {/* Summary stat boxes */}
       <div className="flex gap-2 mt-3">
-        {data.filter(d => d.month > 0).length > 0 && (() => {
-          const futureData = data.filter(d => d.month > 0);
-          const totalExpected = futureData.reduce((s, d) => s + d.expected, 0);
-          const totalOptimistic = futureData.reduce((s, d) => s + d.optimistic, 0);
-          const totalPessimistic = futureData.reduce((s, d) => s + d.pessimistic, 0);
-          return (
-            <>
-              <div className="flex-1 rounded-lg p-2 text-center" style={{ backgroundColor: 'rgba(245, 158, 11, 0.08)' }}>
-                <p className="text-[10px] text-amber-400/80">Conservative</p>
-                <p className="text-sm font-bold text-amber-400">{formatK(totalPessimistic)}</p>
-              </div>
-              <div className="flex-1 rounded-lg p-2 text-center border border-indigo-500/20" style={{ backgroundColor: 'rgba(99, 102, 241, 0.1)' }}>
-                <p className="text-[10px] text-indigo-300/80">Expected</p>
-                <p className="text-sm font-bold text-indigo-300">{formatK(totalExpected)}</p>
-              </div>
-              <div className="flex-1 rounded-lg p-2 text-center" style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)' }}>
-                <p className="text-[10px] text-emerald-400/80">Optimistic</p>
-                <p className="text-sm font-bold text-emerald-400">{formatK(totalOptimistic)}</p>
-              </div>
-            </>
-          );
-        })()}
+        <div className="flex-1 rounded-lg p-2.5 text-center" style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)' }}>
+          <p className="text-[10px] text-emerald-400/80 mb-0.5">Best Case</p>
+          <p className="text-sm font-bold text-emerald-400">{formatK(totalOptimistic)}</p>
+        </div>
+        <div className="flex-1 rounded-lg p-2.5 text-center border border-indigo-500/20" style={{ backgroundColor: 'rgba(99, 102, 241, 0.1)' }}>
+          <p className="text-[10px] text-indigo-300/80 mb-0.5">Expected</p>
+          <p className="text-sm font-bold text-indigo-300">{formatK(totalExpected)}</p>
+        </div>
+        <div className="flex-1 rounded-lg p-2.5 text-center" style={{ backgroundColor: 'rgba(245, 158, 11, 0.08)' }}>
+          <p className="text-[10px] text-amber-400/80 mb-0.5">Conservative</p>
+          <p className="text-sm font-bold text-amber-400">{formatK(totalConservative)}</p>
+        </div>
       </div>
     </div>
   );

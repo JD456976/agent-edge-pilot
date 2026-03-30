@@ -36,9 +36,10 @@ function formatCurrency(n: number) {
 interface DealCardProps {
   deal: Deal;
   onClick: () => void;
+  onProbabilityChange: (dealId: string, value: number) => void;
 }
 
-function DealCard({ deal, onClick }: DealCardProps) {
+function DealCard({ deal, onClick, onProbabilityChange }: DealCardProps) {
   const userComm = deal.userCommission ?? (() => {
     if (import.meta.env.DEV) {
       console.warn(`[DealCard] userCommission missing for deal "${deal.id}", falling back to $0`);
@@ -46,6 +47,7 @@ function DealCard({ deal, onClick }: DealCardProps) {
     return 0;
   })();
   const totalComm = deal.commission;
+  const prob = deal.closeProbability ?? 70;
 
   return (
     <button onClick={onClick} className="w-full text-left p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors space-y-2">
@@ -72,6 +74,23 @@ function DealCard({ deal, onClick }: DealCardProps) {
             {deal.riskLevel === 'red' ? 'Risk' : deal.riskLevel === 'yellow' ? 'Watch' : 'Good'}
           </Badge>
         </div>
+      </div>
+      {/* Close probability inline */}
+      <div className="flex items-center gap-2 pt-1" onClick={e => e.stopPropagation()}>
+        <span className="text-[10px] text-muted-foreground whitespace-nowrap">Close prob.</span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={5}
+          value={prob}
+          onChange={e => onProbabilityChange(deal.id, parseInt(e.target.value))}
+          className="flex-1 h-1 accent-indigo-500 cursor-pointer"
+        />
+        <span className={cn(
+          'text-[11px] font-semibold tabular-nums w-8 text-right',
+          prob >= 70 ? 'text-emerald-400' : prob >= 40 ? 'text-amber-400' : 'text-muted-foreground'
+        )}>{prob}%</span>
       </div>
     </button>
   );
@@ -195,6 +214,23 @@ function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAd
           <div className="flex justify-between"><span className="text-muted-foreground">Close Date</span><span>{new Date(deal.closeDate).toLocaleDateString()}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Risk</span><Badge variant={riskVariant[deal.riskLevel]}>{deal.riskLevel}</Badge></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Stage</span><span className="capitalize">{deal.stage.replace('_', ' ')}</span></div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Close Probability</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={deal.closeProbability ?? 70}
+                onChange={async (e) => {
+                  const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                  await supabase.from('deals').update({ close_probability: val } as any).eq('id', deal.id);
+                }}
+                className="w-14 text-right text-sm font-medium bg-transparent border border-border rounded px-1.5 py-0.5 focus:outline-none focus:border-primary"
+              />
+              <span className="text-muted-foreground text-xs">%</span>
+            </div>
+          </div>
           {deal.importedFrom && (
             <div className="pt-2">
               <ImportSourceBadge importedFrom={deal.importedFrom} importedAt={deal.importedAt} importRunId={deal.importRunId} />
@@ -293,6 +329,11 @@ export default function Pipeline() {
     })();
   }, []);
 
+  const handleProbabilityChange = useCallback(async (dealId: string, value: number) => {
+    await supabase.from('deals').update({ close_probability: value } as any).eq('id', dealId);
+    refreshData();
+  }, [refreshData]);
+
   const handleCommissionSave = async (dealId: string, state: DealCommissionState, participantEdits: ParticipantEdit[]) => {
     // Update deal-level commission fields
     const commissionAmount = state.commissionType === 'percentage'
@@ -378,7 +419,7 @@ export default function Pipeline() {
                 {stageDeals.length === 0 ? (
                   <div className="border border-dashed border-border rounded-lg py-8 text-center text-xs text-muted-foreground">No deals</div>
                 ) : (
-                  stageDeals.map(deal => <DealCard key={deal.id} deal={deal} onClick={() => setSelectedDeal(deal)} />)
+                  stageDeals.map(deal => <DealCard key={deal.id} deal={deal} onClick={() => setSelectedDeal(deal)} onProbabilityChange={handleProbabilityChange} />)
                 )}
               </div>
             </div>
