@@ -360,8 +360,8 @@ export default function BetaHomeScreen() {
                 onClick={() => setPipelineFilter(f.key)}
                 className={cn(
                   'shrink-0 px-3 py-1.5 rounded-full text-[13px] font-medium transition-all duration-150 min-h-[36px] whitespace-nowrap border',
-                  pipelineFilter === f.key
-                    ? 'bg-primary/10 text-primary border-primary/30'
+                    pipelineFilter === f.key
+                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                     : 'bg-transparent text-muted-foreground border-border hover:border-primary/20 hover:text-foreground'
                 )}
               >
