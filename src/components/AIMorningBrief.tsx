@@ -82,7 +82,7 @@ export function AIMorningBrief({ agentName, leads, getHeatScore, pipelineValue }
             ) : (
               <Sparkles className="h-4 w-4 mr-2" />
             )}
-            {loading ? 'Generating your brief…' : 'Read My Morning Brief'}
+            {loading ? 'Generating your brief…' : 'Get My Brief'}
           </Button>
         ) : (
           <div className="space-y-3">

@@ -30,18 +30,18 @@ Deno.serve(async (req) => {
 
     const { agent_name, leads_summary, pipeline_value } = await req.json();
 
-    const systemPrompt = `You are a sharp, motivating real estate business coach. Write exactly 4 sentences as a morning brief for an agent. Be specific, actionable, and energizing. No fluff. No bullet points. Just 4 punchy sentences in a single paragraph.`;
+    const systemPrompt = `You are a sharp, motivating real estate business coach. Write exactly 3-4 sentences as a morning brief for an agent. Be specific, actionable, and energizing. No fluff. No bullet points. Just 3-4 punchy sentences in a single paragraph.`;
 
-    const userPrompt = `Write a morning brief for ${agent_name || "the agent"}.
+    const userPrompt = `Write a morning brief for ${agent_name || "the agent"} on ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}.
 
 Current pipeline leads (name — heat score — source):
 ${leads_summary || "No leads yet."}
 
 Total pipeline value: ${pipeline_value || "Unknown"}
 
-Rules for your 4 sentences:
+Rules for your 3-4 sentences:
 1. Greet ${agent_name || "the agent"} by first name warmly but professionally
-2. Mention how many hot leads (score 75+) need attention today and any pattern you notice
+2. Mention how many hot leads (score 80+) need attention today
 3. Call out the single most important action — name the top lead specifically and say what to do (e.g. "Call Elena first — she's your closest close")
 4. End with an income motivation line tied to the pipeline size`;
 
