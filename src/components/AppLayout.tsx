@@ -111,7 +111,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const { canWrite, entitlementState } = useEntitlement();
   const [showPaywall, setShowPaywall] = useState(false);
   const [showConflicts, setShowConflicts] = useState(false);
-  const { syncing, conflicts, runSync, resolveConflict, dismissConflict } = useAutoSyncContext();
+  const { syncing, conflicts, runSync, resolveConflict, dismissConflict } = useSyncContext();
 
   // Auto-open conflict drawer when conflicts arrive
   useEffect(() => {
@@ -433,8 +433,8 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
 export function AppLayout({ children }: { children: ReactNode }) {
   const { refreshData } = useData();
   return (
-    <AutoSyncProvider onSyncComplete={refreshData}>
+    <SyncProvider onSyncComplete={refreshData}>
       <AppLayoutInner>{children}</AppLayoutInner>
-    </AutoSyncProvider>
+    </SyncProvider>
   );
 }
