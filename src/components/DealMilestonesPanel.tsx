@@ -50,6 +50,16 @@ function StatusIcon({ status, index }: { status: StageStatus; index: number }) {
 export function DealMilestonesPanel() {
   return (
     <div className="rounded-2xl p-5 sm:p-6" style={{ backgroundColor: '#1E293B' }}>
+      {/* Greeting */}
+      <div className="mb-5">
+        <h2 className="text-lg font-semibold tracking-[-0.02em]" style={{ color: '#E2E8F0' }}>
+          Hey Sarah,
+        </h2>
+        <p className="text-[13px] mt-1" style={{ color: '#94A3B8' }}>
+          Here's the latest on your home purchase. Everything is moving on schedule.
+        </p>
+      </div>
+
       {/* Header */}
       <div className="flex items-center gap-2.5 mb-5">
         <div className="w-[3px] h-4 rounded-full bg-gradient-to-b from-indigo-500 to-purple-500" />
