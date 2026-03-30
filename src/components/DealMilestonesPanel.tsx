@@ -182,6 +182,27 @@ export function DealMilestonesPanel() {
         })}
       </div>
 
+      {/* Key Details Card */}
+      <div className="mt-5 rounded-xl p-4 space-y-0" style={{ backgroundColor: '#0F172A' }}>
+        {[
+          { label: 'Earnest Money', value: '$8,500' },
+          { label: 'Contingency Deadline', value: 'Apr 2, 2026' },
+          { label: 'Closing Date', value: 'Apr 10, 2026' },
+          { label: 'Cash to Close', value: '$97,200' },
+        ].map((item, i, arr) => (
+          <div
+            key={item.label}
+            className={cn(
+              'flex items-center justify-between py-2.5',
+              i < arr.length - 1 && 'border-b border-[#1E293B]'
+            )}
+          >
+            <span className="text-[12px]" style={{ color: '#94A3B8' }}>{item.label}</span>
+            <span className="text-[13px] font-semibold tabular-nums" style={{ color: '#E2E8F0' }}>{item.value}</span>
+          </div>
+        ))}
+      </div>
+
       {/* Share + Footer */}
       <div className="mt-4 pt-3 border-t border-[#334155]">
         <ShareButton />
