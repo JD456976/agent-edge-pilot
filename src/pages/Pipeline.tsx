@@ -36,9 +36,10 @@ function formatCurrency(n: number) {
 interface DealCardProps {
   deal: Deal;
   onClick: () => void;
+  onProbabilityChange: (dealId: string, value: number) => void;
 }
 
-function DealCard({ deal, onClick }: DealCardProps) {
+function DealCard({ deal, onClick, onProbabilityChange }: DealCardProps) {
   const userComm = deal.userCommission ?? (() => {
     if (import.meta.env.DEV) {
       console.warn(`[DealCard] userCommission missing for deal "${deal.id}", falling back to $0`);
@@ -46,6 +47,7 @@ function DealCard({ deal, onClick }: DealCardProps) {
     return 0;
   })();
   const totalComm = deal.commission;
+  const prob = deal.closeProbability ?? 70;
 
   return (
     <button onClick={onClick} className="w-full text-left p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors space-y-2">
@@ -72,6 +74,23 @@ function DealCard({ deal, onClick }: DealCardProps) {
             {deal.riskLevel === 'red' ? 'Risk' : deal.riskLevel === 'yellow' ? 'Watch' : 'Good'}
           </Badge>
         </div>
+      </div>
+      {/* Close probability inline */}
+      <div className="flex items-center gap-2 pt-1" onClick={e => e.stopPropagation()}>
+        <span className="text-[10px] text-muted-foreground whitespace-nowrap">Close prob.</span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={5}
+          value={prob}
+          onChange={e => onProbabilityChange(deal.id, parseInt(e.target.value))}
+          className="flex-1 h-1 accent-indigo-500 cursor-pointer"
+        />
+        <span className={cn(
+          'text-[11px] font-semibold tabular-nums w-8 text-right',
+          prob >= 70 ? 'text-emerald-400' : prob >= 40 ? 'text-amber-400' : 'text-muted-foreground'
+        )}>{prob}%</span>
       </div>
     </button>
   );
