@@ -1,14 +1,13 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useAutoSync, type SyncConflict } from '@/hooks/useAutoSync';
 
-interface SyncContextValue {
-  syncing: boolean;
-  conflicts: SyncConflict[];
-  lastResult: ReturnType<typeof useAutoSync>['lastResult'];
+export interface SyncContextValue {
   lastSyncedAt: Date | null;
+  isSyncing: boolean;
+  conflicts: SyncConflict[];
   intervalMinutes: number;
   setIntervalMinutes: (m: number) => void;
-  runSync: (silent?: boolean) => Promise<void>;
+  syncNow: (silent?: boolean) => Promise<void>;
   resolveConflict: (conflict: SyncConflict, choice: 'keep_fub' | 'keep_dp') => Promise<void>;
   dismissConflict: (conflict: SyncConflict) => void;
 }
@@ -18,8 +17,19 @@ const SyncContext = createContext<SyncContextValue | null>(null);
 export function SyncProvider({ children, onSyncComplete }: { children: ReactNode; onSyncComplete?: () => void }) {
   const sync = useAutoSync(onSyncComplete);
 
+  const value = useMemo<SyncContextValue>(() => ({
+    lastSyncedAt: sync.lastSyncedAt,
+    isSyncing: sync.syncing,
+    conflicts: sync.conflicts,
+    intervalMinutes: sync.intervalMinutes,
+    setIntervalMinutes: sync.setIntervalMinutes,
+    syncNow: sync.runSync,
+    resolveConflict: sync.resolveConflict,
+    dismissConflict: sync.dismissConflict,
+  }), [sync.lastSyncedAt, sync.syncing, sync.conflicts, sync.intervalMinutes, sync.setIntervalMinutes, sync.runSync, sync.resolveConflict, sync.dismissConflict]);
+
   return (
-    <SyncContext.Provider value={sync}>
+    <SyncContext.Provider value={value}>
       {children}
     </SyncContext.Provider>
   );
