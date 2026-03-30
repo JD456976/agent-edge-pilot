@@ -296,10 +296,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      {/* Mobile bottom tabs — scrollable to fit all pages */}
+      {/* Mobile bottom tabs — 4 main + Tools drawer */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 border-t border-border bg-card z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-        <div className="flex items-center h-14 px-1 overflow-x-auto no-scrollbar">
-          {items.map(item => {
+        <div className="flex items-center h-14 px-1">
+          {MOBILE_MAIN_TABS.map(item => {
             const key = item.workspace ?? item.path ?? 'home';
             return (
               <button
@@ -307,7 +307,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 onClick={() => handleNavClick(item)}
                 aria-label={item.label}
                 className={cn(
-                  'flex flex-col items-center gap-0.5 py-1 rounded-lg transition-colors min-w-0 min-h-[44px] justify-center flex-1 min-w-[56px]',
+                  'flex flex-col items-center gap-0.5 py-1 rounded-lg transition-colors min-h-[44px] justify-center flex-1',
                   isActive(item) && 'text-primary',
                   !isActive(item) && 'text-muted-foreground'
                 )}
@@ -317,6 +317,46 @@ export function AppLayout({ children }: { children: ReactNode }) {
               </button>
             );
           })}
+          {/* Tools drawer trigger */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <button
+                aria-label="Tools"
+                className={cn(
+                  'flex flex-col items-center gap-0.5 py-1 rounded-lg transition-colors min-h-[44px] justify-center flex-1',
+                  TOOLS_ITEMS.some(t => activeWorkspace === t.workspace) ? 'text-primary' : 'text-muted-foreground'
+                )}
+              >
+                <Wrench className="h-5 w-5" />
+                <span className="text-[10px] font-medium">Tools</span>
+              </button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="rounded-t-2xl">
+              <SheetHeader>
+                <SheetTitle>Tools</SheetTitle>
+              </SheetHeader>
+              <div className="grid gap-2 py-4">
+                {TOOLS_ITEMS.map(tool => (
+                  <button
+                    key={tool.workspace}
+                    onClick={() => {
+                      openWorkspace(tool.workspace);
+                      // Close sheet by clicking away — Sheet auto-closes on interaction
+                    }}
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors min-h-[48px]',
+                      activeWorkspace === tool.workspace
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-foreground hover:bg-accent'
+                    )}
+                  >
+                    <tool.icon className="h-5 w-5" />
+                    {tool.label}
+                  </button>
+                ))}
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </nav>
 
