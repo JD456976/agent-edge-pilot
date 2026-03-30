@@ -1,4 +1,4 @@
-import { Check, Circle, Clock, Home } from 'lucide-react';
+import { Check, Circle, Clock, Home, Phone, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
@@ -75,6 +75,25 @@ export function DealMilestonesPanel() {
         <span className="shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
           Under Contract
         </span>
+      </div>
+
+      {/* Agent Card */}
+      <div className="flex items-center gap-3 mb-5 p-3 rounded-xl" style={{ backgroundColor: '#0F172A' }}>
+        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 shrink-0">
+          <span className="text-sm font-bold text-white">JR</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-semibold" style={{ color: '#E2E8F0' }}>Jason Rodriguez</p>
+          <p className="text-[11px]" style={{ color: '#64748B' }}>Your agent</p>
+        </div>
+        <div className="flex gap-1.5 shrink-0">
+          <a href="tel:+15551234567" className="flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 transition-colors">
+            <Phone className="w-4 h-4 text-indigo-400" />
+          </a>
+          <a href="mailto:jason@example.com" className="flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 transition-colors">
+            <Mail className="w-4 h-4 text-indigo-400" />
+          </a>
+        </div>
       </div>
 
       {/* Timeline */}
