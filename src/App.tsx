@@ -124,11 +124,13 @@ function WorkspaceOverlays() {
 function AppRoutes() {
   const { user, loading } = useAuth();
   const VisitorIntakeLazy = React.lazy(() => import('@/pages/VisitorIntake'));
+  const ClientPortalLazy = React.lazy(() => import('@/pages/ClientPortal'));
   return (
     <Routes>
       <Route path="/login" element={loading ? null : (user ? <Navigate to="/" replace /> : <Login />)} />
       <Route path="/" element={<ProtectedRoute><BetaHomeScreen /></ProtectedRoute>} />
       <Route path="/visit/:token" element={<React.Suspense fallback={<div className="min-h-screen bg-background" />}><VisitorIntakeLazy /></React.Suspense>} />
+      <Route path="/portal/:token" element={<React.Suspense fallback={<div className="min-h-screen" style={{ backgroundColor: '#0F172A' }} />}><ClientPortalLazy /></React.Suspense>} />
       <Route path="/pipeline" element={<Navigate to="/?workspace=work" replace />} />
       <Route path="/tasks" element={<Navigate to="/?workspace=work" replace />} />
       <Route path="/settings" element={<Navigate to="/?workspace=settings" replace />} />
