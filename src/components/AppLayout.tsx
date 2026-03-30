@@ -24,7 +24,7 @@ import { GuidedTour } from '@/components/GuidedTour';
 import { WhatsNewModal } from '@/components/WhatsNewModal';
 import { SyncStatusIndicator } from '@/components/SyncStatusIndicator';
 import { SyncConflictDrawer } from '@/components/SyncConflictDrawer';
-import { useAutoSync } from '@/hooks/useAutoSync';
+import { AutoSyncProvider, useAutoSyncContext } from '@/contexts/AutoSyncContext';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { usePushNotifications, checkOverdueTasks } from '@/hooks/usePushNotifications';
 import { KeyboardShortcutHint } from '@/components/KeyboardShortcutHint';
@@ -111,7 +111,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { canWrite, entitlementState } = useEntitlement();
   const [showPaywall, setShowPaywall] = useState(false);
   const [showConflicts, setShowConflicts] = useState(false);
-  const { syncing, conflicts, runSync, resolveConflict, dismissConflict } = useAutoSync(refreshData);
+  const { syncing, conflicts, runSync, resolveConflict, dismissConflict } = useAutoSyncContext();
 
   // Auto-open conflict drawer when conflicts arrive
   useEffect(() => {

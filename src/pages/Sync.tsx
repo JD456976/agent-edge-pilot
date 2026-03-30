@@ -31,7 +31,7 @@ import { BulkFubPushModal } from '@/components/BulkFubPushModal';
 import { FubSyncActivityLog } from '@/components/FubSyncActivityLog';
 import { SyncConflictDrawer } from '@/components/SyncConflictDrawer';
 import { useData } from '@/contexts/DataContext';
-import { useAutoSync, SYNC_INTERVAL_OPTIONS } from '@/hooks/useAutoSync';
+import { useAutoSyncContext, SYNC_INTERVAL_OPTIONS } from '@/contexts/AutoSyncContext';
 
 interface IntegrationState {
   status: 'disconnected' | 'connected' | 'invalid' | 'error';
@@ -92,7 +92,7 @@ export default function Sync() {
     runSync,
     resolveConflict,
     dismissConflict,
-  } = useAutoSync(refreshData);
+  } = useAutoSyncContext();
 
   // Auto-open conflict drawer when new conflicts arrive
   useEffect(() => {
