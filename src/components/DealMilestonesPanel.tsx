@@ -1,6 +1,8 @@
-import { Check, Circle, Clock, Home, Phone, Mail } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Check, Circle, Clock, Home, Phone, Mail, Share2, Copy, CheckCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { toast } from '@/hooks/use-toast';
 
 type StageStatus = 'done' | 'active' | 'pending';
 
@@ -170,12 +172,58 @@ export function DealMilestonesPanel() {
         })}
       </div>
 
-      {/* Footer */}
-      <div className="mt-4 pt-3 border-t border-[#334155] flex items-center justify-center gap-1.5 text-[10px]" style={{ color: '#64748B' }}>
-        <span>Updated {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-        <span>·</span>
-        <span className="font-medium" style={{ color: '#818CF8' }}>Powered by Deal Pilot</span>
+      {/* Share + Footer */}
+      <div className="mt-4 pt-3 border-t border-[#334155]">
+        <ShareButton />
+        <div className="flex items-center justify-center gap-1.5 text-[10px] mt-3" style={{ color: '#64748B' }}>
+          <span>Updated {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+          <span>·</span>
+          <span className="font-medium" style={{ color: '#818CF8' }}>Powered by Deal Pilot</span>
+        </div>
       </div>
     </div>
+  );
+}
+
+function ShareButton() {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = useCallback(async () => {
+    // Generate a demo token for now
+    const demoToken = 'demo-' + Math.random().toString(36).slice(2, 10);
+    const origin = window.location.hostname === 'localhost'
+      ? window.location.origin
+      : 'https://deal-pilot-cr.lovable.app';
+    const url = `${origin}/portal/${demoToken}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Your Deal Status', url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        toast({ description: 'Portal link copied to clipboard' });
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast({ description: 'Portal link copied to clipboard' });
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, []);
+
+  return (
+    <button
+      onClick={handleShare}
+      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium transition-all"
+      style={{
+        background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
+        color: '#FFFFFF',
+      }}
+    >
+      {copied ? <CheckCheck className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+      {copied ? 'Link Copied!' : 'Share with Client'}
+    </button>
   );
 }
