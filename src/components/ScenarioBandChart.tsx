@@ -27,7 +27,7 @@ function formatK(n: number) {
 export function ScenarioBandChart({ deals, participants, userId, annualTarget }: Props) {
   const data = useMemo(() => {
     const now = new Date();
-    const activeDeals = deals.filter(d => d.stage !== 'closed' && d.stage !== 'cancelled');
+    const activeDeals = deals.filter(d => d.stage !== 'closed');
     const closedDeals = deals.filter(d => d.stage === 'closed');
 
     // Build 6-month projection
@@ -38,7 +38,7 @@ export function ScenarioBandChart({ deals, participants, userId, annualTarget }:
       const m = new Date(now.getFullYear(), now.getMonth() + offset, 1);
       const mEnd = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
       const closedInMonth = closedDeals.filter(d => {
-        const cd = new Date(d.closedAt || d.closeDate);
+        const cd = new Date(d.closeDate);
         return cd >= m && cd <= mEnd;
       });
       const total = closedInMonth.reduce((s, d) => s + (d.userCommission ?? d.commission ?? 0), 0);
