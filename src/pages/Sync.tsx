@@ -93,7 +93,7 @@ export default function Sync() {
     runSync,
     resolveConflict,
     dismissConflict,
-  } = useAutoSyncContext();
+  } = useSyncContext();
 
   // Auto-open conflict drawer when new conflicts arrive
   useEffect(() => {

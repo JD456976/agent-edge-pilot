@@ -201,7 +201,7 @@ export default function BetaHomeScreen() {
   const { user } = useAuth();
   const { leads, deals, tasks, alerts, dealParticipants, hasData, loading, seedDemoData, refreshData } = useData();
   const { openWorkspace } = useWorkspace();
-  const { syncing } = useAutoSyncContext();
+  const { syncing } = useSyncContext();
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [targetMarket, setTargetMarket] = useState<TargetMarket>({ zipCodes: [], minPrice: null });
   const [incomeExpanded, setIncomeExpanded] = useState(false);
