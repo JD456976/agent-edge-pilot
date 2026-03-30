@@ -85,12 +85,12 @@ export default function Sync() {
 
   // Auto-sync — wired into the same hook AppLayout uses
   const {
-    syncing: autoSyncing,
+    isSyncing: autoSyncing,
     conflicts,
     lastSyncedAt,
     intervalMinutes,
     setIntervalMinutes,
-    runSync,
+    syncNow: runSync,
     resolveConflict,
     dismissConflict,
   } = useSyncContext();
