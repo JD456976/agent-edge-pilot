@@ -312,6 +312,11 @@ export default function Pipeline() {
     })();
   }, []);
 
+  const handleProbabilityChange = useCallback(async (dealId: string, value: number) => {
+    await supabase.from('deals').update({ close_probability: value } as any).eq('id', dealId);
+    refreshData();
+  }, [refreshData]);
+
   const handleCommissionSave = async (dealId: string, state: DealCommissionState, participantEdits: ParticipantEdit[]) => {
     // Update deal-level commission fields
     const commissionAmount = state.commissionType === 'percentage'
@@ -397,7 +402,7 @@ export default function Pipeline() {
                 {stageDeals.length === 0 ? (
                   <div className="border border-dashed border-border rounded-lg py-8 text-center text-xs text-muted-foreground">No deals</div>
                 ) : (
-                  stageDeals.map(deal => <DealCard key={deal.id} deal={deal} onClick={() => setSelectedDeal(deal)} />)
+                  stageDeals.map(deal => <DealCard key={deal.id} deal={deal} onClick={() => setSelectedDeal(deal)} onProbabilityChange={handleProbabilityChange} />)
                 )}
               </div>
             </div>
