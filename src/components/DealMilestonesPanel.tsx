@@ -132,6 +132,13 @@ export function DealMilestonesPanel() {
           );
         })}
       </div>
+
+      {/* Footer */}
+      <div className="mt-4 pt-3 border-t border-[#334155] flex items-center justify-center gap-1.5 text-[10px]" style={{ color: '#64748B' }}>
+        <span>Updated {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+        <span>·</span>
+        <span className="font-medium" style={{ color: '#818CF8' }}>Powered by Deal Pilot</span>
+      </div>
     </div>
   );
 }
