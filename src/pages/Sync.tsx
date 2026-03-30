@@ -31,7 +31,8 @@ import { BulkFubPushModal } from '@/components/BulkFubPushModal';
 import { FubSyncActivityLog } from '@/components/FubSyncActivityLog';
 import { SyncConflictDrawer } from '@/components/SyncConflictDrawer';
 import { useData } from '@/contexts/DataContext';
-import { useAutoSyncContext, SYNC_INTERVAL_OPTIONS } from '@/contexts/AutoSyncContext';
+import { useSyncContext } from '@/contexts/SyncContext';
+import { SYNC_INTERVAL_OPTIONS } from '@/hooks/useAutoSync';
 
 interface IntegrationState {
   status: 'disconnected' | 'connected' | 'invalid' | 'error';

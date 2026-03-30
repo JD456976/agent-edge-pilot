@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
-import { useAutoSyncContext } from '@/contexts/AutoSyncContext';
+import { useSyncContext } from '@/contexts/SyncContext';
 import { supabase } from '@/integrations/supabase/client';
 import { BetaGettingStarted } from '@/components/BetaGettingStarted';
 import { IncomeControlMeter } from '@/components/IncomeControlMeter';
