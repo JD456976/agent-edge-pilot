@@ -66,6 +66,7 @@ function mapDeal(row: any, userCommission?: number): Deal {
     importedFrom: row.imported_from || null,
     importRunId: row.import_run_id || null,
     importedAt: row.imported_at || null,
+    closeProbability: row.close_probability != null ? Number(row.close_probability) : 70,
   };
 }
 
@@ -117,6 +118,7 @@ function buildDealForResolver(dealRow: any): Deal {
       financing: dealRow.milestone_financing || 'unknown',
       appraisal: dealRow.milestone_appraisal || 'unknown',
     },
+    closeProbability: dealRow.close_probability != null ? Number(dealRow.close_probability) : 70,
   };
 }
 

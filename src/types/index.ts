@@ -72,6 +72,8 @@ export interface Deal {
   personalCommissionWarnings?: string[];
   /** Full resolution detail object */
   personalCommissionDetails?: Record<string, unknown>;
+  /** Close probability 0-100, default 70 */
+  closeProbability?: number;
 }
 
 export interface DealParticipant {
