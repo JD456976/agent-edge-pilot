@@ -5,6 +5,7 @@ import { PanelErrorBoundary } from '@/components/ErrorBoundary';
 import { IncomeForecastPanelV2 } from '@/components/IncomeForecastPanelV2';
 import { LeadSourceROIPanel } from '@/components/LeadSourceROIPanel';
 import { CommissionForecastBySource } from '@/components/CommissionForecastBySource';
+import { ScenarioBandChart } from '@/components/ScenarioBandChart';
 import { StabilityScorePanelV2 } from '@/components/StabilityScorePanelV2';
 import { IncomeVolatilityPanel } from '@/components/IncomeVolatilityPanel';
 import { PipelineFragilityPanel } from '@/components/PipelineFragilityPanel';
@@ -147,6 +148,14 @@ export default function Insights() {
 
       {tab === 'Forecast' && (
         <div className="space-y-4">
+          <PanelErrorBoundary>
+            <ScenarioBandChart
+              deals={deals}
+              participants={dealParticipants}
+              userId={user?.id || ''}
+              annualTarget={userDefaults?.typicalPriceMid ? Math.round((userDefaults.typicalPriceMid * (userDefaults.typicalCommissionRate ?? 3) / 100) * (userDefaults.typicalSplitPct ?? 100) / 100 * 12) : undefined}
+            />
+          </PanelErrorBoundary>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <PanelErrorBoundary>
               <IncomeForecastPanelV2
