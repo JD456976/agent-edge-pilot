@@ -214,6 +214,23 @@ function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAd
           <div className="flex justify-between"><span className="text-muted-foreground">Close Date</span><span>{new Date(deal.closeDate).toLocaleDateString()}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Risk</span><Badge variant={riskVariant[deal.riskLevel]}>{deal.riskLevel}</Badge></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Stage</span><span className="capitalize">{deal.stage.replace('_', ' ')}</span></div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Close Probability</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={deal.closeProbability ?? 70}
+                onChange={async (e) => {
+                  const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                  await supabase.from('deals').update({ close_probability: val } as any).eq('id', deal.id);
+                }}
+                className="w-14 text-right text-sm font-medium bg-transparent border border-border rounded px-1.5 py-0.5 focus:outline-none focus:border-primary"
+              />
+              <span className="text-muted-foreground text-xs">%</span>
+            </div>
+          </div>
           {deal.importedFrom && (
             <div className="pt-2">
               <ImportSourceBadge importedFrom={deal.importedFrom} importedAt={deal.importedAt} importRunId={deal.importRunId} />
