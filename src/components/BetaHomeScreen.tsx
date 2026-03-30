@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
-import { useAutoSync } from '@/hooks/useAutoSync';
+import { useAutoSyncContext } from '@/contexts/AutoSyncContext';
 import { supabase } from '@/integrations/supabase/client';
 import { BetaGettingStarted } from '@/components/BetaGettingStarted';
 import { IncomeControlMeter } from '@/components/IncomeControlMeter';
@@ -200,7 +200,7 @@ export default function BetaHomeScreen() {
   const { user } = useAuth();
   const { leads, deals, tasks, alerts, dealParticipants, hasData, loading, seedDemoData, refreshData } = useData();
   const { openWorkspace } = useWorkspace();
-  const { syncing } = useAutoSync(refreshData);
+  const { syncing } = useAutoSyncContext();
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [targetMarket, setTargetMarket] = useState<TargetMarket>({ zipCodes: [], minPrice: null });
   const [incomeExpanded, setIncomeExpanded] = useState(false);
