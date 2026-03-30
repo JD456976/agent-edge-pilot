@@ -102,7 +102,7 @@ function CollapsibleUtilities({ toggleTheme, theme, handleLogout }: { toggleThem
   );
 }
 
-export function AppLayout({ children }: { children: ReactNode }) {
+function AppLayoutInner({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { activeWorkspace, openWorkspace, closeWorkspace } = useWorkspace();
@@ -427,5 +427,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
         />
       )}
     </div>
+  );
+}
+
+export function AppLayout({ children }: { children: ReactNode }) {
+  const { refreshData } = useData();
+  return (
+    <AutoSyncProvider onSyncComplete={refreshData}>
+      <AppLayoutInner>{children}</AppLayoutInner>
+    </AutoSyncProvider>
   );
 }
