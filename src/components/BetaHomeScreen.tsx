@@ -287,6 +287,9 @@ function useTimeIntelligence(leads: Lead[], deals: Deal[], tasks: Task[]) {
     // Snoozed leads
     const snoozedLeads = leads.filter(l => l.snoozeUntil && new Date(l.snoozeUntil) > now);
 
+    // Leads touched today
+    const touchedToday = leads.filter(l => l.lastTouchedAt && new Date(l.lastTouchedAt) >= todayStart);
+
     return {
       scoredLeads,
       hotLeads,
@@ -302,6 +305,7 @@ function useTimeIntelligence(leads: Lead[], deals: Deal[], tasks: Task[]) {
       untouchedRiskDeals,
       untouchedHotLeads,
       snoozedLeads,
+      touchedToday,
     };
   }, [leads, deals, tasks]);
 }
