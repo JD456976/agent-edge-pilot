@@ -903,6 +903,9 @@ export default function BetaHomeScreen() {
           targetMarket={targetMarket}
         />
       )}
+      {currentMode === 'night' && (
+        <NightMode intel={intel} />
+      )}
 
       {/* Snoozed leads — all modes */}
       {intel.snoozedLeads.length > 0 && (
