@@ -767,6 +767,147 @@ function PipelineSection({ leads, targetMarket, onTap, label }: {
   );
 }
 
+// ── Directive Brief Card ────────────────────────────────────────────
+
+function DirectiveBriefCard({ mode, leads, ccData, onLeadAction }: {
+  mode: string;
+  leads: Lead[];
+  ccData: any;
+  onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email' | 'snooze') => void;
+}) {
+  const now = new Date();
+  const firstName = ccData?.agentProfile?.user_id ? undefined : undefined; // not available here, handled in parent
+  const today = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  if (mode === 'morning') {
+    const top3 = [...leads]
+      .filter(l => !l.snoozeUntil || new Date(l.snoozeUntil) <= now)
+      .sort((a, b) => (b.engagementScore || 0) - (a.engagementScore || 0))
+      .slice(0, 3);
+
+    const hasHighRisk = top3.some(l => {
+      const risk = computeRisk(l, getLeadHeatScore(l));
+      return risk.level === 'high';
+    });
+
+    return (
+      <div
+        className="rounded-xl p-4 space-y-3"
+        style={{
+          background: 'linear-gradient(#0F172A,#0F172A) padding-box, linear-gradient(to right,#6366f1,#9333ea) border-box',
+          border: '1px solid transparent',
+        }}
+      >
+        <p className="text-xs text-muted-foreground">{today}</p>
+        <h2 className="text-sm font-bold flex items-center gap-2">
+          <Target className="h-4 w-4 text-primary" /> Your 3 Moves Today
+        </h2>
+
+        <ol className="space-y-2">
+          {top3.map((lead, i) => {
+            const daysSince = lead.lastTouchedAt
+              ? Math.floor((now.getTime() - new Date(lead.lastTouchedAt).getTime()) / 86400000)
+              : null;
+            return (
+              <li key={lead.id} className="flex items-start gap-2 text-sm">
+                <span className="text-xs font-bold text-primary mt-0.5 shrink-0">{i + 1}.</span>
+                <div className="min-w-0 flex-1">
+                  <span className="font-medium">{lead.name}</span>
+                  <span className="text-xs text-muted-foreground ml-1.5">
+                    Score {lead.engagementScore || 0} · {lead.source || 'Direct'} · {daysSince !== null ? `${daysSince}d ago` : 'never contacted'}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+          {top3.length === 0 && (
+            <li className="text-sm text-muted-foreground">No active leads yet.</li>
+          )}
+        </ol>
+
+        {ccData.totalRevenue > 0 && (
+          <p className="text-xs text-muted-foreground">
+            <DollarSign className="h-3 w-3 inline -mt-0.5 text-opportunity" /> {formatCurrency(ccData.totalRevenue)} active pipeline revenue
+          </p>
+        )}
+
+        {hasHighRisk && (
+          <div className="flex items-center gap-1.5 text-xs text-urgent font-medium">
+            <ShieldAlert className="h-3.5 w-3.5" /> A top lead has high risk — act fast
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (mode === 'midday') {
+    const eightHoursAgo = new Date(now.getTime() - 8 * 60 * 60 * 1000);
+    const quietLeads = leads.filter(l => {
+      if (l.snoozeUntil && new Date(l.snoozeUntil) > now) return false;
+      if (!l.lastTouchedAt) return true;
+      return new Date(l.lastTouchedAt) < eightHoursAgo;
+    });
+    const staleTop = [...quietLeads].sort((a, b) => (b.engagementScore || 0) - (a.engagementScore || 0))[0] || null;
+
+    return (
+      <div className="rounded-xl border-l-[3px] border-l-warning border border-border bg-card p-4 space-y-3">
+        {staleTop ? (
+          <>
+            <h2 className="text-sm font-bold">{staleTop.name} hasn't heard from you</h2>
+            <p className="text-xs text-muted-foreground">
+              Score {staleTop.engagementScore || 0} · Don't let that window close
+            </p>
+            <div className="flex gap-2">
+              <Button size="sm" className="h-9 text-sm rounded-xl" onClick={() => onLeadAction(staleTop, 'call')}>
+                <Phone className="h-3.5 w-3.5 mr-1" /> Call
+              </Button>
+              <Button size="sm" variant="outline" className="h-9 text-sm rounded-xl" onClick={() => onLeadAction(staleTop, 'text')}>
+                <MessageSquare className="h-3.5 w-3.5 mr-1" /> Text
+              </Button>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">All leads contacted recently — nice work.</p>
+        )}
+        {quietLeads.length > 1 && (
+          <p className="text-[11px] text-muted-foreground">{quietLeads.length} lead{quietLeads.length !== 1 ? 's' : ''} quiet for 8+ hours</p>
+        )}
+      </div>
+    );
+  }
+
+  if (mode === 'evening') {
+    const activeLeads = leads.filter(l => !l.snoozeUntil || new Date(l.snoozeUntil) <= now);
+    const hottest = [...activeLeads].sort((a, b) => (b.engagementScore || 0) - (a.engagementScore || 0))[0];
+    const leastRecent = [...activeLeads].sort((a, b) => {
+      const aT = a.lastTouchedAt ? new Date(a.lastTouchedAt).getTime() : 0;
+      const bT = b.lastTouchedAt ? new Date(b.lastTouchedAt).getTime() : 0;
+      return aT - bT;
+    })[0];
+    const rev = ccData.totalRevenue || 0;
+
+    return (
+      <div className="rounded-xl border-l-[3px] border-l-[#9333ea] border border-border bg-card p-4 space-y-2">
+        <p className="text-sm">
+          <span className="font-bold">{activeLeads.length}</span> lead{activeLeads.length !== 1 ? 's' : ''} in your pipeline
+          {hottest && <> · Hottest: <span className="font-semibold text-primary">{hottest.name}</span></>}
+        </p>
+        {leastRecent && leastRecent.id !== hottest?.id && (
+          <p className="text-xs text-muted-foreground">
+            <Sun className="h-3 w-3 inline -mt-0.5 text-warning" /> Tomorrow start with <span className="font-medium text-foreground">{leastRecent.name}</span>
+          </p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          {rev > 0 ? `${formatCurrency(rev)} pipeline — keep protecting it.` : 'Build your pipeline tomorrow.'}
+        </p>
+      </div>
+    );
+  }
+
+  // night — no extra card
+  return null;
+}
+
 // ── Main Component ──────────────────────────────────────────────────
 
 export default function BetaHomeScreen() {
