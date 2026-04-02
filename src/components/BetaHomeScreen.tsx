@@ -221,7 +221,7 @@ function ModePillSelector({ currentMode, autoMode, override, onOverride }: {
 }) {
   return (
     <div className="flex items-center gap-1 bg-muted/50 rounded-full p-0.5">
-      {(['morning', 'midday', 'evening'] as const).map(mode => {
+      {(['morning', 'midday', 'evening', 'night'] as const).map(mode => {
         const cfg = MODE_CONFIG[mode];
         const Icon = cfg.icon;
         const active = currentMode === mode;
