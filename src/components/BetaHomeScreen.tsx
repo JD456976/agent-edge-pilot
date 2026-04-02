@@ -660,6 +660,21 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
             <p className="text-[10px] text-muted-foreground">Deals at Risk</p>
           </div>
         </div>
+        {/* Leads touched today */}
+        {intel.touchedToday.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{intel.touchedToday.length}</span> lead{intel.touchedToday.length !== 1 ? 's' : ''} touched today
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {intel.touchedToday.map(l => (
+                <span key={l.id} className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-[11px] font-medium text-foreground">
+                  {l.name.split(' ')[0]} {l.name.split(' ')[1]?.[0] ? `${l.name.split(' ')[1][0]}.` : ''}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tomorrow's Top Priority */}
