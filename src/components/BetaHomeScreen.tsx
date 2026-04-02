@@ -844,7 +844,7 @@ export default function BetaHomeScreen() {
       {/* Daily Briefing */}
       <div className="rounded-xl border border-border bg-card p-3.5 flex items-start gap-3">
         <span className="text-xl leading-none mt-0.5">{briefing.icon}</span>
-        <p className="text-sm text-foreground leading-relaxed" style={{ minFontSize: 15 }}>{briefing.text}</p>
+        <p className="text-sm text-foreground leading-relaxed min-[0px]:text-[15px]">{briefing.text}</p>
       </div>
 
       {/* Getting Started */}
