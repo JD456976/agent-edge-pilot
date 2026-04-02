@@ -23,6 +23,7 @@ import { useSessionMode, useSessionStartRisk } from '@/hooks/useSessionMode';
 import { toast } from '@/hooks/use-toast';
 import type { Lead, Deal, Task } from '@/types';
 import { computeRisk, RiskDot, RiskPanel } from '@/components/DealRiskRadar';
+import { getDailyBriefing } from '@/lib/dailyIntelligence';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -766,6 +767,7 @@ export default function BetaHomeScreen() {
 
   const ccData = useCommandCenterData(user?.id, leads, deals, tasks, alerts, dealParticipants, hasData);
   const intel = useTimeIntelligence(leads, deals, tasks);
+  const briefing = useMemo(() => getDailyBriefing(ccData.panels, tasks, deals, leads), [ccData.panels, tasks, deals, leads]);
 
   const priorityLead = intel.scoredLeads[0] || null;
   const hasFubConnected = ccData.hasFubIntegration;
@@ -837,6 +839,12 @@ export default function BetaHomeScreen() {
           />
           <SyncDot syncing={syncing} lastSync={lastSync} />
         </div>
+      </div>
+
+      {/* Daily Briefing */}
+      <div className="rounded-xl border border-border bg-card p-3.5 flex items-start gap-3">
+        <span className="text-xl leading-none mt-0.5">{briefing.icon}</span>
+        <p className="text-sm text-foreground leading-relaxed min-[0px]:text-[15px]">{briefing.text}</p>
       </div>
 
       {/* Getting Started */}
