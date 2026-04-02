@@ -493,8 +493,8 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
             <CloudSun className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <h2 className="text-sm font-bold">Midday Checkpoint</h2>
-            <p className="text-[11px] text-muted-foreground">How your day is tracking</p>
+            <h2 className="text-sm font-bold">Here's what's changed</h2>
+            <p className="text-[11px] text-muted-foreground">Since this morning</p>
           </div>
         </div>
 
@@ -818,7 +818,7 @@ export default function BetaHomeScreen() {
   // Mode greeting
   const greetings = {
     morning: `Good morning, ${user?.name?.split(' ')[0] || 'Agent'}`,
-    midday: `Afternoon check-in`,
+    midday: `Here's what's changed`,
     evening: `Evening wrap-up`,
   };
 
