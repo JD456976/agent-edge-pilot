@@ -841,6 +841,12 @@ export default function BetaHomeScreen() {
         </div>
       </div>
 
+      {/* Daily Briefing */}
+      <div className="rounded-xl border border-border bg-card p-3.5 flex items-start gap-3">
+        <span className="text-xl leading-none mt-0.5">{briefing.icon}</span>
+        <p className="text-sm text-foreground leading-relaxed" style={{ minFontSize: 15 }}>{briefing.text}</p>
+      </div>
+
       {/* Getting Started */}
       <BetaGettingStarted
         hasFubConnected={hasFubConnected}
