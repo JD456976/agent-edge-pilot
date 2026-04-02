@@ -210,6 +210,7 @@ const MODE_CONFIG = {
   morning: { icon: Sun, label: 'Morning', color: 'text-warning' },
   midday: { icon: CloudSun, label: 'Midday', color: 'text-primary' },
   evening: { icon: Moon, label: 'Evening', color: 'text-muted-foreground' },
+  night: { icon: Moon, label: 'Night', color: 'text-muted-foreground' },
 } as const;
 
 function ModePillSelector({ currentMode, autoMode, override, onOverride }: {
