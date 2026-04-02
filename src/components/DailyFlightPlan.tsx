@@ -48,6 +48,7 @@ const MODE_FOCUS: Record<SessionMode, { primary: FlightStep['category']; descrip
   morning: { primary: 'create', description: 'Focus on outreach and opportunity creation' },
   midday: { primary: 'protect', description: 'Focus on negotiations and deal movement' },
   evening: { primary: 'maintain', description: 'Focus on planning and cleanup' },
+  night: { primary: 'maintain', description: 'Rest up — tomorrow starts fresh' },
 };
 
 export function DailyFlightPlan({ deals, leads, tasks, moneyResults, opportunityResults, stabilityResult, totalMoneyAtRisk, sessionMode, onStartAction, onOpenExecution }: Props) {
