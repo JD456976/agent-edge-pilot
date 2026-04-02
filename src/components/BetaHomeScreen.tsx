@@ -767,6 +767,7 @@ export default function BetaHomeScreen() {
 
   const ccData = useCommandCenterData(user?.id, leads, deals, tasks, alerts, dealParticipants, hasData);
   const intel = useTimeIntelligence(leads, deals, tasks);
+  const briefing = useMemo(() => getDailyBriefing(ccData.panels, tasks, deals, leads), [ccData.panels, tasks, deals, leads]);
 
   const priorityLead = intel.scoredLeads[0] || null;
   const hasFubConnected = ccData.hasFubIntegration;
