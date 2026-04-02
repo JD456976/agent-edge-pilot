@@ -129,6 +129,29 @@ function PriorityLeadCard({ lead, score, onAction, onTapName }: {
   );
 }
 
+function getClientVerdict(lead: Lead, score: number, riskLevel: string): { text: string; color: string } {
+  const daysSinceContact = lead.lastTouchedAt
+    ? Math.floor((Date.now() - new Date(lead.lastTouchedAt).getTime()) / 86400000)
+    : null;
+  const hasIntentTags = lead.statusTags?.some(t =>
+    ['pre-approved', 'pre_approved', 'showing', 'appointment set', 'cash_buyer'].includes(t.toLowerCase())
+  );
+  const notes = (lead.notes || '').toLowerCase();
+  const hasNegativeSignal = /cancel|ghost|unresponsive|no.?show|not interested/i.test(notes);
+
+  if (hasNegativeSignal) return { text: 'Disengaging — re-qualify before investing more time', color: 'text-urgent' };
+  if (riskLevel === 'high' && daysSinceContact !== null && daysSinceContact > 7)
+    return { text: `Silent ${daysSinceContact}d — at risk of going cold`, color: 'text-urgent' };
+  if (score >= 80 && hasIntentTags) return { text: 'Serious buyer — high intent signals detected', color: 'text-opportunity' };
+  if (score >= 80) return { text: 'Highly engaged — keep momentum going', color: 'text-opportunity' };
+  if (score >= 60 && hasIntentTags) return { text: 'Engaged with intent — push toward showing', color: 'text-primary' };
+  if (score >= 60) return { text: 'Warming up — needs one more quality touch', color: 'text-primary' };
+  if (daysSinceContact === null) return { text: 'Never contacted — make first touch today', color: 'text-warning' };
+  if (daysSinceContact > 14) return { text: `No contact in ${daysSinceContact}d — likely browsing`, color: 'text-muted-foreground' };
+  if (score >= 40) return { text: 'Early stage — qualify budget and timeline', color: 'text-muted-foreground' };
+  return { text: 'Cold — low activity, low engagement', color: 'text-muted-foreground' };
+}
+
 function PipelineCard({ lead, score, outsideTarget, onTap }: {
   lead: Lead;
   score: number;
@@ -137,6 +160,7 @@ function PipelineCard({ lead, score, outsideTarget, onTap }: {
 }) {
   const [expanded, setExpanded] = useState(false);
   const risk = useMemo(() => computeRisk(lead, score), [lead, score]);
+  const verdict = useMemo(() => getClientVerdict(lead, score, risk.level), [lead, score, risk.level]);
   const borderColor = score >= 80 ? 'border-l-opportunity' : score >= 60 ? 'border-l-warning' : 'border-l-muted-foreground/30';
 
   return (
@@ -146,6 +170,7 @@ function PipelineCard({ lead, score, outsideTarget, onTap }: {
         <div className="flex-1 min-w-0 overflow-hidden">
           <button onClick={(e) => { e.stopPropagation(); onTap(); }} className="text-sm font-medium truncate block w-full text-primary hover:underline text-left">{lead.name}</button>
           <p className="text-[13px] text-muted-foreground truncate">{lead.source || 'Direct'}</p>
+          <p className={cn('text-[11px] truncate mt-0.5', verdict.color)}>{verdict.text}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end max-w-[45%]">
           {outsideTarget && (
