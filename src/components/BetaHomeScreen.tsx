@@ -258,7 +258,7 @@ function useTimeIntelligence(leads: Lead[], deals: Deal[], tasks: Task[]) {
     const warmLeads = scoredLeads.filter(s => s.score >= 50 && s.score < 75);
 
     // Deal intelligence
-    const activeDeals = deals.filter(d => d.stage !== 'closed' && d.stage !== 'cancelled');
+    const activeDeals = deals.filter(d => d.stage !== 'closed');
     const riskDeals = activeDeals.filter(d => d.riskLevel === 'red' || d.riskLevel === 'yellow');
     const closingSoonDeals = activeDeals.filter(d => {
       const daysToClose = (new Date(d.closeDate).getTime() - now.getTime()) / 86400000;
