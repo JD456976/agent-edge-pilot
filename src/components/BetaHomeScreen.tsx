@@ -828,10 +828,11 @@ export default function BetaHomeScreen() {
   }
 
   // Mode greeting
-  const greetings = {
+  const greetings: Record<string, string> = {
     morning: `Good morning, ${user?.name?.split(' ')[0] || 'Agent'}`,
     midday: `Here's what's changed`,
     evening: `Evening wrap-up`,
+    night: `You're off the clock`,
   };
 
   return (
