@@ -210,6 +210,7 @@ const MODE_CONFIG = {
   morning: { icon: Sun, label: 'Morning', color: 'text-warning' },
   midday: { icon: CloudSun, label: 'Midday', color: 'text-primary' },
   evening: { icon: Moon, label: 'Evening', color: 'text-muted-foreground' },
+  night: { icon: Moon, label: 'Night', color: 'text-muted-foreground' },
 } as const;
 
 function ModePillSelector({ currentMode, autoMode, override, onOverride }: {
@@ -220,7 +221,7 @@ function ModePillSelector({ currentMode, autoMode, override, onOverride }: {
 }) {
   return (
     <div className="flex items-center gap-1 bg-muted/50 rounded-full p-0.5">
-      {(['morning', 'midday', 'evening'] as const).map(mode => {
+      {(['morning', 'midday', 'evening', 'night'] as const).map(mode => {
         const cfg = MODE_CONFIG[mode];
         const Icon = cfg.icon;
         const active = currentMode === mode;
@@ -592,6 +593,26 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
   );
 }
 
+// ── Night Mode ──────────────────────────────────────────────────────
+
+function NightMode({ intel }: { intel: ReturnType<typeof useTimeIntelligence> }) {
+  const { completedToday, touchedToday } = intel;
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border bg-card p-5 space-y-3 text-center">
+        <Moon className="h-8 w-8 text-muted-foreground mx-auto opacity-60" />
+        <h2 className="text-base font-bold">Nice work today</h2>
+        <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+          {completedToday.length > 0 && <span><span className="font-semibold text-foreground">{completedToday.length}</span> task{completedToday.length !== 1 ? 's' : ''} done</span>}
+          {touchedToday.length > 0 && <span><span className="font-semibold text-foreground">{touchedToday.length}</span> lead{touchedToday.length !== 1 ? 's' : ''} touched</span>}
+          {completedToday.length === 0 && touchedToday.length === 0 && <span>Rest up for tomorrow</span>}
+        </div>
+        <p className="text-xs text-muted-foreground pt-1">See you in the morning ☕</p>
+      </div>
+    </div>
+  );
+}
+
 // ── Evening Mode ────────────────────────────────────────────────────
 
 function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket }: {
@@ -827,10 +848,11 @@ export default function BetaHomeScreen() {
   }
 
   // Mode greeting
-  const greetings = {
+  const greetings: Record<string, string> = {
     morning: `Good morning, ${user?.name?.split(' ')[0] || 'Agent'}`,
     midday: `Here's what's changed`,
     evening: `Evening wrap-up`,
+    night: `You're off the clock`,
   };
 
   return (
@@ -900,6 +922,9 @@ export default function BetaHomeScreen() {
           onOpenWorkspace={openWorkspace}
           targetMarket={targetMarket}
         />
+      )}
+      {currentMode === 'night' && (
+        <NightMode intel={intel} />
       )}
 
       {/* Snoozed leads — all modes */}

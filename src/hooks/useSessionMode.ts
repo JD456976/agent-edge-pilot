@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 
-export type SessionMode = 'morning' | 'midday' | 'evening';
+export type SessionMode = 'morning' | 'midday' | 'evening' | 'night';
 
 const MODE_OVERRIDE_KEY = 'dp-session-mode-override';
 
@@ -9,8 +9,7 @@ function getTimeBasedMode(): SessionMode {
   if (hour >= 5 && hour < 11) return 'morning';
   if (hour >= 11 && hour < 16) return 'midday';
   if (hour >= 16 && hour < 22) return 'evening';
-  // Outside 5am-10pm: default to evening (wind-down)
-  return 'evening';
+  return 'night';
 }
 
 export function useSessionMode() {
