@@ -23,6 +23,7 @@ import { useSessionMode, useSessionStartRisk } from '@/hooks/useSessionMode';
 import { toast } from '@/hooks/use-toast';
 import type { Lead, Deal, Task } from '@/types';
 import { computeRisk, RiskDot, RiskPanel } from '@/components/DealRiskRadar';
+import { getDailyBriefing } from '@/lib/dailyIntelligence';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
