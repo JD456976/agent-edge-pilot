@@ -876,24 +876,7 @@ export default function BetaHomeScreen() {
         </div>
       </div>
 
-      {/* Daily Briefing */}
-      <div className="rounded-xl border border-border bg-card p-3.5 flex items-start gap-3">
-        <span className="text-xl leading-none mt-0.5">{briefing.icon}</span>
-        <p className="text-sm text-foreground leading-relaxed min-[0px]:text-[15px]">{briefing.text}</p>
-      </div>
-
-      {/* Getting Started */}
-      <BetaGettingStarted
-        hasFubConnected={hasFubConnected}
-        hasLeads={leads.length > 0}
-        hasDeals={deals.length > 0}
-        hasIncomeTarget={!!(ccData.strategicSettings as any)?.annualIncomeTarget}
-        onConnectCrm={() => openWorkspace('sync')}
-        onSetIncomeTarget={() => openWorkspace('settings')}
-        onLoadDemo={seedDemoData}
-      />
-
-      {/* Time-of-Day Content */}
+      {/* Time-of-Day Content — first element */}
       {currentMode === 'morning' && (
         <MorningMode
           intel={intel}
@@ -928,6 +911,23 @@ export default function BetaHomeScreen() {
       {currentMode === 'night' && (
         <NightMode intel={intel} />
       )}
+
+      {/* Daily Briefing */}
+      <div className="rounded-xl border border-border bg-card p-3.5 flex items-start gap-3">
+        <span className="text-xl leading-none mt-0.5">{briefing.icon}</span>
+        <p className="text-sm text-foreground leading-relaxed min-[0px]:text-[15px]">{briefing.text}</p>
+      </div>
+
+      {/* Getting Started */}
+      <BetaGettingStarted
+        hasFubConnected={hasFubConnected}
+        hasLeads={leads.length > 0}
+        hasDeals={deals.length > 0}
+        hasIncomeTarget={!!(ccData.strategicSettings as any)?.annualIncomeTarget}
+        onConnectCrm={() => openWorkspace('sync')}
+        onSetIncomeTarget={() => openWorkspace('settings')}
+        onLoadDemo={seedDemoData}
+      />
 
       {/* Snoozed leads — all modes */}
       {intel.snoozedLeads.length > 0 && (
