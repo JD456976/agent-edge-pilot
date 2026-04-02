@@ -494,7 +494,18 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
           </div>
           <div>
             <h2 className="text-sm font-bold">Here's what's changed</h2>
-            <p className="text-[11px] text-muted-foreground">Since this morning</p>
+            {(() => {
+              const annualTarget = (ccData?.strategicSettings as any)?.annualIncomeTarget;
+              const monthlyTarget = annualTarget ? annualTarget / 12 : 0;
+              const projectedK = totalPipelineValue >= 1000 ? `$${Math.round(totalPipelineValue / 1000)}K` : formatCurrency(totalPipelineValue);
+              const gap = monthlyTarget > 0 ? monthlyTarget - totalPipelineValue : 0;
+              const gapStr = gap > 0 ? (gap >= 1000 ? `$${Math.round(gap / 1000)}K` : formatCurrency(gap)) : null;
+              return (
+                <p className="text-[11px] text-muted-foreground">
+                  {projectedK} projected{gapStr ? <> · {gapStr} needed to hit goal</> : monthlyTarget > 0 ? ' · On track' : ''}
+                </p>
+              );
+            })()}
           </div>
         </div>
 
