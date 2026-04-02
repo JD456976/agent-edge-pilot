@@ -632,9 +632,38 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
   const { untouchedRiskDeals, untouchedHotLeads, overdueTasks, completedToday, riskDeals, hotLeads, scoredLeads } = intel;
   const hasOpenItems = untouchedRiskDeals.length > 0 || untouchedHotLeads.length > 0 || overdueTasks.length > 0;
 
+  // Build evening directives — specific actions, not counts
+  const eveningActions: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void }[] = [];
+
+  for (const d of untouchedRiskDeals.slice(0, 2)) {
+    eveningActions.push({
+      icon: Shield, color: 'text-urgent',
+      verb: `Send ${d.title.split(' ')[0]} a quick check-in text tonight`,
+      detail: `${formatCurrency(d.commission)} at risk — a 30-second text keeps this alive`,
+      actionLabel: 'Text',
+      onAction: () => onOpenWorkspace(d.id),
+    });
+  }
+  for (const { lead } of untouchedHotLeads.slice(0, 2)) {
+    eveningActions.push({
+      icon: Flame, color: 'text-opportunity',
+      verb: `Drop ${lead.name} a quick note — they're hot and waiting`,
+      detail: `${lead.source || 'Direct'} lead · hasn't heard from you today`,
+      actionLabel: 'Text',
+      onAction: () => onLeadAction(lead, 'text'),
+    });
+  }
+  if (overdueTasks.length > 0) {
+    eveningActions.push({
+      icon: AlertTriangle, color: 'text-warning',
+      verb: `Clear "${overdueTasks[0].title}" or reschedule it now`,
+      detail: `${overdueTasks.length} overdue — don't carry this into tomorrow`,
+    });
+  }
+
   return (
     <div className="space-y-4">
-      {/* End-of-Day Safety Check */}
+      {/* End-of-Day Directive */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div className="flex items-center gap-2">
           <div className={cn('h-8 w-8 rounded-full flex items-center justify-center', hasOpenItems ? 'bg-warning/15' : 'bg-opportunity/15')}>
@@ -643,37 +672,32 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
           <div>
             <h2 className="text-sm font-bold">{hasOpenItems ? 'Before You Log Off' : "You're Clear"}</h2>
             <p className="text-[11px] text-muted-foreground">
-              {hasOpenItems ? 'A few things to address or note for tomorrow' : 'Nothing urgent left — enjoy your evening'}
+              {hasOpenItems ? `${eveningActions.length} thing${eveningActions.length !== 1 ? 's' : ''} to handle — 5 minutes max` : 'Nothing urgent left — enjoy your evening'}
             </p>
           </div>
         </div>
 
-        {hasOpenItems ? (
-          <div className="space-y-2">
-            {untouchedRiskDeals.length > 0 && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="h-2 w-2 rounded-full bg-urgent shrink-0" />
-                <span className="text-muted-foreground">
-                  <span className="font-medium text-foreground">{untouchedRiskDeals.length}</span> at-risk deal{untouchedRiskDeals.length !== 1 ? 's' : ''} untouched today
-                </span>
-              </div>
-            )}
-            {untouchedHotLeads.length > 0 && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="h-2 w-2 rounded-full bg-opportunity shrink-0" />
-                <span className="text-muted-foreground">
-                  <span className="font-medium text-foreground">{untouchedHotLeads.length}</span> hot lead{untouchedHotLeads.length !== 1 ? 's' : ''} not contacted
-                </span>
-              </div>
-            )}
-            {overdueTasks.length > 0 && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="h-2 w-2 rounded-full bg-warning shrink-0" />
-                <span className="text-muted-foreground">
-                  <span className="font-medium text-foreground">{overdueTasks.length}</span> overdue task{overdueTasks.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-            )}
+        {eveningActions.length > 0 ? (
+          <div className="space-y-2.5">
+            {eveningActions.map((m, i) => {
+              const Icon = m.icon;
+              return (
+                <div key={i} className="flex items-start gap-2.5">
+                  <span className={cn('mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0', m.color === 'text-urgent' ? 'bg-urgent/15' : m.color === 'text-opportunity' ? 'bg-opportunity/15' : 'bg-warning/15')}>
+                    <Icon className={cn('h-3 w-3', m.color)} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium leading-snug">{m.verb}</p>
+                    <p className="text-xs text-muted-foreground">{m.detail}</p>
+                  </div>
+                  {m.actionLabel && m.onAction && (
+                    <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={m.onAction}>
+                      {m.actionLabel}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="flex items-center gap-2 text-sm text-opportunity font-medium">
@@ -682,53 +706,25 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
         )}
       </div>
 
-      {/* Today's Scorecard */}
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      {/* Today's scorecard — compact */}
+      <div className="rounded-xl border border-border bg-card p-4 space-y-2">
         <h3 className="text-sm font-bold">Today's Results</h3>
-        <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-opportunity">{completedToday.length}</p>
-            <p className="text-[10px] text-muted-foreground">Completed</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-foreground">{hotLeads.length}</p>
-            <p className="text-[10px] text-muted-foreground">Hot Leads</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-foreground">{riskDeals.length}</p>
-            <p className="text-[10px] text-muted-foreground">Deals at Risk</p>
-          </div>
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <span><span className="font-semibold text-foreground">{completedToday.length}</span> tasks done</span>
+          <span><span className="font-semibold text-foreground">{intel.touchedToday.length}</span> leads touched</span>
+          <span><span className="font-semibold text-foreground">{riskDeals.length}</span> at risk</span>
         </div>
-        {/* Leads touched today */}
-        {intel.touchedToday.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{intel.touchedToday.length}</span> lead{intel.touchedToday.length !== 1 ? 's' : ''} touched today
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {intel.touchedToday.map(l => (
-                <span key={l.id} className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-[11px] font-medium text-foreground">
-                  {l.name.split(' ')[0]} {l.name.split(' ')[1]?.[0] ? `${l.name.split(' ')[1][0]}.` : ''}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Tomorrow's Top Priority */}
+      {/* Tomorrow's directive */}
       {scoredLeads.length > 0 && (
         <div className="rounded-xl border border-border bg-card p-4 space-y-2">
           <h3 className="text-sm font-bold flex items-center gap-2">
-            <Sun className="h-4 w-4 text-warning" /> Tomorrow's First Call
+            <Sun className="h-4 w-4 text-warning" /> Tomorrow Morning: Call {scoredLeads[0].lead.name}
           </h3>
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{scoredLeads[0].lead.name}</p>
-              <p className="text-xs text-muted-foreground">{scoredLeads[0].lead.source || 'Direct'} · Score {scoredLeads[0].score}</p>
-            </div>
-            <HeatBadge score={scoredLeads[0].score} />
-          </div>
+          <p className="text-xs text-muted-foreground">
+            Score {scoredLeads[0].score} · {scoredLeads[0].lead.source || 'Direct'} — make this your first move
+          </p>
         </div>
       )}
 
