@@ -603,9 +603,9 @@ function NightMode({ intel }: { intel: ReturnType<typeof useTimeIntelligence> })
         <Moon className="h-8 w-8 text-muted-foreground mx-auto opacity-60" />
         <h2 className="text-base font-bold">Nice work today</h2>
         <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
-          {completedToday > 0 && <span><span className="font-semibold text-foreground">{completedToday}</span> task{completedToday !== 1 ? 's' : ''} done</span>}
+          {completedToday.length > 0 && <span><span className="font-semibold text-foreground">{completedToday.length}</span> task{completedToday.length !== 1 ? 's' : ''} done</span>}
           {touchedToday.length > 0 && <span><span className="font-semibold text-foreground">{touchedToday.length}</span> lead{touchedToday.length !== 1 ? 's' : ''} touched</span>}
-          {completedToday === 0 && touchedToday.length === 0 && <span>Rest up for tomorrow</span>}
+          {completedToday.length === 0 && touchedToday.length === 0 && <span>Rest up for tomorrow</span>}
         </div>
         <p className="text-xs text-muted-foreground pt-1">See you in the morning ☕</p>
       </div>
