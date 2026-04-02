@@ -481,9 +481,40 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
   }
   const MomentumIcon = momentumIcon;
 
+  // Build directive midday actions
+  const middayDirectives: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void }[] = [];
+
+  // Most urgent: risk deals not yet touched
+  for (const d of riskDeals.slice(0, 2)) {
+    const touched = d.lastTouchedAt && new Date(d.lastTouchedAt) >= new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+    middayDirectives.push({
+      icon: Shield, color: 'text-urgent',
+      verb: touched ? `Follow up on ${d.title} — keep momentum` : `You haven't touched ${d.title} today — call now`,
+      detail: `${formatCurrency(d.commission)} on the line`,
+    });
+  }
+  // Hot leads not yet contacted
+  for (const { lead } of hotLeads.filter(({ lead: l }) => !intel.touchedToday.find(t => t.id === l.id)).slice(0, 2)) {
+    middayDirectives.push({
+      icon: Flame, color: 'text-opportunity',
+      verb: `Contact ${lead.name} — hot lead going cold`,
+      detail: `${lead.source || 'Direct'} · hasn't heard from you today`,
+      actionLabel: 'Call',
+      onAction: () => onLeadAction(lead, 'call'),
+    });
+  }
+  // Overdue tasks
+  if (overdueTasks.length > 0) {
+    middayDirectives.push({
+      icon: AlertTriangle, color: 'text-warning',
+      verb: `Knock out "${overdueTasks[0].title}" — ${overdueTasks.length} overdue`,
+      detail: 'Clear this before end of day',
+    });
+  }
+
   return (
     <div className="space-y-4">
-      {/* Midday Progress Tracker */}
+      {/* Midday Directive Card */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center">
@@ -506,82 +537,61 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
           </div>
         </div>
 
-        {/* Progress stats */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-opportunity">{completedToday.length}</p>
-            <p className="text-[10px] text-muted-foreground">Done Today</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-foreground">{tasksRemaining}</p>
-            <p className="text-[10px] text-muted-foreground">Remaining</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-foreground">{hotLeads.length}</p>
-            <p className="text-[10px] text-muted-foreground">Hot Leads</p>
-          </div>
-        </div>
-
-        {/* Leads touched today */}
-        {intel.touchedToday.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{intel.touchedToday.length}</span> lead{intel.touchedToday.length !== 1 ? 's' : ''} touched today
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {intel.touchedToday.map(l => (
-                <span key={l.id} className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-[11px] font-medium text-foreground">
-                  {l.name.split(' ')[0]} {l.name.split(' ')[1]?.[0] ? `${l.name.split(' ')[1][0]}.` : ''}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Momentum indicator */}
+        {/* Momentum */}
         <div className={cn('flex items-center gap-2 text-sm font-medium', momentumColor)}>
           <MomentumIcon className="h-4 w-4" />
           <span>{momentumLabel}</span>
         </div>
-        {sessionStart && (
-          <p className="text-[11px] text-muted-foreground">
-            Risk {riskDelta <= 0 ? '↓' : '↑'} {formatCurrency(Math.abs(riskDelta))} since this morning
-          </p>
+
+        {/* Touched today chips */}
+        {intel.touchedToday.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs text-muted-foreground">{intel.touchedToday.length} touched:</span>
+            {intel.touchedToday.slice(0, 6).map(l => (
+              <span key={l.id} className="inline-flex items-center px-2 py-0.5 rounded-full bg-opportunity/10 text-[11px] font-medium text-opportunity">
+                {l.name.split(' ')[0]}
+              </span>
+            ))}
+          </div>
         )}
       </div>
 
-      {/* Remaining actions — what still needs doing */}
-      {(riskDeals.length > 0 || overdueTasks.length > 0) && (
+      {/* Directive actions */}
+      {middayDirectives.length > 0 && (
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
           <h3 className="text-sm font-bold flex items-center gap-2">
-            <ArrowRight className="h-4 w-4 text-primary" /> Still Needs Attention
+            <ArrowRight className="h-4 w-4 text-primary" /> Do This Now
           </h3>
-          <div className="space-y-2">
-            {riskDeals.slice(0, 3).map(d => (
-              <div key={d.id} className="flex items-center gap-2 text-sm">
-                <Shield className="h-3.5 w-3.5 text-urgent shrink-0" />
-                <span className="truncate">{d.title}</span>
-                <span className="text-xs text-muted-foreground shrink-0 ml-auto">{formatCurrency(d.commission)}</span>
-              </div>
-            ))}
-            {overdueTasks.slice(0, 2).map(t => (
-              <div key={t.id} className="flex items-center gap-2 text-sm">
-                <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />
-                <span className="truncate">{t.title}</span>
-              </div>
-            ))}
+          <div className="space-y-2.5">
+            {middayDirectives.slice(0, 4).map((m, i) => {
+              const Icon = m.icon;
+              return (
+                <div key={i} className="flex items-start gap-2.5">
+                  <span className={cn('mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0', m.color === 'text-urgent' ? 'bg-urgent/15' : m.color === 'text-opportunity' ? 'bg-opportunity/15' : 'bg-warning/15')}>
+                    <Icon className={cn('h-3 w-3', m.color)} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium leading-snug">{m.verb}</p>
+                    <p className="text-xs text-muted-foreground">{m.detail}</p>
+                  </div>
+                  {m.actionLabel && m.onAction && (
+                    <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={m.onAction}>
+                      {m.actionLabel}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Hot leads to pursue now */}
-      {hotLeads.length > 0 && (
-        <PipelineSection
-          leads={hotLeads.slice(0, 5)}
-          targetMarket={targetMarket}
-          onTap={onOpenLead}
-          label="Hot Leads — Act Now"
-        />
+      {middayDirectives.length === 0 && (
+        <div className="rounded-xl border border-border bg-card p-4 text-center">
+          <CheckCircle2 className="h-5 w-5 text-opportunity mx-auto mb-1" />
+          <p className="text-sm font-medium">You're on top of everything</p>
+          <p className="text-xs text-muted-foreground">Pipeline is moving — keep this pace.</p>
+        </div>
       )}
 
       <DealMilestonesPanel />
