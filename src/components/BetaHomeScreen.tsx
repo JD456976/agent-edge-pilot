@@ -325,86 +325,84 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
 }) {
   const { hotLeads, riskDeals, overdueTasks, closingSoonDeals, totalPipelineValue, atRiskValue, scoredLeads } = intel;
 
+  // Build the 3 directive moves
+  const moves: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void }[] = [];
+
+  if (riskDeals.length > 0) {
+    const d = riskDeals[0];
+    moves.push({
+      icon: Shield, color: 'text-urgent',
+      verb: `Call ${d.title.split(' ')[0]} about the ${d.riskFlags?.[0] || 'stalled'} risk`,
+      detail: `${formatCurrency(d.commission)} at risk — don't let this slip another day`,
+      actionLabel: 'Call Now',
+      onAction: () => onOpenWorkspace(d.id),
+    });
+  }
+  if (priorityLead) {
+    const l = priorityLead.lead;
+    const channel = l.statusTags?.some(t => t.toLowerCase().includes('text')) ? 'Text' : 'Call';
+    moves.push({
+      icon: Flame, color: 'text-opportunity',
+      verb: `${channel} ${l.name} — score ${priorityLead.score}, ready to move`,
+      detail: `${l.source || 'Direct'} lead · ${l.leadTemperature === 'hot' ? 'hot' : 'warming up'}`,
+      actionLabel: channel,
+      onAction: () => onLeadAction(l, channel === 'Text' ? 'text' : 'call'),
+    });
+  }
+  if (overdueTasks.length > 0) {
+    moves.push({
+      icon: AlertTriangle, color: 'text-warning',
+      verb: `Clear "${overdueTasks[0].title}" — it's overdue`,
+      detail: overdueTasks.length > 1 ? `+${overdueTasks.length - 1} more overdue` : 'Get this off your plate first',
+    });
+  }
+  // Fill remaining slots with warm leads
+  if (moves.length < 3) {
+    for (const { lead, score } of scoredLeads.filter(s => s.score >= 50).slice(0, 3 - moves.length)) {
+      moves.push({
+        icon: Flame, color: 'text-primary',
+        verb: `Reach out to ${lead.name} before they cool off`,
+        detail: `Score ${score} · last active ${lead.lastTouchedAt ? new Date(lead.lastTouchedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'never'}`,
+        actionLabel: 'Contact',
+        onAction: () => onLeadAction(lead, 'call'),
+      });
+    }
+  }
+
   return (
     <div className="space-y-4">
-      {/* Morning Intel Briefing */}
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full bg-warning/15 flex items-center justify-center">
-            <Zap className="h-4 w-4 text-warning" />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold">Today's Intelligence</h2>
-            <p className="text-[11px] text-muted-foreground">Here's what needs your attention</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-foreground">{hotLeads.length}</p>
-            <p className="text-[10px] text-muted-foreground">Hot Leads</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-urgent">{riskDeals.length}</p>
-            <p className="text-[10px] text-muted-foreground">At-Risk Deals</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-foreground">{overdueTasks.length}</p>
-            <p className="text-[10px] text-muted-foreground">Overdue</p>
-          </div>
-        </div>
-        {totalPipelineValue > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {formatCurrency(totalPipelineValue)} in pipeline • {atRiskValue > 0 ? <span className="text-urgent">{formatCurrency(atRiskValue)} at risk</span> : 'No income at risk'}
-          </p>
-        )}
-      </div>
-
-      {/* Focus First — top 3 priorities */}
+      {/* Your 3 Moves */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Target className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-bold">Your 3 Moves Today</h3>
         </div>
-        <div className="space-y-2">
-          {riskDeals.length > 0 && (
-            <div className="flex items-start gap-2.5 text-sm">
-              <span className="mt-0.5 h-5 w-5 rounded-full bg-urgent/15 flex items-center justify-center shrink-0">
-                <Shield className="h-3 w-3 text-urgent" />
-              </span>
-              <div className="min-w-0">
-                <p className="font-medium">{riskDeals[0].title}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(riskDeals[0].commission)} at risk — {riskDeals[0].riskFlags?.join(', ') || 'needs attention'}
-                </p>
+        {totalPipelineValue > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {formatCurrency(totalPipelineValue)} in pipeline{atRiskValue > 0 ? <> · <span className="text-urgent">{formatCurrency(atRiskValue)} at risk</span></> : ''}
+          </p>
+        )}
+        <div className="space-y-2.5">
+          {moves.length > 0 ? moves.map((m, i) => {
+            const Icon = m.icon;
+            return (
+              <div key={i} className="flex items-start gap-2.5">
+                <span className={cn('mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0', m.color === 'text-urgent' ? 'bg-urgent/15' : m.color === 'text-opportunity' ? 'bg-opportunity/15' : m.color === 'text-warning' ? 'bg-warning/15' : 'bg-primary/15')}>
+                  <Icon className={cn('h-3 w-3', m.color)} />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium leading-snug">{m.verb}</p>
+                  <p className="text-xs text-muted-foreground">{m.detail}</p>
+                </div>
+                {m.actionLabel && m.onAction && (
+                  <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={m.onAction}>
+                    {m.actionLabel}
+                  </Button>
+                )}
               </div>
-            </div>
-          )}
-          {priorityLead && (
-            <div className="flex items-start gap-2.5 text-sm">
-              <span className="mt-0.5 h-5 w-5 rounded-full bg-opportunity/15 flex items-center justify-center shrink-0">
-                <Flame className="h-3 w-3 text-opportunity" />
-              </span>
-              <div className="min-w-0">
-                <p className="font-medium">{priorityLead.lead.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  Score {priorityLead.score} — {priorityLead.lead.source || 'direct'} lead
-                </p>
-              </div>
-            </div>
-          )}
-          {overdueTasks.length > 0 && (
-            <div className="flex items-start gap-2.5 text-sm">
-              <span className="mt-0.5 h-5 w-5 rounded-full bg-warning/15 flex items-center justify-center shrink-0">
-                <AlertTriangle className="h-3 w-3 text-warning" />
-              </span>
-              <div className="min-w-0">
-                <p className="font-medium">{overdueTasks.length} overdue task{overdueTasks.length !== 1 ? 's' : ''}</p>
-                <p className="text-xs text-muted-foreground">{overdueTasks[0]?.title}</p>
-              </div>
-            </div>
-          )}
-          {!riskDeals.length && !priorityLead && !overdueTasks.length && (
-            <p className="text-sm text-muted-foreground">Clear skies — start with growth opportunities.</p>
+            );
+          }) : (
+            <p className="text-sm text-muted-foreground">Clear skies — pick a warm lead and start a conversation.</p>
           )}
         </div>
       </div>
@@ -439,10 +437,8 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
         </div>
       )}
 
-      {/* Deal Milestones */}
       <DealMilestonesPanel />
 
-      {/* Pipeline list (top 5 non-priority) */}
       {scoredLeads.length > 1 && (
         <PipelineSection
           leads={scoredLeads.slice(1, 6)}
@@ -485,9 +481,40 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
   }
   const MomentumIcon = momentumIcon;
 
+  // Build directive midday actions
+  const middayDirectives: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void }[] = [];
+
+  // Most urgent: risk deals not yet touched
+  for (const d of riskDeals.slice(0, 2)) {
+    const touched = d.lastTouchedAt && new Date(d.lastTouchedAt) >= new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+    middayDirectives.push({
+      icon: Shield, color: 'text-urgent',
+      verb: touched ? `Follow up on ${d.title} — keep momentum` : `You haven't touched ${d.title} today — call now`,
+      detail: `${formatCurrency(d.commission)} on the line`,
+    });
+  }
+  // Hot leads not yet contacted
+  for (const { lead } of hotLeads.filter(({ lead: l }) => !intel.touchedToday.find(t => t.id === l.id)).slice(0, 2)) {
+    middayDirectives.push({
+      icon: Flame, color: 'text-opportunity',
+      verb: `Contact ${lead.name} — hot lead going cold`,
+      detail: `${lead.source || 'Direct'} · hasn't heard from you today`,
+      actionLabel: 'Call',
+      onAction: () => onLeadAction(lead, 'call'),
+    });
+  }
+  // Overdue tasks
+  if (overdueTasks.length > 0) {
+    middayDirectives.push({
+      icon: AlertTriangle, color: 'text-warning',
+      verb: `Knock out "${overdueTasks[0].title}" — ${overdueTasks.length} overdue`,
+      detail: 'Clear this before end of day',
+    });
+  }
+
   return (
     <div className="space-y-4">
-      {/* Midday Progress Tracker */}
+      {/* Midday Directive Card */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center">
@@ -510,82 +537,61 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
           </div>
         </div>
 
-        {/* Progress stats */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-opportunity">{completedToday.length}</p>
-            <p className="text-[10px] text-muted-foreground">Done Today</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-foreground">{tasksRemaining}</p>
-            <p className="text-[10px] text-muted-foreground">Remaining</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-foreground">{hotLeads.length}</p>
-            <p className="text-[10px] text-muted-foreground">Hot Leads</p>
-          </div>
-        </div>
-
-        {/* Leads touched today */}
-        {intel.touchedToday.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{intel.touchedToday.length}</span> lead{intel.touchedToday.length !== 1 ? 's' : ''} touched today
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {intel.touchedToday.map(l => (
-                <span key={l.id} className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-[11px] font-medium text-foreground">
-                  {l.name.split(' ')[0]} {l.name.split(' ')[1]?.[0] ? `${l.name.split(' ')[1][0]}.` : ''}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Momentum indicator */}
+        {/* Momentum */}
         <div className={cn('flex items-center gap-2 text-sm font-medium', momentumColor)}>
           <MomentumIcon className="h-4 w-4" />
           <span>{momentumLabel}</span>
         </div>
-        {sessionStart && (
-          <p className="text-[11px] text-muted-foreground">
-            Risk {riskDelta <= 0 ? '↓' : '↑'} {formatCurrency(Math.abs(riskDelta))} since this morning
-          </p>
+
+        {/* Touched today chips */}
+        {intel.touchedToday.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs text-muted-foreground">{intel.touchedToday.length} touched:</span>
+            {intel.touchedToday.slice(0, 6).map(l => (
+              <span key={l.id} className="inline-flex items-center px-2 py-0.5 rounded-full bg-opportunity/10 text-[11px] font-medium text-opportunity">
+                {l.name.split(' ')[0]}
+              </span>
+            ))}
+          </div>
         )}
       </div>
 
-      {/* Remaining actions — what still needs doing */}
-      {(riskDeals.length > 0 || overdueTasks.length > 0) && (
+      {/* Directive actions */}
+      {middayDirectives.length > 0 && (
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
           <h3 className="text-sm font-bold flex items-center gap-2">
-            <ArrowRight className="h-4 w-4 text-primary" /> Still Needs Attention
+            <ArrowRight className="h-4 w-4 text-primary" /> Do This Now
           </h3>
-          <div className="space-y-2">
-            {riskDeals.slice(0, 3).map(d => (
-              <div key={d.id} className="flex items-center gap-2 text-sm">
-                <Shield className="h-3.5 w-3.5 text-urgent shrink-0" />
-                <span className="truncate">{d.title}</span>
-                <span className="text-xs text-muted-foreground shrink-0 ml-auto">{formatCurrency(d.commission)}</span>
-              </div>
-            ))}
-            {overdueTasks.slice(0, 2).map(t => (
-              <div key={t.id} className="flex items-center gap-2 text-sm">
-                <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />
-                <span className="truncate">{t.title}</span>
-              </div>
-            ))}
+          <div className="space-y-2.5">
+            {middayDirectives.slice(0, 4).map((m, i) => {
+              const Icon = m.icon;
+              return (
+                <div key={i} className="flex items-start gap-2.5">
+                  <span className={cn('mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0', m.color === 'text-urgent' ? 'bg-urgent/15' : m.color === 'text-opportunity' ? 'bg-opportunity/15' : 'bg-warning/15')}>
+                    <Icon className={cn('h-3 w-3', m.color)} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium leading-snug">{m.verb}</p>
+                    <p className="text-xs text-muted-foreground">{m.detail}</p>
+                  </div>
+                  {m.actionLabel && m.onAction && (
+                    <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={m.onAction}>
+                      {m.actionLabel}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Hot leads to pursue now */}
-      {hotLeads.length > 0 && (
-        <PipelineSection
-          leads={hotLeads.slice(0, 5)}
-          targetMarket={targetMarket}
-          onTap={onOpenLead}
-          label="Hot Leads — Act Now"
-        />
+      {middayDirectives.length === 0 && (
+        <div className="rounded-xl border border-border bg-card p-4 text-center">
+          <CheckCircle2 className="h-5 w-5 text-opportunity mx-auto mb-1" />
+          <p className="text-sm font-medium">You're on top of everything</p>
+          <p className="text-xs text-muted-foreground">Pipeline is moving — keep this pace.</p>
+        </div>
       )}
 
       <DealMilestonesPanel />
@@ -626,9 +632,38 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
   const { untouchedRiskDeals, untouchedHotLeads, overdueTasks, completedToday, riskDeals, hotLeads, scoredLeads } = intel;
   const hasOpenItems = untouchedRiskDeals.length > 0 || untouchedHotLeads.length > 0 || overdueTasks.length > 0;
 
+  // Build evening directives — specific actions, not counts
+  const eveningActions: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void }[] = [];
+
+  for (const d of untouchedRiskDeals.slice(0, 2)) {
+    eveningActions.push({
+      icon: Shield, color: 'text-urgent',
+      verb: `Send ${d.title.split(' ')[0]} a quick check-in text tonight`,
+      detail: `${formatCurrency(d.commission)} at risk — a 30-second text keeps this alive`,
+      actionLabel: 'Text',
+      onAction: () => onOpenWorkspace(d.id),
+    });
+  }
+  for (const { lead } of untouchedHotLeads.slice(0, 2)) {
+    eveningActions.push({
+      icon: Flame, color: 'text-opportunity',
+      verb: `Drop ${lead.name} a quick note — they're hot and waiting`,
+      detail: `${lead.source || 'Direct'} lead · hasn't heard from you today`,
+      actionLabel: 'Text',
+      onAction: () => onLeadAction(lead, 'text'),
+    });
+  }
+  if (overdueTasks.length > 0) {
+    eveningActions.push({
+      icon: AlertTriangle, color: 'text-warning',
+      verb: `Clear "${overdueTasks[0].title}" or reschedule it now`,
+      detail: `${overdueTasks.length} overdue — don't carry this into tomorrow`,
+    });
+  }
+
   return (
     <div className="space-y-4">
-      {/* End-of-Day Safety Check */}
+      {/* End-of-Day Directive */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div className="flex items-center gap-2">
           <div className={cn('h-8 w-8 rounded-full flex items-center justify-center', hasOpenItems ? 'bg-warning/15' : 'bg-opportunity/15')}>
@@ -637,37 +672,32 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
           <div>
             <h2 className="text-sm font-bold">{hasOpenItems ? 'Before You Log Off' : "You're Clear"}</h2>
             <p className="text-[11px] text-muted-foreground">
-              {hasOpenItems ? 'A few things to address or note for tomorrow' : 'Nothing urgent left — enjoy your evening'}
+              {hasOpenItems ? `${eveningActions.length} thing${eveningActions.length !== 1 ? 's' : ''} to handle — 5 minutes max` : 'Nothing urgent left — enjoy your evening'}
             </p>
           </div>
         </div>
 
-        {hasOpenItems ? (
-          <div className="space-y-2">
-            {untouchedRiskDeals.length > 0 && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="h-2 w-2 rounded-full bg-urgent shrink-0" />
-                <span className="text-muted-foreground">
-                  <span className="font-medium text-foreground">{untouchedRiskDeals.length}</span> at-risk deal{untouchedRiskDeals.length !== 1 ? 's' : ''} untouched today
-                </span>
-              </div>
-            )}
-            {untouchedHotLeads.length > 0 && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="h-2 w-2 rounded-full bg-opportunity shrink-0" />
-                <span className="text-muted-foreground">
-                  <span className="font-medium text-foreground">{untouchedHotLeads.length}</span> hot lead{untouchedHotLeads.length !== 1 ? 's' : ''} not contacted
-                </span>
-              </div>
-            )}
-            {overdueTasks.length > 0 && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="h-2 w-2 rounded-full bg-warning shrink-0" />
-                <span className="text-muted-foreground">
-                  <span className="font-medium text-foreground">{overdueTasks.length}</span> overdue task{overdueTasks.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-            )}
+        {eveningActions.length > 0 ? (
+          <div className="space-y-2.5">
+            {eveningActions.map((m, i) => {
+              const Icon = m.icon;
+              return (
+                <div key={i} className="flex items-start gap-2.5">
+                  <span className={cn('mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0', m.color === 'text-urgent' ? 'bg-urgent/15' : m.color === 'text-opportunity' ? 'bg-opportunity/15' : 'bg-warning/15')}>
+                    <Icon className={cn('h-3 w-3', m.color)} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium leading-snug">{m.verb}</p>
+                    <p className="text-xs text-muted-foreground">{m.detail}</p>
+                  </div>
+                  {m.actionLabel && m.onAction && (
+                    <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={m.onAction}>
+                      {m.actionLabel}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="flex items-center gap-2 text-sm text-opportunity font-medium">
@@ -676,53 +706,25 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
         )}
       </div>
 
-      {/* Today's Scorecard */}
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      {/* Today's scorecard — compact */}
+      <div className="rounded-xl border border-border bg-card p-4 space-y-2">
         <h3 className="text-sm font-bold">Today's Results</h3>
-        <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-opportunity">{completedToday.length}</p>
-            <p className="text-[10px] text-muted-foreground">Completed</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-foreground">{hotLeads.length}</p>
-            <p className="text-[10px] text-muted-foreground">Hot Leads</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-foreground">{riskDeals.length}</p>
-            <p className="text-[10px] text-muted-foreground">Deals at Risk</p>
-          </div>
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <span><span className="font-semibold text-foreground">{completedToday.length}</span> tasks done</span>
+          <span><span className="font-semibold text-foreground">{intel.touchedToday.length}</span> leads touched</span>
+          <span><span className="font-semibold text-foreground">{riskDeals.length}</span> at risk</span>
         </div>
-        {/* Leads touched today */}
-        {intel.touchedToday.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{intel.touchedToday.length}</span> lead{intel.touchedToday.length !== 1 ? 's' : ''} touched today
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {intel.touchedToday.map(l => (
-                <span key={l.id} className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-[11px] font-medium text-foreground">
-                  {l.name.split(' ')[0]} {l.name.split(' ')[1]?.[0] ? `${l.name.split(' ')[1][0]}.` : ''}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Tomorrow's Top Priority */}
+      {/* Tomorrow's directive */}
       {scoredLeads.length > 0 && (
         <div className="rounded-xl border border-border bg-card p-4 space-y-2">
           <h3 className="text-sm font-bold flex items-center gap-2">
-            <Sun className="h-4 w-4 text-warning" /> Tomorrow's First Call
+            <Sun className="h-4 w-4 text-warning" /> Tomorrow Morning: Call {scoredLeads[0].lead.name}
           </h3>
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{scoredLeads[0].lead.name}</p>
-              <p className="text-xs text-muted-foreground">{scoredLeads[0].lead.source || 'Direct'} · Score {scoredLeads[0].score}</p>
-            </div>
-            <HeatBadge score={scoredLeads[0].score} />
-          </div>
+          <p className="text-xs text-muted-foreground">
+            Score {scoredLeads[0].score} · {scoredLeads[0].lead.source || 'Direct'} — make this your first move
+          </p>
         </div>
       )}
 
