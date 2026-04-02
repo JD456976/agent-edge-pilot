@@ -325,86 +325,84 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
 }) {
   const { hotLeads, riskDeals, overdueTasks, closingSoonDeals, totalPipelineValue, atRiskValue, scoredLeads } = intel;
 
+  // Build the 3 directive moves
+  const moves: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void }[] = [];
+
+  if (riskDeals.length > 0) {
+    const d = riskDeals[0];
+    moves.push({
+      icon: Shield, color: 'text-urgent',
+      verb: `Call ${d.title.split(' ')[0]} about the ${d.riskFlags?.[0] || 'stalled'} risk`,
+      detail: `${formatCurrency(d.commission)} at risk — don't let this slip another day`,
+      actionLabel: 'Call Now',
+      onAction: () => onOpenWorkspace(d.id),
+    });
+  }
+  if (priorityLead) {
+    const l = priorityLead.lead;
+    const channel = l.statusTags?.some(t => t.toLowerCase().includes('text')) ? 'Text' : 'Call';
+    moves.push({
+      icon: Flame, color: 'text-opportunity',
+      verb: `${channel} ${l.name} — score ${priorityLead.score}, ready to move`,
+      detail: `${l.source || 'Direct'} lead · ${l.leadTemperature === 'hot' ? 'hot' : 'warming up'}`,
+      actionLabel: channel,
+      onAction: () => onLeadAction(l, channel === 'Text' ? 'text' : 'call'),
+    });
+  }
+  if (overdueTasks.length > 0) {
+    moves.push({
+      icon: AlertTriangle, color: 'text-warning',
+      verb: `Clear "${overdueTasks[0].title}" — it's overdue`,
+      detail: overdueTasks.length > 1 ? `+${overdueTasks.length - 1} more overdue` : 'Get this off your plate first',
+    });
+  }
+  // Fill remaining slots with warm leads
+  if (moves.length < 3) {
+    for (const { lead, score } of scoredLeads.filter(s => s.score >= 50).slice(0, 3 - moves.length)) {
+      moves.push({
+        icon: Flame, color: 'text-primary',
+        verb: `Reach out to ${lead.name} before they cool off`,
+        detail: `Score ${score} · last active ${lead.lastTouchedAt ? new Date(lead.lastTouchedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'never'}`,
+        actionLabel: 'Contact',
+        onAction: () => onLeadAction(lead, 'call'),
+      });
+    }
+  }
+
   return (
     <div className="space-y-4">
-      {/* Morning Intel Briefing */}
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full bg-warning/15 flex items-center justify-center">
-            <Zap className="h-4 w-4 text-warning" />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold">Today's Intelligence</h2>
-            <p className="text-[11px] text-muted-foreground">Here's what needs your attention</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-foreground">{hotLeads.length}</p>
-            <p className="text-[10px] text-muted-foreground">Hot Leads</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-urgent">{riskDeals.length}</p>
-            <p className="text-[10px] text-muted-foreground">At-Risk Deals</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-lg font-bold text-foreground">{overdueTasks.length}</p>
-            <p className="text-[10px] text-muted-foreground">Overdue</p>
-          </div>
-        </div>
-        {totalPipelineValue > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {formatCurrency(totalPipelineValue)} in pipeline • {atRiskValue > 0 ? <span className="text-urgent">{formatCurrency(atRiskValue)} at risk</span> : 'No income at risk'}
-          </p>
-        )}
-      </div>
-
-      {/* Focus First — top 3 priorities */}
+      {/* Your 3 Moves */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Target className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-bold">Your 3 Moves Today</h3>
         </div>
-        <div className="space-y-2">
-          {riskDeals.length > 0 && (
-            <div className="flex items-start gap-2.5 text-sm">
-              <span className="mt-0.5 h-5 w-5 rounded-full bg-urgent/15 flex items-center justify-center shrink-0">
-                <Shield className="h-3 w-3 text-urgent" />
-              </span>
-              <div className="min-w-0">
-                <p className="font-medium">{riskDeals[0].title}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(riskDeals[0].commission)} at risk — {riskDeals[0].riskFlags?.join(', ') || 'needs attention'}
-                </p>
+        {totalPipelineValue > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {formatCurrency(totalPipelineValue)} in pipeline{atRiskValue > 0 ? <> · <span className="text-urgent">{formatCurrency(atRiskValue)} at risk</span></> : ''}
+          </p>
+        )}
+        <div className="space-y-2.5">
+          {moves.length > 0 ? moves.map((m, i) => {
+            const Icon = m.icon;
+            return (
+              <div key={i} className="flex items-start gap-2.5">
+                <span className={cn('mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0', m.color === 'text-urgent' ? 'bg-urgent/15' : m.color === 'text-opportunity' ? 'bg-opportunity/15' : m.color === 'text-warning' ? 'bg-warning/15' : 'bg-primary/15')}>
+                  <Icon className={cn('h-3 w-3', m.color)} />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium leading-snug">{m.verb}</p>
+                  <p className="text-xs text-muted-foreground">{m.detail}</p>
+                </div>
+                {m.actionLabel && m.onAction && (
+                  <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={m.onAction}>
+                    {m.actionLabel}
+                  </Button>
+                )}
               </div>
-            </div>
-          )}
-          {priorityLead && (
-            <div className="flex items-start gap-2.5 text-sm">
-              <span className="mt-0.5 h-5 w-5 rounded-full bg-opportunity/15 flex items-center justify-center shrink-0">
-                <Flame className="h-3 w-3 text-opportunity" />
-              </span>
-              <div className="min-w-0">
-                <p className="font-medium">{priorityLead.lead.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  Score {priorityLead.score} — {priorityLead.lead.source || 'direct'} lead
-                </p>
-              </div>
-            </div>
-          )}
-          {overdueTasks.length > 0 && (
-            <div className="flex items-start gap-2.5 text-sm">
-              <span className="mt-0.5 h-5 w-5 rounded-full bg-warning/15 flex items-center justify-center shrink-0">
-                <AlertTriangle className="h-3 w-3 text-warning" />
-              </span>
-              <div className="min-w-0">
-                <p className="font-medium">{overdueTasks.length} overdue task{overdueTasks.length !== 1 ? 's' : ''}</p>
-                <p className="text-xs text-muted-foreground">{overdueTasks[0]?.title}</p>
-              </div>
-            </div>
-          )}
-          {!riskDeals.length && !priorityLead && !overdueTasks.length && (
-            <p className="text-sm text-muted-foreground">Clear skies — start with growth opportunities.</p>
+            );
+          }) : (
+            <p className="text-sm text-muted-foreground">Clear skies — pick a warm lead and start a conversation.</p>
           )}
         </div>
       </div>
@@ -439,10 +437,8 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
         </div>
       )}
 
-      {/* Deal Milestones */}
       <DealMilestonesPanel />
 
-      {/* Pipeline list (top 5 non-priority) */}
       {scoredLeads.length > 1 && (
         <PipelineSection
           leads={scoredLeads.slice(1, 6)}
