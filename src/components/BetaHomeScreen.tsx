@@ -818,7 +818,7 @@ export default function BetaHomeScreen() {
   // Mode greeting
   const greetings = {
     morning: `Good morning, ${user?.name?.split(' ')[0] || 'Agent'}`,
-    midday: `Afternoon check-in`,
+    midday: `Here's what's changed`,
     evening: `Evening wrap-up`,
   };
 
