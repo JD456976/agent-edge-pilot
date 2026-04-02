@@ -6,8 +6,10 @@ const MODE_OVERRIDE_KEY = 'dp-session-mode-override';
 
 function getTimeBasedMode(): SessionMode {
   const hour = new Date().getHours();
-  if (hour >= 4 && hour < 12) return 'morning';
-  if (hour >= 12 && hour < 17) return 'midday';
+  if (hour >= 5 && hour < 11) return 'morning';
+  if (hour >= 11 && hour < 16) return 'midday';
+  if (hour >= 16 && hour < 22) return 'evening';
+  // Outside 5am-10pm: default to evening (wind-down)
   return 'evening';
 }
 
