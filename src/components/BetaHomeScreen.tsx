@@ -513,6 +513,22 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
           </div>
         </div>
 
+        {/* Leads touched today */}
+        {intel.touchedToday.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{intel.touchedToday.length}</span> lead{intel.touchedToday.length !== 1 ? 's' : ''} touched today
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {intel.touchedToday.map(l => (
+                <span key={l.id} className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-[11px] font-medium text-foreground">
+                  {l.name.split(' ')[0]} {l.name.split(' ')[1]?.[0] ? `${l.name.split(' ')[1][0]}.` : ''}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Momentum indicator */}
         <div className={cn('flex items-center gap-2 text-sm font-medium', momentumColor)}>
           <MomentumIcon className="h-4 w-4" />
