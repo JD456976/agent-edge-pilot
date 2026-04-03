@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { Sun, RefreshCw, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 import type { Lead } from '@/types';
 
 interface Props {
