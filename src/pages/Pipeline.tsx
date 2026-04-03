@@ -163,6 +163,46 @@ function AddMeBanner({ deal, userId, onAdd }: { deal: Deal; userId: string; onAd
   );
 }
 
+function DealDetailProbabilityInput({ deal }: { deal: Deal }) {
+  const { refreshData } = useData();
+  const savedVal = deal.closeProbability ?? 70;
+  const [localVal, setLocalVal] = useState(savedVal);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => { setLocalVal(savedVal); }, [savedVal]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+    setLocalVal(val);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(async () => {
+      await supabase.from('deals').update({ close_probability: val } as any).eq('id', deal.id);
+      refreshData();
+    }, 600);
+  };
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-muted-foreground">Close Probability</span>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min={0}
+          max={100}
+          value={localVal}
+          onChange={handleChange}
+          className="w-14 text-right text-sm font-medium bg-transparent border border-border rounded px-1.5 py-0.5 focus:outline-none focus:border-primary"
+        />
+        <span className="text-muted-foreground text-xs">%</span>
+      </div>
+    </div>
+  );
+}
+
 function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAddMeAsParticipant, orgUsers }: {
   deal: Deal;
   tasks: { id: string; title: string; completedAt?: string }[];
