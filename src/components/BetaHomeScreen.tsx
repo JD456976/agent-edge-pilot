@@ -203,13 +203,13 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction }: {
       </div>
       <div className="flex items-center gap-2 px-3 pb-2">
         <button onClick={(e) => { e.stopPropagation(); onAction('call'); }} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Call">
-          <Phone className="h-4 w-4" />
+          <Phone className="h-3.5 w-3.5" />
         </button>
         <button onClick={(e) => { e.stopPropagation(); onAction('text'); }} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Text">
-          <MessageSquare className="h-4 w-4" />
+          <MessageSquare className="h-3.5 w-3.5" />
         </button>
         <button onClick={(e) => { e.stopPropagation(); onAction('email'); }} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Email">
-          <Mail className="h-4 w-4" />
+          <Mail className="h-3.5 w-3.5" />
         </button>
       </div>
       {expanded && <div className="px-3 pb-3"><RiskPanel lead={lead} risk={risk} /></div>}
