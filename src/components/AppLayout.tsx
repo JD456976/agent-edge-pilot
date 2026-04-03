@@ -53,10 +53,7 @@ const MOBILE_MAIN_TABS: NavItem[] = [
   { workspace: 'settings', label: 'Settings', icon: Settings },
 ];
 
-const TOOLS_ITEMS: { label: string; icon: React.ElementType; workspace: WorkspaceType }[] = [
-  { workspace: 'listingwriter', label: 'Listing Writer', icon: PenLine },
-  { workspace: 'commissioncoach', label: 'Commission Coach', icon: Shield },
-];
+const TOOLS_ITEMS: { label: string; icon: React.ElementType; workspace: WorkspaceType }[] = [];
 
 /** Collapsible sidebar utility section */
 function CollapsibleUtilities({ toggleTheme, theme, handleLogout }: { toggleTheme: () => void; theme: string; handleLogout: () => void }) {
