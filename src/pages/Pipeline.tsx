@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
@@ -47,7 +47,11 @@ function DealCard({ deal, onClick, onProbabilityChange }: DealCardProps) {
     return 0;
   })();
   const totalComm = deal.commission;
-  const prob = deal.closeProbability ?? 70;
+  const savedProb = deal.closeProbability ?? 70;
+  const [localProb, setLocalProb] = useState(savedProb);
+
+  // Sync when the deal prop updates (e.g. after refreshData)
+  useEffect(() => { setLocalProb(savedProb); }, [savedProb]);
 
   return (
     <button onClick={onClick} className="w-full text-left p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors space-y-2">
@@ -83,14 +87,16 @@ function DealCard({ deal, onClick, onProbabilityChange }: DealCardProps) {
           min={0}
           max={100}
           step={5}
-          value={prob}
-          onChange={e => onProbabilityChange(deal.id, parseInt(e.target.value))}
+          value={localProb}
+          onChange={e => setLocalProb(parseInt(e.target.value))}
+          onPointerUp={() => onProbabilityChange(deal.id, localProb)}
+          onMouseUp={() => onProbabilityChange(deal.id, localProb)}
           className="flex-1 h-1 accent-indigo-500 cursor-pointer"
         />
         <span className={cn(
           'text-[11px] font-semibold tabular-nums w-8 text-right',
-          prob >= 70 ? 'text-emerald-400' : prob >= 40 ? 'text-amber-400' : 'text-muted-foreground'
-        )}>{prob}%</span>
+          localProb >= 70 ? 'text-emerald-400' : localProb >= 40 ? 'text-amber-400' : 'text-muted-foreground'
+        )}>{localProb}%</span>
       </div>
     </button>
   );
@@ -157,6 +163,46 @@ function AddMeBanner({ deal, userId, onAdd }: { deal: Deal; userId: string; onAd
   );
 }
 
+function DealDetailProbabilityInput({ deal }: { deal: Deal }) {
+  const { refreshData } = useData();
+  const savedVal = deal.closeProbability ?? 70;
+  const [localVal, setLocalVal] = useState(savedVal);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => { setLocalVal(savedVal); }, [savedVal]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+    setLocalVal(val);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(async () => {
+      await supabase.from('deals').update({ close_probability: val } as any).eq('id', deal.id);
+      refreshData();
+    }, 600);
+  };
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-muted-foreground">Close Probability</span>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min={0}
+          max={100}
+          value={localVal}
+          onChange={handleChange}
+          className="w-14 text-right text-sm font-medium bg-transparent border border-border rounded px-1.5 py-0.5 focus:outline-none focus:border-primary"
+        />
+        <span className="text-muted-foreground text-xs">%</span>
+      </div>
+    </div>
+  );
+}
+
 function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAddMeAsParticipant, orgUsers }: {
   deal: Deal;
   tasks: { id: string; title: string; completedAt?: string }[];
@@ -214,23 +260,7 @@ function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAd
           <div className="flex justify-between"><span className="text-muted-foreground">Close Date</span><span>{new Date(deal.closeDate).toLocaleDateString()}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Risk</span><Badge variant={riskVariant[deal.riskLevel]}>{deal.riskLevel}</Badge></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Stage</span><span className="capitalize">{deal.stage.replace('_', ' ')}</span></div>
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Close Probability</span>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={deal.closeProbability ?? 70}
-                onChange={async (e) => {
-                  const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
-                  await supabase.from('deals').update({ close_probability: val } as any).eq('id', deal.id);
-                }}
-                className="w-14 text-right text-sm font-medium bg-transparent border border-border rounded px-1.5 py-0.5 focus:outline-none focus:border-primary"
-              />
-              <span className="text-muted-foreground text-xs">%</span>
-            </div>
-          </div>
+          <DealDetailProbabilityInput deal={deal} />
           {deal.importedFrom && (
             <div className="pt-2">
               <ImportSourceBadge importedFrom={deal.importedFrom} importedAt={deal.importedAt} importRunId={deal.importRunId} />
