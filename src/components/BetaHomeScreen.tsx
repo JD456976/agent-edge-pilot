@@ -20,7 +20,7 @@ import { DealMilestonesPanel } from '@/components/DealMilestonesPanel';
 import { useCommandCenterData } from '@/hooks/useCommandCenterData';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useSessionMode, useSessionStartRisk } from '@/hooks/useSessionMode';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import type { Lead, Deal, Task } from '@/types';
 import { computeRisk, RiskDot, RiskPanel } from '@/components/DealRiskRadar';
 import { getDailyBriefing } from '@/lib/dailyIntelligence';
@@ -1004,20 +1004,20 @@ export default function BetaHomeScreen() {
     const email = (lead as any).email as string | undefined;
     if (type === 'call') {
       if (phone) window.location.href = `tel:${phone}`;
-      else toast({ description: 'No phone on file — update in FUB' });
+      else toast.error('No phone on file');
     } else if (type === 'text') {
       if (phone) window.location.href = `sms:${phone}`;
-      else toast({ description: 'No phone on file — update in FUB' });
+      else toast.error('No phone on file');
     } else if (type === 'email') {
       if (email) window.location.href = `mailto:${email}`;
-      else toast({ description: 'No email on file — update in FUB' });
+      else toast.error('No email on file');
     }
   }, []);
 
   const handleSnoozeConfirm = useCallback(async () => {
     if (!snoozeLeadId || !snoozeDate) return;
     await supabase.from('leads').update({ snooze_until: new Date(snoozeDate).toISOString() } as any).eq('id', snoozeLeadId);
-    toast({ description: 'Lead snoozed — will resurface on the selected date.' });
+    toast.success('Lead snoozed — will resurface on the selected date.');
     setSnoozeLeadId(null);
     setSnoozeDate('');
     refreshData();
