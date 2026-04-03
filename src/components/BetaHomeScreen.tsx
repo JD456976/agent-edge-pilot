@@ -495,6 +495,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
           leads={scoredLeads.slice(1, 6)}
           targetMarket={targetMarket}
           onTap={onOpenLead}
+          onLeadAction={onLeadAction}
           label="Next Up"
         />
       )}
