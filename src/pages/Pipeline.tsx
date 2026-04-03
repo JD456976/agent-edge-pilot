@@ -47,7 +47,11 @@ function DealCard({ deal, onClick, onProbabilityChange }: DealCardProps) {
     return 0;
   })();
   const totalComm = deal.commission;
-  const prob = deal.closeProbability ?? 70;
+  const savedProb = deal.closeProbability ?? 70;
+  const [localProb, setLocalProb] = useState(savedProb);
+
+  // Sync when the deal prop updates (e.g. after refreshData)
+  useEffect(() => { setLocalProb(savedProb); }, [savedProb]);
 
   return (
     <button onClick={onClick} className="w-full text-left p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors space-y-2">
@@ -83,14 +87,16 @@ function DealCard({ deal, onClick, onProbabilityChange }: DealCardProps) {
           min={0}
           max={100}
           step={5}
-          value={prob}
-          onChange={e => onProbabilityChange(deal.id, parseInt(e.target.value))}
+          value={localProb}
+          onChange={e => setLocalProb(parseInt(e.target.value))}
+          onPointerUp={() => onProbabilityChange(deal.id, localProb)}
+          onMouseUp={() => onProbabilityChange(deal.id, localProb)}
           className="flex-1 h-1 accent-indigo-500 cursor-pointer"
         />
         <span className={cn(
           'text-[11px] font-semibold tabular-nums w-8 text-right',
-          prob >= 70 ? 'text-emerald-400' : prob >= 40 ? 'text-amber-400' : 'text-muted-foreground'
-        )}>{prob}%</span>
+          localProb >= 70 ? 'text-emerald-400' : localProb >= 40 ? 'text-amber-400' : 'text-muted-foreground'
+        )}>{localProb}%</span>
       </div>
     </button>
   );
