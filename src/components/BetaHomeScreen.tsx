@@ -1004,13 +1004,13 @@ export default function BetaHomeScreen() {
     const email = (lead as any).email as string | undefined;
     if (type === 'call') {
       if (phone) window.location.href = `tel:${phone}`;
-      else toast({ description: 'No phone on file — update in FUB' });
+      else toast.error('No phone on file');
     } else if (type === 'text') {
       if (phone) window.location.href = `sms:${phone}`;
-      else toast({ description: 'No phone on file — update in FUB' });
+      else toast.error('No phone on file');
     } else if (type === 'email') {
       if (email) window.location.href = `mailto:${email}`;
-      else toast({ description: 'No email on file — update in FUB' });
+      else toast.error('No email on file');
     }
   }, []);
 
