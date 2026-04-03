@@ -753,13 +753,6 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
         </div>
       )}
 
-      {/* Open House + Visitors */}
-      <div className="space-y-2">
-        <Button className="w-full h-12 min-h-[48px] text-base font-semibold" onClick={() => onOpenWorkspace('openhouse')}>
-          <Home className="h-5 w-5 mr-2" /> Open House
-        </Button>
-        <RecentVisitorsStrip />
-      </div>
     </div>
   );
 }
@@ -1115,15 +1108,6 @@ export default function BetaHomeScreen() {
         </div>
       )}
 
-      {/* Open House — morning & midday */}
-      {currentMode !== 'evening' && (
-        <div className="space-y-2">
-          <Button className="w-full h-12 min-h-[48px] text-base font-semibold" onClick={() => openWorkspace('openhouse')}>
-            <Home className="h-5 w-5 mr-2" /> Open House
-          </Button>
-          <RecentVisitorsStrip />
-        </div>
-      )}
 
       {/* Income Control (collapsed) — all modes */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
