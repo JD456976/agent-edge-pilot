@@ -20,7 +20,7 @@ import { DealMilestonesPanel } from '@/components/DealMilestonesPanel';
 import { useCommandCenterData } from '@/hooks/useCommandCenterData';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useSessionMode, useSessionStartRisk } from '@/hooks/useSessionMode';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import type { Lead, Deal, Task } from '@/types';
 import { computeRisk, RiskDot, RiskPanel } from '@/components/DealRiskRadar';
 import { getDailyBriefing } from '@/lib/dailyIntelligence';
