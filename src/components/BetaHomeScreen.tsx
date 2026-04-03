@@ -753,13 +753,6 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
         </div>
       )}
 
-      {/* Open House + Visitors */}
-      <div className="space-y-2">
-        <Button className="w-full h-12 min-h-[48px] text-base font-semibold" onClick={() => onOpenWorkspace('openhouse')}>
-          <Home className="h-5 w-5 mr-2" /> Open House
-        </Button>
-        <RecentVisitorsStrip />
-      </div>
     </div>
   );
 }
