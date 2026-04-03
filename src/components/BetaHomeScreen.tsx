@@ -152,11 +152,12 @@ function getClientVerdict(lead: Lead, score: number, riskLevel: string): { text:
   return { text: 'Cold — low activity, low engagement', color: 'text-muted-foreground' };
 }
 
-function PipelineCard({ lead, score, outsideTarget, onTap }: {
+function PipelineCard({ lead, score, outsideTarget, onTap, onAction }: {
   lead: Lead;
   score: number;
   outsideTarget: boolean;
   onTap: () => void;
+  onAction: (type: 'call' | 'text' | 'email') => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const risk = useMemo(() => computeRisk(lead, score), [lead, score]);
@@ -199,6 +200,17 @@ function PipelineCard({ lead, score, outsideTarget, onTap }: {
             risk.level === 'healthy' ? 'text-opportunity' : risk.level === 'medium' ? 'text-warning' : 'text-urgent'
           )} />
         </div>
+      </div>
+      <div className="flex items-center gap-1 px-3 pb-2">
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] gap-1" onClick={(e) => { e.stopPropagation(); onAction('call'); }}>
+          <Phone className="h-3 w-3" /> Call
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] gap-1" onClick={(e) => { e.stopPropagation(); onAction('text'); }}>
+          <MessageSquare className="h-3 w-3" /> Text
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] gap-1" onClick={(e) => { e.stopPropagation(); onAction('email'); }}>
+          <Mail className="h-3 w-3" /> Email
+        </Button>
       </div>
       {expanded && <div className="px-3 pb-3"><RiskPanel lead={lead} risk={risk} /></div>}
     </div>
@@ -483,6 +495,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
           leads={scoredLeads.slice(1, 6)}
           targetMarket={targetMarket}
           onTap={onOpenLead}
+          onLeadAction={onLeadAction}
           label="Next Up"
         />
       )}
@@ -773,10 +786,11 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
 
 // ── Shared Pipeline Section ─────────────────────────────────────────
 
-function PipelineSection({ leads, targetMarket, onTap, label }: {
+function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label }: {
   leads: { lead: Lead; score: number }[];
   targetMarket: TargetMarket;
   onTap: (lead: Lead) => void;
+  onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email') => void;
   label: string;
 }) {
   return (
@@ -792,6 +806,7 @@ function PipelineSection({ leads, targetMarket, onTap, label }: {
             score={score}
             outsideTarget={isOutsideTarget(lead, targetMarket)}
             onTap={() => onTap(lead)}
+            onAction={(type) => onLeadAction(lead, type)}
           />
         ))}
       </div>
