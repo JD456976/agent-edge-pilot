@@ -49,7 +49,6 @@ const NAV_ITEMS: NavItem[] = [
 
 const MOBILE_MAIN_TABS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
-  { workspace: 'openhouse', label: 'Open House', icon: Home },
   { workspace: 'sync', label: 'CRM', icon: RefreshCw },
   { workspace: 'settings', label: 'Settings', icon: Settings },
 ];
