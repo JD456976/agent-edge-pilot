@@ -201,16 +201,16 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction }: {
           )} />
         </div>
       </div>
-      <div className="flex items-center gap-1 px-3 pb-2">
-        <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] gap-1" onClick={(e) => { e.stopPropagation(); onAction('call'); }}>
-          <Phone className="h-3 w-3" /> Call
-        </Button>
-        <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] gap-1" onClick={(e) => { e.stopPropagation(); onAction('text'); }}>
-          <MessageSquare className="h-3 w-3" /> Text
-        </Button>
-        <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] gap-1" onClick={(e) => { e.stopPropagation(); onAction('email'); }}>
-          <Mail className="h-3 w-3" /> Email
-        </Button>
+      <div className="flex items-center gap-2 px-3 pb-2">
+        <button onClick={(e) => { e.stopPropagation(); onAction('call'); }} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Call">
+          <Phone className="h-4 w-4" />
+        </button>
+        <button onClick={(e) => { e.stopPropagation(); onAction('text'); }} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Text">
+          <MessageSquare className="h-4 w-4" />
+        </button>
+        <button onClick={(e) => { e.stopPropagation(); onAction('email'); }} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Email">
+          <Mail className="h-4 w-4" />
+        </button>
       </div>
       {expanded && <div className="px-3 pb-3"><RiskPanel lead={lead} risk={risk} /></div>}
     </div>
