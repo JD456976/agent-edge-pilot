@@ -1011,17 +1011,21 @@ export default function BetaHomeScreen() {
     }
     const phone = (lead as any).phone as string | undefined;
     const email = (lead as any).email as string | undefined;
+    let acted = false;
     if (type === 'call') {
-      if (phone) window.location.href = `tel:${phone}`;
+      if (phone) { window.location.href = `tel:${phone}`; acted = true; }
       else toast.error('No phone on file');
     } else if (type === 'text') {
-      if (phone) window.location.href = `sms:${phone}`;
+      if (phone) { window.location.href = `sms:${phone}`; acted = true; }
       else toast.error('No phone on file');
     } else if (type === 'email') {
-      if (email) window.location.href = `mailto:${email}`;
+      if (email) { window.location.href = `mailto:${email}`; acted = true; }
       else toast.error('No email on file');
     }
-  }, []);
+    if (acted) {
+      supabase.from('leads').update({ last_touched_at: new Date().toISOString() } as any).eq('id', lead.id).then(() => refreshData());
+    }
+  }, [refreshData]);
 
   const handleSnoozeConfirm = useCallback(async () => {
     if (!snoozeLeadId || !snoozeDate) return;
