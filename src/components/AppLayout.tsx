@@ -43,24 +43,17 @@ type NavItem = { label: string; icon: React.ElementType } & (
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
-  { workspace: 'openhouse', label: 'Open House', icon: Home },
-  { workspace: 'listingwriter', label: 'Listing Writer', icon: PenLine },
-  { workspace: 'commissioncoach', label: 'Commission Coach', icon: Shield },
   { workspace: 'sync', label: 'CRM', icon: RefreshCw },
   { workspace: 'settings', label: 'Settings', icon: Settings },
 ];
 
 const MOBILE_MAIN_TABS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
-  { workspace: 'openhouse', label: 'Open House', icon: Home },
   { workspace: 'sync', label: 'CRM', icon: RefreshCw },
   { workspace: 'settings', label: 'Settings', icon: Settings },
 ];
 
-const TOOLS_ITEMS: { label: string; icon: React.ElementType; workspace: WorkspaceType }[] = [
-  { workspace: 'listingwriter', label: 'Listing Writer', icon: PenLine },
-  { workspace: 'commissioncoach', label: 'Commission Coach', icon: Shield },
-];
+const TOOLS_ITEMS: { label: string; icon: React.ElementType; workspace: WorkspaceType }[] = [];
 
 /** Collapsible sidebar utility section */
 function CollapsibleUtilities({ toggleTheme, theme, handleLogout }: { toggleTheme: () => void; theme: string; handleLogout: () => void }) {
