@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { Sun, RefreshCw, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 import type { Lead } from '@/types';
 
 interface Props {
@@ -22,30 +20,41 @@ export function AIMorningBrief({ agentName, leads, getHeatScore, pipelineValue }
   const generate = async () => {
     setLoading(true);
     try {
-      const leadsSummary = leads
-        .slice(0, 15)
-        .map(l => `${l.name} — ${getHeatScore(l)} — ${l.source || 'Direct'}`)
-        .join('\n');
+      const now = new Date();
+      const todayStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
-      const { data, error } = await supabase.functions.invoke('ai-morning-brief', {
-        body: {
-          agent_name: agentName,
-          leads_summary: leadsSummary,
-          pipeline_value: pipelineValue || `${leads.length} active leads`,
-        },
+      const topLeads = [...leads]
+        .sort((a, b) => (b.engagementScore ?? 0) - (a.engagementScore ?? 0))
+        .slice(0, 3)
+        .map(l => {
+          const lastTouch = l.lastContactAt ? Math.round((now.getTime() - new Date(l.lastContactAt).getTime()) / 86400000) : null;
+          return `${l.name} (score ${getHeatScore(l)}, ${lastTouch !== null ? lastTouch + 'd since last touch' : 'no touch date'})`;
+        })
+        .join('; ');
+
+      const userMessage = `Today is ${todayStr}. Agent: ${agentName}. Pipeline: ${leads.length} active leads. Top 3 by engagement: ${topLeads || 'none yet'}. Give exactly 3 bullet points: (1) who to call first and why, (2) biggest risk in the pipeline right now, (3) one thing to do before noon.`;
+
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 400,
+          system: 'You are a concise real estate sales coach. Give practical, specific advice.',
+          messages: [{ role: 'user', content: userMessage }],
+        }),
       });
 
-      if (error) throw error;
-      if (data?.error) {
-        toast({ description: data.error, variant: 'destructive' });
-        return;
-      }
+      if (!resp.ok) throw new Error(`API error ${resp.status}`);
+      const result = await resp.json();
+      const text = result?.content?.[0]?.text || 'Unable to generate brief.';
 
-      setBrief(data.brief);
+      setBrief(text);
       setExpanded(true);
     } catch (e) {
       console.error(e);
-      toast({ description: 'Could not generate brief. Try again.', variant: 'destructive' });
+      setBrief('Could not reach the AI coach right now. Focus on your highest-engagement lead first, check for any deals at risk, and block 30 minutes for follow-ups before noon.');
+      setExpanded(true);
     } finally {
       setLoading(false);
     }
