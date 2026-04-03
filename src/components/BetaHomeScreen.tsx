@@ -163,6 +163,19 @@ function PipelineCard({ lead, score, outsideTarget, onTap }: {
   const verdict = useMemo(() => getClientVerdict(lead, score, risk.level), [lead, score, risk.level]);
   const borderColor = score >= 80 ? 'border-l-opportunity' : score >= 60 ? 'border-l-warning' : 'border-l-muted-foreground/30';
 
+  const statusLine = useMemo(() => {
+    if (!lead.lastTouchedAt) return 'Never contacted — make the first move.';
+    const daysSince = Math.floor((Date.now() - new Date(lead.lastTouchedAt).getTime()) / 86400000);
+    const temp = lead.leadTemperature;
+    if (daysSince > 14 && (temp === 'hot' || temp === 'warm'))
+      return `Gone quiet for ${daysSince} days. High risk of losing this one.`;
+    if (daysSince > 30)
+      return `No contact in ${daysSince} days. Consider archiving.`;
+    if (temp === 'hot' && daysSince <= 2)
+      return 'Active and hot — strike while the iron is hot.';
+    return `Last touched ${daysSince} day${daysSince === 1 ? '' : 's'} ago.`;
+  }, [lead.lastTouchedAt, lead.leadTemperature]);
+
   return (
     <div className={cn("rounded-xl border border-border bg-card overflow-hidden transition-all duration-200 hover:-translate-y-[1px] hover:shadow-md border-l-[3px]", borderColor)}>
       <div className="w-full text-left p-3 flex items-center gap-2 min-h-[56px] hover:bg-accent/50 cursor-pointer" onClick={() => setExpanded(e => !e)}>
@@ -171,6 +184,7 @@ function PipelineCard({ lead, score, outsideTarget, onTap }: {
           <button onClick={(e) => { e.stopPropagation(); onTap(); }} className="text-sm font-medium truncate block w-full text-primary hover:underline text-left">{lead.name}</button>
           <p className="text-[13px] text-muted-foreground truncate">{lead.source || 'Direct'}</p>
           <p className={cn('text-[11px] truncate mt-0.5', verdict.color)}>{verdict.text}</p>
+          <p className="text-xs text-slate-400 mt-1">{statusLine}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end max-w-[45%]">
           {outsideTarget && (
