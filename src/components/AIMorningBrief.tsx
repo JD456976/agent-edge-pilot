@@ -24,10 +24,10 @@ export function AIMorningBrief({ agentName, leads, getHeatScore, pipelineValue }
       const todayStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
       const topLeads = [...leads]
-        .sort((a, b) => (b.engagement_score ?? 0) - (a.engagement_score ?? 0))
+        .sort((a, b) => (b.engagementScore ?? 0) - (a.engagementScore ?? 0))
         .slice(0, 3)
         .map(l => {
-          const lastTouch = l.last_contact_at ? Math.round((now.getTime() - new Date(l.last_contact_at).getTime()) / 86400000) : null;
+          const lastTouch = l.lastContactAt ? Math.round((now.getTime() - new Date(l.lastContactAt).getTime()) / 86400000) : null;
           return `${l.name} (score ${getHeatScore(l)}, ${lastTouch !== null ? lastTouch + 'd since last touch' : 'no touch date'})`;
         })
         .join('; ');
