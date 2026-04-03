@@ -785,10 +785,11 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
 
 // ── Shared Pipeline Section ─────────────────────────────────────────
 
-function PipelineSection({ leads, targetMarket, onTap, label }: {
+function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label }: {
   leads: { lead: Lead; score: number }[];
   targetMarket: TargetMarket;
   onTap: (lead: Lead) => void;
+  onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email') => void;
   label: string;
 }) {
   return (
@@ -804,6 +805,7 @@ function PipelineSection({ leads, targetMarket, onTap, label }: {
             score={score}
             outsideTarget={isOutsideTarget(lead, targetMarket)}
             onTap={() => onTap(lead)}
+            onAction={(type) => onLeadAction(lead, type)}
           />
         ))}
       </div>
