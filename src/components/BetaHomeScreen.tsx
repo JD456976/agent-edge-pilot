@@ -855,6 +855,7 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction }: {
             const daysSince = lead.lastTouchedAt
               ? Math.floor((now.getTime() - new Date(lead.lastTouchedAt).getTime()) / 86400000)
               : null;
+            const channel = lead.statusTags?.some(t => t.toLowerCase().includes('text')) ? 'text' as const : 'call' as const;
             return (
               <li key={lead.id} className="flex items-start gap-2 text-sm">
                 <span className="text-xs font-bold text-primary mt-0.5 shrink-0">{i + 1}.</span>
@@ -863,6 +864,14 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction }: {
                   <span className="text-xs text-muted-foreground ml-1.5">
                     Score {lead.engagementScore || 0} · {lead.source || 'Direct'} · {daysSince !== null ? `${daysSince}d ago` : 'never contacted'}
                   </span>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <button onClick={() => onLeadAction(lead, 'call')} className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label={`Call ${lead.name}`}>
+                    <Phone className="h-3.5 w-3.5" />
+                  </button>
+                  <button onClick={() => onLeadAction(lead, 'text')} className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label={`Text ${lead.name}`}>
+                    <MessageSquare className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </li>
             );
