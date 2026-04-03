@@ -260,7 +260,7 @@ function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAd
           <div className="flex justify-between"><span className="text-muted-foreground">Close Date</span><span>{new Date(deal.closeDate).toLocaleDateString()}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Risk</span><Badge variant={riskVariant[deal.riskLevel]}>{deal.riskLevel}</Badge></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Stage</span><span className="capitalize">{deal.stage.replace('_', ' ')}</span></div>
-          <DealDetailProbabilityInput deal={deal} refreshData={refreshData} />
+          <DealDetailProbabilityInput deal={deal} />
           {deal.importedFrom && (
             <div className="pt-2">
               <ImportSourceBadge importedFrom={deal.importedFrom} importedAt={deal.importedAt} importRunId={deal.importRunId} />
