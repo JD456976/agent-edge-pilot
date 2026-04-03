@@ -1017,7 +1017,7 @@ export default function BetaHomeScreen() {
   const handleSnoozeConfirm = useCallback(async () => {
     if (!snoozeLeadId || !snoozeDate) return;
     await supabase.from('leads').update({ snooze_until: new Date(snoozeDate).toISOString() } as any).eq('id', snoozeLeadId);
-    toast({ description: 'Lead snoozed — will resurface on the selected date.' });
+    toast.success('Lead snoozed — will resurface on the selected date.');
     setSnoozeLeadId(null);
     setSnoozeDate('');
     refreshData();
