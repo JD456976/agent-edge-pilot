@@ -1019,6 +1019,11 @@ export function ActionWorkspaceDrawer({
             {/* ── EMAIL TAB ────────────────────────────────────────── */}
             {activeTab === 'email' && (
               <div className="space-y-4">
+                {renderOpenerSection('email', 'Use as subject', (text) => {
+                  // The draft.email.subject is read-only, so we copy to clipboard
+                  navigator.clipboard.writeText(text);
+                  toast({ description: 'Subject line copied to clipboard' });
+                })}
                 {/* Tone & Length selectors */}
                 <div className="flex gap-3">
                   <div className="flex-1">
