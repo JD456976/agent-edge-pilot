@@ -48,7 +48,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isActive: profileStatus === 'active' && !isDeleted,
         });
         setOnboardingCompletedState((profile as any).onboarding_completed ?? false);
-        setIsReviewer(role === 'reviewer');
         setIsProtected((profile as any).is_protected ?? false);
       }
     } catch (err) {
