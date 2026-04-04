@@ -1019,6 +1019,8 @@ function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label, onAd
             outsideTarget={isOutsideTarget(lead, targetMarket)}
             onTap={() => onTap(lead)}
             onAction={(type) => onLeadAction(lead, type)}
+            userId={userId}
+            onRefresh={onRefresh}
           />
         ))}
       </div>
