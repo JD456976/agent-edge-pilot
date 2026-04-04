@@ -131,7 +131,7 @@ export function ClientFitPanel({ entityId, entityType, entityName, entity }: Pro
       }
     })();
     return () => { cancelled = true; };
-  }, [entityId, fubId, user]);
+  }, [fubId, user]);
 
   const handleRefresh = async () => {
     if (!clientIdentityId) return;
