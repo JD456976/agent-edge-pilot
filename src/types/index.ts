@@ -41,6 +41,7 @@ export interface Lead {
   importedAt?: string | null;
   lastTouchedAt?: string;
   snoozeUntil?: string | null;
+  manualPreferences?: Record<string, unknown> | null;
 }
 
 export interface Deal {
