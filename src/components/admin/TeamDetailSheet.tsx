@@ -113,7 +113,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
   };
 
   const handleRemoveMember = async () => {
-    if (!removingMember || isReviewer) return;
+    if (!removingMember) return;
     setRemoving(true);
 
     if (isLastLeader(removingMember)) {
