@@ -1175,3 +1175,139 @@ export function ActionWorkspaceDrawer({
     </Sheet>
   );
 }
+
+// ── Activity Timeline ────────────────────────────────────────────────
+
+interface TimelineEvent {
+  id: string;
+  type: string;
+  content: string;
+  timestamp: string;
+}
+
+const TIMELINE_DOT_COLORS: Record<string, string> = {
+  call: 'bg-green-500',
+  text: 'bg-green-500',
+  email: 'bg-green-500',
+  touch: 'bg-green-500',
+  showing: 'bg-green-500',
+  note: 'bg-blue-500',
+  task: 'bg-indigo-500',
+  follow_up: 'bg-indigo-500',
+  closing: 'bg-indigo-500',
+  risk: 'bg-amber-500',
+  contact: 'bg-primary',
+};
+
+const TIMELINE_ICONS: Record<string, React.ElementType> = {
+  call: Phone,
+  text: MessageSquare,
+  email: Mail,
+  note: StickyNote,
+  task: ListTodo,
+  follow_up: ListTodo,
+  showing: CalendarDays,
+  closing: Check,
+  risk: AlertTriangle,
+  contact: Phone,
+};
+
+function ActivityTimeline({ entityId, entityType, entity }: { entityId: string; entityType: string; entity: any }) {
+  const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!entityId) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const { data } = await supabase
+          .from('activity_events')
+          .select('id, touch_type, note, created_at')
+          .eq('entity_id', entityId)
+          .not('note', 'eq', '[deleted]')
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (cancelled) return;
+
+        const mapped: TimelineEvent[] = (data || []).map((row: any) => ({
+          id: row.id,
+          type: row.touch_type || 'touch',
+          content: row.note || `${(row.touch_type || 'touch').replace('_', ' ')} logged`,
+          timestamp: row.created_at,
+        }));
+
+        // Add last-contacted synthetic entry from entity
+        const lastTouched = entity?.lastTouchedAt || entity?.last_touched_at;
+        if (lastTouched) {
+          const alreadyCovered = mapped.some(e => {
+            const diff = Math.abs(new Date(e.timestamp).getTime() - new Date(lastTouched).getTime());
+            return diff < 60_000;
+          });
+          if (!alreadyCovered) {
+            mapped.push({
+              id: 'last-contact',
+              type: 'contact',
+              content: 'Last contacted',
+              timestamp: lastTouched,
+            });
+          }
+        }
+
+        // Sort descending
+        mapped.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setEvents(mapped);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [entityId, entity]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        <span className="text-xs text-muted-foreground ml-2">Loading activity…</span>
+      </div>
+    );
+  }
+
+  if (events.length === 0) {
+    return (
+      <div className="rounded-lg border border-border bg-muted/30 p-6 flex flex-col items-center gap-2 text-center">
+        <History className="h-5 w-5 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">No activity recorded yet</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-0">
+      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-3">Activity Timeline</p>
+      <div className="relative">
+        {/* Vertical line */}
+        <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
+        <div className="space-y-3">
+          {events.map((evt) => {
+            const Icon = TIMELINE_ICONS[evt.type] || Activity;
+            const dotColor = TIMELINE_DOT_COLORS[evt.type] || 'bg-muted-foreground';
+            return (
+              <div key={evt.id} className="flex items-start gap-3 relative">
+                <div className={`w-[15px] h-[15px] rounded-full ${dotColor} flex items-center justify-center shrink-0 z-10 ring-2 ring-background`}>
+                  <Icon className="h-2.5 w-2.5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0 pt-px">
+                  <p className="text-xs text-foreground leading-tight">{evt.content}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{relativeTime(evt.timestamp)}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
