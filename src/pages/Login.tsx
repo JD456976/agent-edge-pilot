@@ -64,23 +64,6 @@ export default function Login() {
     }
   };
 
-  const handleAppleSignIn = async () => {
-    setError('');
-    setAppleLoading(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth('apple', {
-        redirect_uri: window.location.origin,
-      });
-      if (result.error) {
-        setError(result.error instanceof Error ? result.error.message : String(result.error));
-      }
-    } catch (err) {
-      setError('Apple sign in failed. Please try again.');
-    } finally {
-      setAppleLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left — Branding panel (hidden on mobile) */}
