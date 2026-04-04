@@ -343,6 +343,15 @@ function useTimeIntelligence(leads: Lead[], deals: Deal[], tasks: Task[]) {
     // Leads touched today
     const touchedToday = leads.filter(l => l.lastTouchedAt && new Date(l.lastTouchedAt) >= todayStart);
 
+    // Leads at risk: engaged (score >= 50) but untouched or stale > 7 days
+    const leadsAtRisk = leads.filter(l => {
+      const score = getLeadHeatScore(l);
+      if (score < 50) return false;
+      if (!l.lastTouchedAt) return true;
+      const daysSince = (now.getTime() - new Date(l.lastTouchedAt).getTime()) / 86400000;
+      return daysSince > 7;
+    });
+
     return {
       scoredLeads,
       hotLeads,
