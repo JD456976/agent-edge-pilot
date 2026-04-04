@@ -190,6 +190,11 @@ export function ActionWorkspaceDrawer({
   const [taskDueAt, setTaskDueAt] = useState('');
   const [taskCreated, setTaskCreated] = useState(false);
 
+  // AI Opener state
+  const [openerResult, setOpenerResult] = useState<Record<string, string>>({});
+  const [openerLoading, setOpenerLoading] = useState<string | null>(null);
+  const [openerExpanded, setOpenerExpanded] = useState<Record<string, boolean>>({ call: true, text: true, email: true });
+
   // Notes tab state
   const [noteText, setNoteText] = useState('');
   const [savedNotes, setSavedNotes] = useState<Array<{ id: string; note: string; created_at: string }>>([]);
