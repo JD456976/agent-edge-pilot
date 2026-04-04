@@ -1334,6 +1334,7 @@ export default function BetaHomeScreen() {
           onAddLead={() => setShowQuickAddLead(true)}
           onSeeAll={() => navigate('/work')}
           onTaskTap={() => navigate('/work')}
+          refreshData={refreshData}
         />
       )}
       {currentMode === 'midday' && (
