@@ -37,7 +37,7 @@ interface Props {
   orgName: string;
   createdAt: string;
   availableUsers: ProfileOption[];
-  isReviewer: boolean;
+  onClose: () => void;
   onClose: () => void;
   onChanged: () => void;
 }
