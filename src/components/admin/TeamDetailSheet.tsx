@@ -210,7 +210,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
               {editingName ? (
                 <div className="flex gap-2">
                   <Input value={name} onChange={e => setName(e.target.value)} className="h-8" autoFocus />
-                  <Button size="sm" className="h-8" onClick={handleSaveName} disabled={savingName || !name.trim() || isReviewer}>
+                  <Button size="sm" className="h-8" onClick={handleSaveName} disabled={savingName || !name.trim()}>
                     {savingName ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                   </Button>
                   <Button size="sm" variant="ghost" className="h-8" onClick={() => { setName(initialName); setEditingName(false); }}>
