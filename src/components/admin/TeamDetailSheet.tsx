@@ -248,11 +248,9 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-xs text-muted-foreground">Members</Label>
-              {!isReviewer && (
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowAddMembers(true)}>
-                  <Plus className="h-3.5 w-3.5 mr-1" /> Add Members
-                </Button>
-              )}
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowAddMembers(true)}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add Members
+              </Button>
             </div>
 
             {loading ? (
