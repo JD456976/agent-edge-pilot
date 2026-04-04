@@ -1,0 +1,1 @@
+ALTER TABLE public.leads ADD COLUMN manual_preferences jsonb DEFAULT NULL;
