@@ -271,7 +271,7 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
             {/* Status */}
             <div className="space-y-1.5">
               <Label className="text-xs">Status</Label>
-              <Select value={status} onValueChange={setStatus} disabled={detail.isProtected || isReviewer || isSelf}>
+              <Select value={status} onValueChange={setStatus} disabled={detail.isProtected || isSelf}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
