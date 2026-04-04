@@ -368,6 +368,7 @@ function useTimeIntelligence(leads: Lead[], deals: Deal[], tasks: Task[]) {
       untouchedHotLeads,
       snoozedLeads,
       touchedToday,
+      leadsAtRisk,
     };
   }, [leads, deals, tasks]);
 }
