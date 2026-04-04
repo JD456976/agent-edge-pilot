@@ -1212,6 +1212,7 @@ export type Database = {
             | Database["public"]["Enums"]["lead_temperature"]
             | null
           lost_at: string | null
+          manual_preferences: Json | null
           name: string
           notes: string | null
           organization_id: string | null
@@ -1242,6 +1243,7 @@ export type Database = {
             | Database["public"]["Enums"]["lead_temperature"]
             | null
           lost_at?: string | null
+          manual_preferences?: Json | null
           name: string
           notes?: string | null
           organization_id?: string | null
@@ -1272,6 +1274,7 @@ export type Database = {
             | Database["public"]["Enums"]["lead_temperature"]
             | null
           lost_at?: string | null
+          manual_preferences?: Json | null
           name?: string
           notes?: string | null
           organization_id?: string | null
