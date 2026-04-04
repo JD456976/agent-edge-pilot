@@ -909,7 +909,7 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction }: {
       <div className="rounded-xl border-l-[3px] border-l-warning border border-border bg-card p-4 space-y-3">
         {staleTop ? (
           <>
-            <h2 className="text-sm font-bold">{staleTop.name} hasn't heard from you</h2>
+            <h2 className="text-sm font-bold"><button onClick={() => onOpenLead(staleTop)} className="text-primary hover:underline cursor-pointer">{staleTop.name}</button> hasn't heard from you</h2>
             <p className="text-xs text-muted-foreground">
               Score {staleTop.engagementScore || 0} · Don't let that window close
             </p>
