@@ -257,7 +257,7 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
             {/* Role */}
             <div className="space-y-1.5">
               <Label className="text-xs">Role</Label>
-              <Select value={role} onValueChange={setRole} disabled={detail.isProtected || isReviewer || isSelf}>
+              <Select value={role} onValueChange={setRole} disabled={detail.isProtected || isSelf}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
