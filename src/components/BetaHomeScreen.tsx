@@ -706,13 +706,14 @@ function NightMode({ intel }: { intel: ReturnType<typeof useTimeIntelligence> })
 
 // ── Evening Mode ────────────────────────────────────────────────────
 
-function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket }: {
+function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket, onTaskTap }: {
   intel: ReturnType<typeof useTimeIntelligence>;
   ccData: any;
   onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email' | 'snooze') => void;
   onOpenLead: (lead: Lead) => void;
   onOpenWorkspace: (id: string) => void;
   targetMarket: TargetMarket;
+  onTaskTap: () => void;
 }) {
   const { untouchedRiskDeals, untouchedHotLeads, overdueTasks, completedToday, riskDeals, hotLeads, scoredLeads, leadsAtRisk } = intel;
   const hasOpenItems = untouchedRiskDeals.length > 0 || untouchedHotLeads.length > 0 || overdueTasks.length > 0;
