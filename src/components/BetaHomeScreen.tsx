@@ -772,7 +772,7 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
       {scoredLeads.length > 0 && (
         <div className="rounded-xl border border-border bg-card p-4 space-y-2">
           <h3 className="text-sm font-bold flex items-center gap-2">
-            <Sun className="h-4 w-4 text-warning" /> Tomorrow Morning: Call {scoredLeads[0].lead.name}
+            <Sun className="h-4 w-4 text-warning" /> Tomorrow Morning: Call <button onClick={() => onOpenLead(scoredLeads[0].lead)} className="text-primary hover:underline cursor-pointer">{scoredLeads[0].lead.name}</button>
           </h3>
           <p className="text-xs text-muted-foreground">
             Score {scoredLeads[0].score} · {scoredLeads[0].lead.source || 'Direct'} — make this your first move
