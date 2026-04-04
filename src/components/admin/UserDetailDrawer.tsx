@@ -37,7 +37,7 @@ interface UserDetail {
   stripeSubscriptionId: string | null;
 }
 
-export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props) {
+export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
   const { user, logAdminAction } = useAuth();
   const { toast } = useToast();
   const [detail, setDetail] = useState<UserDetail | null>(null);
