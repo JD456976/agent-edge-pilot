@@ -1163,6 +1163,11 @@ export function ActionWorkspaceDrawer({
                 )}
               </div>
             )}
+
+            {/* ── ACTIVITY TAB ──────────────────────────────────────── */}
+            {activeTab === 'activity' && (
+              <ActivityTimeline entityId={entity?.id || ''} entityType={entityType} entity={entity} />
+            )}
           </div>
         </PanelErrorBoundary>
       </SheetContent>
