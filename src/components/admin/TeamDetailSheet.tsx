@@ -220,11 +220,9 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
               ) : (
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium">{name}</p>
-                  {!isReviewer && (
-                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingName(true)}>
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                  )}
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingName(true)}>
+                    <Pencil className="h-3 w-3" />
+                  </Button>
                 </div>
               )}
             </div>
