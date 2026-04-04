@@ -1,8 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, UserRole } from '@/types';
-import { generateDemoData } from '@/data/demo';
-import { saveStrategicSettings, DEFAULT_STRATEGIC_SETTINGS } from '@/lib/strategicEngine';
 
 interface AuthContextType {
   user: User | null;
