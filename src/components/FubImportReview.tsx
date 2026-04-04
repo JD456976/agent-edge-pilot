@@ -21,7 +21,7 @@ interface ImportReviewProps {
 type MatchFilter = 'all' | 'new' | 'matched' | 'conflict';
 
 export function FubImportReview({ runId, onBack }: ImportReviewProps) {
-  const { isReviewer, logAdminAction } = useAuth();
+  const { logAdminAction } = useAuth();
   const [loading, setLoading] = useState(true);
   const [committing, setCommitting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
