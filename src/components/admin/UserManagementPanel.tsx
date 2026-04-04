@@ -315,7 +315,6 @@ export function UserManagementPanel() {
       {viewingUserId && (
         <UserDetailDrawer
           userId={viewingUserId}
-          isReviewer={false}
           onClose={() => setViewingUserId(null)}
           onSaved={() => { loadUsers(); setViewingUserId(null); }}
         />
