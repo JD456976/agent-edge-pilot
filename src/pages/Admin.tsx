@@ -269,7 +269,7 @@ export default function Admin() {
       <section className="rounded-lg border border-border bg-card p-4 mb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold flex items-center gap-2"><UsersRound className="h-4 w-4" /> Teams</h2>
-          <Button size="sm" variant="outline" onClick={() => setShowCreateTeam(true)} disabled={organizations.length === 0 || isReviewer}>
+          <Button size="sm" variant="outline" onClick={() => setShowCreateTeam(true)} disabled={organizations.length === 0}>
             <Plus className="h-4 w-4 mr-1" /> Create Team
           </Button>
         </div>
