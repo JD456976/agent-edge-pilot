@@ -174,7 +174,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
   };
 
   const handleBulkAdd = async () => {
-    if (bulkSelected.size === 0 || isReviewer) return;
+    if (bulkSelected.size === 0) return;
     const inserts = Array.from(bulkSelected.entries()).map(([userId, role]) => ({
       team_id: teamId,
       user_id: userId,
