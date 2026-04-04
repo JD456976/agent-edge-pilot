@@ -376,7 +376,7 @@ function useTimeIntelligence(leads: Lead[], deals: Deal[], tasks: Task[]) {
 
 // ── Morning Mode ────────────────────────────────────────────────────
 
-function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket, onAddLead, onSeeAll }: {
+function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket, onAddLead, onSeeAll, onTaskTap }: {
   intel: ReturnType<typeof useTimeIntelligence>;
   priorityLead: { lead: Lead; score: number } | null;
   ccData: any;
@@ -386,11 +386,12 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
   targetMarket: TargetMarket;
   onAddLead?: () => void;
   onSeeAll?: () => void;
+  onTaskTap: () => void;
 }) {
   const { hotLeads, riskDeals, overdueTasks, closingSoonDeals, totalPipelineValue, atRiskValue, scoredLeads } = intel;
 
   // Build the 3 directive moves
-  const moves: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void }[] = [];
+  const moves: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void; onRowTap?: () => void }[] = [];
 
   if (riskDeals.length > 0) {
     const d = riskDeals[0];
@@ -400,6 +401,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
       detail: `${formatCurrency(d.commission)} at risk — don't let this slip another day`,
       actionLabel: 'Call Now',
       onAction: () => onOpenWorkspace(d.id),
+      onRowTap: () => onOpenWorkspace(d.id),
     });
   }
   if (priorityLead) {
@@ -411,6 +413,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
       detail: `${l.source || 'Direct'} lead · ${l.leadTemperature === 'hot' ? 'hot' : 'warming up'}`,
       actionLabel: channel,
       onAction: () => onLeadAction(l, channel === 'Text' ? 'text' : 'call'),
+      onRowTap: () => onOpenLead(l),
     });
   }
   if (overdueTasks.length > 0) {
@@ -418,6 +421,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
       icon: AlertTriangle, color: 'text-warning',
       verb: `Clear "${overdueTasks[0].title}" — it's overdue`,
       detail: overdueTasks.length > 1 ? `+${overdueTasks.length - 1} more overdue` : 'Get this off your plate first',
+      onRowTap: onTaskTap,
     });
   }
   // Fill remaining slots with warm leads
@@ -429,6 +433,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
         detail: `Score ${score} · last active ${lead.lastTouchedAt ? new Date(lead.lastTouchedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'never'}`,
         actionLabel: 'Contact',
         onAction: () => onLeadAction(lead, 'call'),
+        onRowTap: () => onOpenLead(lead),
       });
     }
   }
@@ -450,7 +455,12 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
           {moves.length > 0 ? moves.map((m, i) => {
             const Icon = m.icon;
             return (
-              <div key={i} className="flex items-start gap-2.5">
+              <div
+                key={i}
+                className={cn('flex items-start gap-2.5 rounded-lg -mx-1 px-1 py-1', m.onRowTap && 'cursor-pointer active:bg-muted/50 transition-colors')}
+                onClick={m.onRowTap}
+                role={m.onRowTap ? 'button' : undefined}
+              >
                 <span className={cn('mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0', m.color === 'text-urgent' ? 'bg-urgent/15' : m.color === 'text-opportunity' ? 'bg-opportunity/15' : m.color === 'text-warning' ? 'bg-warning/15' : 'bg-primary/15')}>
                   <Icon className={cn('h-3 w-3', m.color)} />
                 </span>
@@ -459,7 +469,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
                   <p className="text-xs text-muted-foreground">{m.detail}</p>
                 </div>
                 {m.actionLabel && m.onAction && (
-                  <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={m.onAction}>
+                  <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={(e) => { e.stopPropagation(); m.onAction!(); }}>
                     {m.actionLabel}
                   </Button>
                 )}
@@ -520,13 +530,14 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
 
 // ── Midday Mode ─────────────────────────────────────────────────────
 
-function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, totalMoneyAtRisk }: {
+function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, totalMoneyAtRisk, onTaskTap }: {
   intel: ReturnType<typeof useTimeIntelligence>;
   ccData: any;
   onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email' | 'snooze') => void;
   onOpenLead: (lead: Lead) => void;
   targetMarket: TargetMarket;
   totalMoneyAtRisk: number;
+  onTaskTap: () => void;
 }) {
   const { hotLeads, riskDeals, overdueTasks, completedToday, todayTasks, scoredLeads, totalPipelineValue, atRiskValue } = intel;
   const sessionStart = useSessionStartRisk(totalMoneyAtRisk, true);
@@ -549,7 +560,7 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
   const MomentumIcon = momentumIcon;
 
   // Build directive midday actions
-  const middayDirectives: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void }[] = [];
+  const middayDirectives: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void; onRowTap?: () => void }[] = [];
 
   // Most urgent: risk deals not yet touched
   for (const d of riskDeals.slice(0, 2)) {
@@ -568,6 +579,7 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
       detail: `${lead.source || 'Direct'} · hasn't heard from you today`,
       actionLabel: 'Call',
       onAction: () => onLeadAction(lead, 'call'),
+      onRowTap: () => onOpenLead(lead),
     });
   }
   // Overdue tasks
@@ -576,6 +588,7 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
       icon: AlertTriangle, color: 'text-warning',
       verb: `Knock out "${overdueTasks[0].title}" — ${overdueTasks.length} overdue`,
       detail: 'Clear this before end of day',
+      onRowTap: onTaskTap,
     });
   }
 
@@ -633,7 +646,12 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
             {middayDirectives.slice(0, 4).map((m, i) => {
               const Icon = m.icon;
               return (
-                <div key={i} className="flex items-start gap-2.5">
+                <div
+                  key={i}
+                  className={cn('flex items-start gap-2.5 rounded-lg -mx-1 px-1 py-1', m.onRowTap && 'cursor-pointer active:bg-muted/50 transition-colors')}
+                  onClick={m.onRowTap}
+                  role={m.onRowTap ? 'button' : undefined}
+                >
                   <span className={cn('mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0', m.color === 'text-urgent' ? 'bg-urgent/15' : m.color === 'text-opportunity' ? 'bg-opportunity/15' : 'bg-warning/15')}>
                     <Icon className={cn('h-3 w-3', m.color)} />
                   </span>
@@ -642,7 +660,7 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
                     <p className="text-xs text-muted-foreground">{m.detail}</p>
                   </div>
                   {m.actionLabel && m.onAction && (
-                    <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={m.onAction}>
+                    <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={(e) => { e.stopPropagation(); m.onAction!(); }}>
                       {m.actionLabel}
                     </Button>
                   )}
@@ -688,19 +706,20 @@ function NightMode({ intel }: { intel: ReturnType<typeof useTimeIntelligence> })
 
 // ── Evening Mode ────────────────────────────────────────────────────
 
-function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket }: {
+function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket, onTaskTap }: {
   intel: ReturnType<typeof useTimeIntelligence>;
   ccData: any;
   onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email' | 'snooze') => void;
   onOpenLead: (lead: Lead) => void;
   onOpenWorkspace: (id: string) => void;
   targetMarket: TargetMarket;
+  onTaskTap: () => void;
 }) {
   const { untouchedRiskDeals, untouchedHotLeads, overdueTasks, completedToday, riskDeals, hotLeads, scoredLeads, leadsAtRisk } = intel;
   const hasOpenItems = untouchedRiskDeals.length > 0 || untouchedHotLeads.length > 0 || overdueTasks.length > 0;
 
   // Build evening directives — specific actions, not counts
-  const eveningActions: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void }[] = [];
+  const eveningActions: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void; onRowTap?: () => void }[] = [];
 
   for (const d of untouchedRiskDeals.slice(0, 2)) {
     eveningActions.push({
@@ -709,6 +728,7 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
       detail: `${formatCurrency(d.commission)} at risk — a 30-second text keeps this alive`,
       actionLabel: 'Text',
       onAction: () => onOpenWorkspace(d.id),
+      onRowTap: () => onOpenWorkspace(d.id),
     });
   }
   for (const { lead } of untouchedHotLeads.slice(0, 2)) {
@@ -718,6 +738,7 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
       detail: `${lead.source || 'Direct'} lead · hasn't heard from you today`,
       actionLabel: 'Text',
       onAction: () => onLeadAction(lead, 'text'),
+      onRowTap: () => onOpenLead(lead),
     });
   }
   if (overdueTasks.length > 0) {
@@ -725,6 +746,7 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
       icon: AlertTriangle, color: 'text-warning',
       verb: `Clear "${overdueTasks[0].title}" or reschedule it now`,
       detail: `${overdueTasks.length} overdue — don't carry this into tomorrow`,
+      onRowTap: onTaskTap,
     });
   }
 
@@ -749,7 +771,12 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
             {eveningActions.map((m, i) => {
               const Icon = m.icon;
               return (
-                <div key={i} className="flex items-start gap-2.5">
+                <div
+                  key={i}
+                  className={cn('flex items-start gap-2.5 rounded-lg -mx-1 px-1 py-1', m.onRowTap && 'cursor-pointer active:bg-muted/50 transition-colors')}
+                  onClick={m.onRowTap}
+                  role={m.onRowTap ? 'button' : undefined}
+                >
                   <span className={cn('mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0', m.color === 'text-urgent' ? 'bg-urgent/15' : m.color === 'text-opportunity' ? 'bg-opportunity/15' : 'bg-warning/15')}>
                     <Icon className={cn('h-3 w-3', m.color)} />
                   </span>
@@ -758,7 +785,7 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
                     <p className="text-xs text-muted-foreground">{m.detail}</p>
                   </div>
                   {m.actionLabel && m.onAction && (
-                    <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={m.onAction}>
+                    <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={(e) => { e.stopPropagation(); m.onAction!(); }}>
                       {m.actionLabel}
                     </Button>
                   )}
@@ -1292,6 +1319,7 @@ export default function BetaHomeScreen() {
           targetMarket={targetMarket}
           onAddLead={() => setShowQuickAddLead(true)}
           onSeeAll={() => navigate('/work')}
+          onTaskTap={() => navigate('/work')}
         />
       )}
       {currentMode === 'midday' && (
@@ -1302,6 +1330,7 @@ export default function BetaHomeScreen() {
           onOpenLead={handleOpenLeadDetail}
           targetMarket={targetMarket}
           totalMoneyAtRisk={ccData.totalMoneyAtRisk || 0}
+          onTaskTap={() => navigate('/work')}
         />
       )}
       {currentMode === 'evening' && (
@@ -1312,6 +1341,7 @@ export default function BetaHomeScreen() {
           onOpenLead={handleOpenLeadDetail}
           onOpenWorkspace={openWorkspace}
           targetMarket={targetMarket}
+          onTaskTap={() => navigate('/work')}
         />
       )}
       {currentMode === 'night' && (
