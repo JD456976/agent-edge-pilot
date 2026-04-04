@@ -42,7 +42,7 @@ interface Props {
   onChanged: () => void;
 }
 
-export function TeamDetailSheet({ teamId, teamName: initialName, orgName, createdAt, availableUsers, isReviewer, onClose, onChanged }: Props) {
+export function TeamDetailSheet({ teamId, teamName: initialName, orgName, createdAt, availableUsers, onClose, onChanged }: Props) {
   const { user, logAdminAction } = useAuth();
   const { toast } = useToast();
 
