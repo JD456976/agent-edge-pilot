@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ShieldCheck, Users, Target, ListChecks, Database, Plus, Trash2, AlertTriangle, Building2, UsersRound, ScrollText, ChevronRight, Crown, BarChart3, TrendingUp, Clock, RefreshCw } from 'lucide-react';
 import { BrokerageDashboard } from '@/components/BrokerageDashboard';
 import { ImportHealthPanel } from '@/components/ImportHealthPanel';
-import { SeedPacksModal } from '@/components/SeedPacksModal';
+
 import { UserManagementPanel } from '@/components/admin/UserManagementPanel';
 import { CreateTeamModal } from '@/components/admin/CreateTeamModal';
 import { TeamDetailSheet } from '@/components/admin/TeamDetailSheet';
