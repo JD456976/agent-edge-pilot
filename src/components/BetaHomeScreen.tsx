@@ -1150,6 +1150,33 @@ export default function BetaHomeScreen() {
       {/* Directive Brief Card — above everything */}
       <DirectiveBriefCard mode={currentMode} leads={leads} ccData={ccData} onLeadAction={handleLeadAction} onOpenLead={handleOpenLeadDetail} />
 
+      {/* Income Progress Bar */}
+      {(() => {
+        const annualTarget = (ccData?.strategicSettings as any)?.annualIncomeTarget || 0;
+        if (!annualTarget) return null;
+        const projected = deals.reduce((sum, d) => sum + (d.commission || 0) * ((d.closeProbability ?? 50) / 100), 0);
+        const pct = Math.min(Math.round((projected / annualTarget) * 100), 100);
+        const projK = projected >= 1000 ? `$${Math.round(projected / 1000)}K` : `$${Math.round(projected)}`;
+        const targetK = annualTarget >= 1000 ? `$${Math.round(annualTarget / 1000)}K` : `$${Math.round(annualTarget)}`;
+        const gap = annualTarget - projected;
+        const avgDealComm = deals.length > 0 ? deals.reduce((s, d) => s + (d.commission || 0), 0) / deals.length : 10000;
+        const dealsNeeded = gap > 0 ? Math.ceil(gap / avgDealComm) : 0;
+        const gapK = gap >= 1000 ? `$${Math.round(gap / 1000)}K` : `$${Math.round(gap)}`;
+        return (
+          <div className="rounded-lg border border-border bg-card p-3 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-foreground">{projK} of {targetK} goal · <span className={pct >= 80 ? 'text-opportunity' : pct >= 50 ? 'text-foreground' : 'text-warning'}>{pct}% on track</span></p>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+              <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${pct}%` }} />
+            </div>
+            {gap > 0 && (
+              <p className="text-[11px] text-warning">{gapK} gap — {dealsNeeded} more deal{dealsNeeded !== 1 ? 's' : ''} needed</p>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Time-of-Day Content — first element */}
       {currentMode === 'morning' && (
         <MorningMode
