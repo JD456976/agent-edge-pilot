@@ -1078,7 +1078,7 @@ export default function BetaHomeScreen() {
       </div>
 
       {/* Directive Brief Card — above everything */}
-      <DirectiveBriefCard mode={currentMode} leads={leads} ccData={ccData} onLeadAction={handleLeadAction} />
+      <DirectiveBriefCard mode={currentMode} leads={leads} ccData={ccData} onLeadAction={handleLeadAction} onOpenLead={handleOpenLeadDetail} />
 
       {/* Time-of-Day Content — first element */}
       {currentMode === 'morning' && (
