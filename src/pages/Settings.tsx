@@ -1,7 +1,8 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { TargetMarketSettings } from '@/components/TargetMarketSettings';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar, Volume2, Trash2, AlertTriangle, Shield, FileText, HelpCircle, ExternalLink, Camera, Bell, BellOff, Layers } from 'lucide-react';
+import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar, Volume2, Trash2, AlertTriangle, Shield, FileText, HelpCircle, ExternalLink, Camera, Bell, BellOff, Layers, BarChart3 } from 'lucide-react';
+import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
