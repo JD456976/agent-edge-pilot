@@ -21,14 +21,13 @@ function wasDismissedToday(): boolean {
 
 export function TrialBanner() {
   const { entitlementState } = useEntitlement();
-  const { isReviewer } = useAuth();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (entitlementState.isTrial && !isReviewer && !wasDismissedToday()) {
+    if (entitlementState.isTrial && !wasDismissedToday()) {
       setVisible(true);
     }
-  }, [entitlementState.isTrial, isReviewer]);
+  }, [entitlementState.isTrial]);
 
   const dismiss = () => {
     localStorage.setItem(DISMISS_KEY, new Date().toISOString());
