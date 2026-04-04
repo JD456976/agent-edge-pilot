@@ -114,7 +114,7 @@ export function FubContextStrip({ entityId, entity, personProfile: externalProfi
               </Badge>
             )}
             {profile.preApprovalAmount && (
-              <Badge variant="outline" className="text-[10px] gap-1 py-0 border-green-500/40 text-green-600 dark:text-green-400">
+              <Badge variant="outline" className="text-[10px] gap-1 py-0 border-opportunity/40 text-opportunity">
                 <Shield className="h-2.5 w-2.5" />
                 Pre-approved {profile.preApprovalAmount >= 1_000_000
                   ? `$${(profile.preApprovalAmount / 1_000_000).toFixed(1)}M`
