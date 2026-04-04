@@ -3,7 +3,7 @@ import {
   Phone, MessageSquare, Mail, Clock, ChevronDown, ChevronUp,
   Home, DollarSign, AlertTriangle, Flame, ShieldAlert,
   Sun, CloudSun, Moon, TrendingUp, TrendingDown, Minus,
-  CheckCircle2, Shield, Target, Zap, ArrowRight, X, User,
+  CheckCircle2, Shield, Target, Zap, ArrowRight, X, User, Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -375,7 +375,7 @@ function useTimeIntelligence(leads: Lead[], deals: Deal[], tasks: Task[]) {
 
 // ── Morning Mode ────────────────────────────────────────────────────
 
-function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket }: {
+function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket, onAddLead }: {
   intel: ReturnType<typeof useTimeIntelligence>;
   priorityLead: { lead: Lead; score: number } | null;
   ccData: any;
@@ -383,6 +383,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
   onOpenLead: (lead: Lead) => void;
   onOpenWorkspace: (id: string) => void;
   targetMarket: TargetMarket;
+  onAddLead?: () => void;
 }) {
   const { hotLeads, riskDeals, overdueTasks, closingSoonDeals, totalPipelineValue, atRiskValue, scoredLeads } = intel;
 
@@ -507,6 +508,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
           onTap={onOpenLead}
           onLeadAction={onLeadAction}
           label="Next Up"
+          onAddLead={onAddLead}
         />
       )}
     </div>
@@ -796,18 +798,26 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
 
 // ── Shared Pipeline Section ─────────────────────────────────────────
 
-function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label }: {
+function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label, onAddLead }: {
   leads: { lead: Lead; score: number }[];
   targetMarket: TargetMarket;
   onTap: (lead: Lead) => void;
   onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email') => void;
   label: string;
+  onAddLead?: () => void;
 }) {
   return (
     <div className="space-y-2">
-      <h2 className="text-sm font-semibold text-muted-foreground px-1 flex items-center gap-2">
-        <span className="w-[3px] h-4 rounded-full bg-primary inline-block" />{label}
-      </h2>
+      <div className="flex items-center justify-between px-1">
+        <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+          <span className="w-[3px] h-4 rounded-full bg-primary inline-block" />{label}
+        </h2>
+        {onAddLead && (
+          <button onClick={onAddLead} className="h-7 w-7 rounded-full bg-primary/15 text-primary flex items-center justify-center hover:bg-primary/25 transition-colors" aria-label="Add lead">
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
       <div className="space-y-1.5">
         {leads.map(({ lead, score }) => (
           <PipelineCard
@@ -990,6 +1000,12 @@ export default function BetaHomeScreen() {
   const [snoozeLeadId, setSnoozeLeadId] = useState<string | null>(null);
   const [snoozeDate, setSnoozeDate] = useState('');
   const [quickActionLead, setQuickActionLead] = useState<{ lead: Lead; score: number } | null>(null);
+  const [showQuickAddLead, setShowQuickAddLead] = useState(false);
+  const [qaName, setQaName] = useState('');
+  const [qaPhone, setQaPhone] = useState('');
+  const [qaSource, setQaSource] = useState('Referral');
+  const [qaTemp, setQaTemp] = useState<'hot' | 'warm' | 'cool'>('warm');
+  const [qaSaving, setQaSaving] = useState(false);
 
   // Load sync state + target market
   useEffect(() => {
@@ -1053,6 +1069,27 @@ export default function BetaHomeScreen() {
     setQuickActionLead({ lead, score });
   }, []);
 
+  const handleQuickAddSave = useCallback(async () => {
+    if (!qaName.trim() || !user?.id) return;
+    setQaSaving(true);
+    try {
+      await supabase.from('leads').insert({
+        name: qaName.trim(),
+        source: qaSource,
+        lead_temperature: qaTemp,
+        assigned_to_user_id: user.id,
+        last_contact_at: new Date().toISOString(),
+        engagement_score: qaTemp === 'hot' ? 80 : qaTemp === 'warm' ? 50 : 25,
+      } as any);
+      await refreshData();
+      setShowQuickAddLead(false);
+      setQaName(''); setQaPhone(''); setQaSource('Referral'); setQaTemp('warm');
+      toast.success('Lead added');
+    } finally {
+      setQaSaving(false);
+    }
+  }, [qaName, qaPhone, qaSource, qaTemp, user?.id, refreshData]);
+
   if (loading) {
     return (
       <div className="max-w-lg mx-auto space-y-4 animate-pulse">
@@ -1103,6 +1140,7 @@ export default function BetaHomeScreen() {
           onOpenLead={handleOpenLeadDetail}
           onOpenWorkspace={openWorkspace}
           targetMarket={targetMarket}
+          onAddLead={() => setShowQuickAddLead(true)}
         />
       )}
       {currentMode === 'midday' && (
@@ -1162,7 +1200,6 @@ export default function BetaHomeScreen() {
           ))}
         </div>
       )}
-
 
       {/* Income Control (collapsed) — all modes */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
@@ -1291,6 +1328,57 @@ export default function BetaHomeScreen() {
           </div>
         );
       })()}
+
+      {/* Quick Add Lead Bottom Sheet */}
+      {showQuickAddLead && (
+        <div className="fixed inset-0 z-50 bg-background/60 backdrop-blur-sm" onClick={() => setShowQuickAddLead(false)}>
+          <div
+            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border-t border-border bg-card p-5 space-y-4 animate-slide-up max-w-lg mx-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <h3 className="text-base font-bold">Quick Add Lead</h3>
+              <button onClick={() => setShowQuickAddLead(false)} className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 hover:bg-accent transition-colors">
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Name *</label>
+                <input value={qaName} onChange={e => setQaName(e.target.value.slice(0, 100))} placeholder="Contact name" autoFocus maxLength={100} className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Phone</label>
+                <input type="tel" value={qaPhone} onChange={e => setQaPhone(e.target.value)} placeholder="(555) 123-4567" className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Source</label>
+                  <select value={qaSource} onChange={e => setQaSource(e.target.value)} className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <option value="Zillow">Zillow</option>
+                    <option value="Realtor.com">Realtor.com</option>
+                    <option value="Sphere">Sphere</option>
+                    <option value="Open House">Open House</option>
+                    <option value="Referral">Referral</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Temperature</label>
+                  <select value={qaTemp} onChange={e => setQaTemp(e.target.value as 'hot' | 'warm' | 'cool')} className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <option value="hot">🔥 Hot</option>
+                    <option value="warm">☀️ Warm</option>
+                    <option value="cool">❄️ Cool</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <Button className="w-full h-11" onClick={handleQuickAddSave} disabled={qaSaving || !qaName.trim()}>
+              {qaSaving ? 'Saving...' : 'Save Lead'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Execution drawer */}
       {executionEntity && (
