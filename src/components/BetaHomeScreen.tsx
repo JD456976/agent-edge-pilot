@@ -980,7 +980,7 @@ function GhostingRiskStrip({ leads, onLeadAction, onOpenLead }: {
 
 // ── Shared Pipeline Section ─────────────────────────────────────────
 
-function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label, onAddLead, onSeeAll }: {
+function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label, onAddLead, onSeeAll, userId, onRefresh }: {
   leads: { lead: Lead; score: number }[];
   targetMarket: TargetMarket;
   onTap: (lead: Lead) => void;
@@ -988,6 +988,8 @@ function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label, onAd
   label: string;
   onAddLead?: () => void;
   onSeeAll?: () => void;
+  userId: string;
+  onRefresh: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? leads : leads.slice(0, 5);
