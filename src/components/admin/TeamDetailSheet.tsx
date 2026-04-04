@@ -38,7 +38,6 @@ interface Props {
   createdAt: string;
   availableUsers: ProfileOption[];
   onClose: () => void;
-  onClose: () => void;
   onChanged: () => void;
 }
 
