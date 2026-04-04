@@ -582,6 +582,8 @@ export function ActionWorkspaceDrawer({
                 entityType={context.entityType}
                 entityName={context.entityName}
                 entity={entity}
+                fubActivities={recentFubActivities}
+                personProfile={fubProfile}
               />
             )}
 
