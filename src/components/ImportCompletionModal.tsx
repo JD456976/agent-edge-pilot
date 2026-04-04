@@ -100,7 +100,7 @@ export function ImportCompletionModal({ result, onViewHistory, onClose }: Import
       });
     }, 500);
     return () => clearTimeout(timer);
-  }, [totalImported, isReviewer, refreshData]);
+  }, [totalImported, refreshData]);
 
   const handleUndo = useCallback(async () => {
     setUndoing(true);
