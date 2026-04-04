@@ -1105,8 +1105,8 @@ function OverdueTasksCard({ tasks: overdueTasks, refreshData }: { tasks: Task[];
               );
             } else {
               actionButton = (
-                <button
-                  onClick={() => handleMarkDone(task.id)}
+              <button
+                  onClick={(e) => handleMarkDone(e, task.id)}
                   disabled={isCompleting}
                   className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
                 >
