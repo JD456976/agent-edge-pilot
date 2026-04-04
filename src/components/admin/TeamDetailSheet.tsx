@@ -311,8 +311,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
                             {m.status}
                           </Badge>
                         </TableCell>
-                        {!isReviewer && (
-                          <TableCell>
+                        <TableCell>
                             <Button
                               size="icon"
                               variant="ghost"
@@ -324,7 +323,6 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </TableCell>
-                        )}
                       </TableRow>
                     ))}
                   </TableBody>
