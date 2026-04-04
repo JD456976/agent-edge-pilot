@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap, Send, Clock, ArrowUpRight, ArrowDownLeft, Loader2 } from 'lucide-react';
+import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap, Send, Clock, ArrowUpRight, ArrowDownLeft, Loader2, CalendarDays, Activity, Flame, StickyNote as NotesIcon } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -549,6 +550,63 @@ export function ActionWorkspaceDrawer({
                     </Button>
                   </div>
                 )}
+                {/* Contact Summary — always renders for leads */}
+                {context.entityType === 'lead' && (() => {
+                  const lead = entity as Lead;
+                  const now = Date.now();
+                  const daysSinceCreated = lead.createdAt ? Math.floor((now - new Date(lead.createdAt).getTime()) / 86400000) : null;
+                  const daysSinceTouch = lead.lastTouchedAt ? Math.floor((now - new Date(lead.lastTouchedAt).getTime()) / 86400000) : null;
+                  const engScore = lead.engagementScore ?? 0;
+                  const tempColor = lead.leadTemperature === 'hot' ? 'text-urgent' : lead.leadTemperature === 'warm' ? 'text-warning' : 'text-muted-foreground';
+                  const tempLabel = lead.leadTemperature ? lead.leadTemperature.charAt(0).toUpperCase() + lead.leadTemperature.slice(1) : null;
+                  return (
+                    <div className="rounded-lg border border-border bg-card p-3 space-y-3">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Contact Summary</p>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <CalendarDays className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground">First contact</span>
+                          <span className="ml-auto font-medium">{daysSinceCreated != null ? `${daysSinceCreated}d ago` : '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground">Last touch</span>
+                          <span className="ml-auto font-medium">{daysSinceTouch != null ? `${daysSinceTouch}d ago` : '—'}</span>
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <Activity className="h-3 w-3 text-muted-foreground shrink-0" />
+                              <span className="text-muted-foreground">Engagement</span>
+                            </div>
+                            <span className={cn("font-medium", engScore >= 70 ? 'text-opportunity' : engScore >= 40 ? 'text-warning' : 'text-muted-foreground')}>{engScore}/100</span>
+                          </div>
+                          <Progress value={engScore} className="h-1.5" />
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Zap className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground">Source</span>
+                          <Badge variant="secondary" className="ml-auto text-[10px] h-4 px-1.5">{lead.source || '—'}</Badge>
+                        </div>
+                        {tempLabel && (
+                          <div className="flex items-center gap-1.5">
+                            <Flame className="h-3 w-3 shrink-0" />
+                            <span className="text-muted-foreground">Temperature</span>
+                            <Badge variant="outline" className={cn("ml-auto text-[10px] h-4 px-1.5", tempColor)}>{tempLabel}</Badge>
+                          </div>
+                        )}
+                      </div>
+                      {lead.notes && (
+                        <div className="border-t border-border pt-2 space-y-1">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium flex items-center gap-1">
+                            <StickyNote className="h-3 w-3" /> Agent Notes
+                          </p>
+                          <p className="text-xs text-foreground whitespace-pre-wrap line-clamp-4">{lead.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 {context.entityType === 'lead' && (
                   <ClientFitPanel
                     entityId={context.entityId}
