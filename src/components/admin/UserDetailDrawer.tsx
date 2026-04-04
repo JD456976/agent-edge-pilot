@@ -115,7 +115,7 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
   };
 
   const handleSave = async () => {
-    if (!detail || isReviewer) return;
+    if (!detail) return;
     setSaving(true);
 
     try {
