@@ -735,7 +735,7 @@ export function ActionWorkspaceDrawer({
                   {fubPersonId && (
                     <div className="flex items-center gap-2">
                       <Label className="text-[10px] text-muted-foreground">Quick Send</Label>
-                      <Switch checked={quickSendMode} onCheckedChange={setQuickSendMode} className="h-4 w-7" />
+                      <Switch checked={quickSendModeText} onCheckedChange={setQuickSendModeText} className="h-4 w-7" />
                     </div>
                   )}
                 </div>
