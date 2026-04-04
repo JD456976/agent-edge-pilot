@@ -290,7 +290,7 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
                       <Checkbox
                         checked={selectedTeamIds.includes(team.id)}
                         onCheckedChange={() => toggleTeam(team.id)}
-                        disabled={isReviewer}
+                        disabled={false}
                       />
                       <span className="text-sm">{team.name}</span>
                     </div>
