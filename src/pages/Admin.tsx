@@ -313,9 +313,9 @@ const ADMIN_TABS = ['Management', 'Reports'] as const;
 
 export default function Admin() {
   const { user, profiles, fetchProfiles, logAdminAction, isProtected } = useAuth();
-  const { leads, deals, tasks, seedDemoData, seedPacks, clearSeededData, wipeData, hasData, hasSeededData } = useData();
-  const [showSeedPacks, setShowSeedPacks] = useState(false);
+  const { leads, deals, tasks, wipeData } = useData();
   const [showWipeConfirm, setShowWipeConfirm] = useState(false);
+  const [wipeConfirmText, setWipeConfirmText] = useState('');
   const [wipeConfirmText, setWipeConfirmText] = useState('');
   const [adminTab, setAdminTab] = useState<typeof ADMIN_TABS[number]>('Management');
 
