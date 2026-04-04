@@ -1004,6 +1004,109 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
   return null;
 }
 
+// ── Overdue Tasks Card ──────────────────────────────────────────────
+
+const TASK_TYPE_ICONS: Record<string, typeof Phone> = {
+  call: Phone, text: MessageSquare, email: Mail, follow_up: Clock,
+  showing: Home, closing: CheckCircle2,
+};
+
+function OverdueTasksCard({ tasks: overdueTasks, refreshData }: { tasks: Task[]; refreshData: () => Promise<void> | void }) {
+  const [expanded, setExpanded] = useState(false);
+  const [completing, setCompleting] = useState<string | null>(null);
+
+  const handleMarkDone = async (taskId: string) => {
+    setCompleting(taskId);
+    try {
+      await supabase.from('tasks').update({
+        completed_at: new Date().toISOString(),
+      } as any).eq('id', taskId);
+      await refreshData();
+      toast.success('Task completed');
+    } catch {
+      toast.error('Failed to complete task');
+    } finally {
+      setCompleting(null);
+    }
+  };
+
+  const count = overdueTasks.length;
+
+  return (
+    <div className="rounded-xl border border-warning/40 bg-warning/5 overflow-hidden">
+      <button
+        className="w-full flex items-center gap-2.5 p-3.5 min-h-[44px] text-left"
+        onClick={() => setExpanded(e => !e)}
+      >
+        <span className="h-5 w-5 rounded-full bg-warning/15 flex items-center justify-center shrink-0">
+          <AlertTriangle className="h-3 w-3 text-warning" />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">
+            {count} overdue {count === 1 ? 'action needs' : 'actions need'} attention
+          </p>
+        </div>
+        {expanded ? (
+          <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+        )}
+      </button>
+      {expanded && (
+        <div className="px-3.5 pb-3.5 space-y-2">
+          {overdueTasks.map(task => {
+            const Icon = TASK_TYPE_ICONS[task.type] || Target;
+            const daysOverdue = Math.ceil((Date.now() - new Date(task.dueAt).getTime()) / 86400000);
+            const isCompleting = completing === task.id;
+
+            let actionButton: React.ReactNode = null;
+            if (task.type === 'call') {
+              actionButton = (
+                <a href="tel:" className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-lg hover:bg-primary/20 transition-colors">
+                  <Phone className="h-3 w-3" /> Call
+                </a>
+              );
+            } else if (task.type === 'text') {
+              actionButton = (
+                <a href="sms:" className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-lg hover:bg-primary/20 transition-colors">
+                  <MessageSquare className="h-3 w-3" /> Text
+                </a>
+              );
+            } else if (task.type === 'email') {
+              actionButton = (
+                <a href="mailto:" className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-lg hover:bg-primary/20 transition-colors">
+                  <Mail className="h-3 w-3" /> Email
+                </a>
+              );
+            } else {
+              actionButton = (
+                <button
+                  onClick={() => handleMarkDone(task.id)}
+                  disabled={isCompleting}
+                  className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
+                >
+                  <CheckCircle2 className="h-3 w-3" /> {isCompleting ? '...' : 'Done'}
+                </button>
+              );
+            }
+
+            return (
+              <div key={task.id} className="flex items-center gap-2.5 p-2 rounded-lg bg-card border border-border">
+                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{task.title}</p>
+                  <p className="text-[11px] text-warning">{daysOverdue}d overdue</p>
+                </div>
+                {actionButton}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Component ──────────────────────────────────────────────────
 
 export default function BetaHomeScreen() {
@@ -1213,6 +1316,11 @@ export default function BetaHomeScreen() {
       )}
       {currentMode === 'night' && (
         <NightMode intel={intel} />
+      )}
+
+      {/* Overdue Tasks Card */}
+      {intel.overdueTasks.length > 0 && (
+        <OverdueTasksCard tasks={intel.overdueTasks} refreshData={refreshData} />
       )}
 
       {/* Daily Briefing */}
