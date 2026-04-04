@@ -28,7 +28,8 @@ function daysSince(dateStr: string | undefined | null, now: Date): number {
   return (now.getTime() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24);
 }
 
-function computeGhostingScore(lead: Lead, tasks: Task[], deals: Deal[], now: Date): GhostingResult {
+function computeGhostingScore(lead: Lead, tasks: Task[]): GhostingResult {
+  const now = new Date();
   let score = 0;
   const signals: string[] = [];
 
@@ -74,15 +75,11 @@ function computeGhostingScore(lead: Lead, tasks: Task[], deals: Deal[], now: Dat
     signals.push('Communication gap widening');
   }
 
-  // Check if lead has deal links
-  const hasDealLink = deals.some(d => d.stage !== 'closed' && d.assignedToUserId === lead.assignedToUserId);
-
   return {
     leadId: lead.id,
     leadName: lead.name,
     score: Math.min(100, Math.max(0, score)),
     signals,
-    hasDealLink,
   };
 }
 
