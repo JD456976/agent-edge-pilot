@@ -273,7 +273,7 @@ export function ImportCompletionModal({ result, onViewHistory, onClose }: Import
       )}
 
       {/* Impact Section */}
-      {!isReviewer && totalImported > 0 && (
+      {totalImported > 0 && (
         <div className="rounded-lg border border-border bg-muted/30 p-4 mb-4">
           <h3 className="text-sm font-semibold mb-2">Your Command Center has been updated</h3>
           <div className="space-y-1.5">
