@@ -390,10 +390,6 @@ export default function Admin() {
     await loadAuditLog();
   };
 
-  const handleSeedDemoData = async () => {
-    await seedDemoData();
-    await loadAuditLog();
-  };
 
   const handleWipeData = async () => {
     await wipeData();
