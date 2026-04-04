@@ -180,9 +180,7 @@ export function ImportCompletionModal({ result, onViewHistory, onClose }: Import
           {hasFailures ? 'Import Partially Complete' : 'Import Complete'}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {isReviewer
-            ? 'Demo import completed — no permanent data saved.'
-            : hasFailures
+          {hasFailures
               ? 'Some items could not be imported.'
               : 'All records have been safely processed.'}
         </p>
