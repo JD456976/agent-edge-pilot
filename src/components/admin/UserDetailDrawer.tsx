@@ -251,7 +251,7 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
             {/* Name */}
             <div className="space-y-1.5">
               <Label className="text-xs">Full Name</Label>
-              <Input value={name} onChange={e => setName(e.target.value)} disabled={isReviewer} />
+              <Input value={name} onChange={e => setName(e.target.value)} />
             </div>
 
             {/* Role */}
