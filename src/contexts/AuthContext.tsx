@@ -24,9 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profiles, setProfiles] = useState<User[]>([]);
   const [onboardingCompleted, setOnboardingCompletedState] = useState(true);
-  const [isReviewer, setIsReviewer] = useState(false);
   const [isProtected, setIsProtected] = useState(false);
-  const reviewerSeeded = useRef(false);
 
   const loadUserData = useCallback(async (authUserId: string) => {
     try {
