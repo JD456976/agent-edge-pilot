@@ -384,6 +384,9 @@ export default function Settings() {
       {/* Target Market */}
       <TargetMarketSettings />
 
+      {/* Lead Sources Insight */}
+      <LeadSourcesInsight />
+
       {/* Self-Optimizing Mode */}
       <SelfOptimizingSettingsPanel
         prefs={selfOptPrefs}
