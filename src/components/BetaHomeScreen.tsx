@@ -798,14 +798,19 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
 
 // ── Shared Pipeline Section ─────────────────────────────────────────
 
-function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label, onAddLead }: {
+function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label, onAddLead, onSeeAll }: {
   leads: { lead: Lead; score: number }[];
   targetMarket: TargetMarket;
   onTap: (lead: Lead) => void;
   onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email') => void;
   label: string;
   onAddLead?: () => void;
+  onSeeAll?: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? leads : leads.slice(0, 5);
+  const hasMore = leads.length > 5;
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between px-1">
@@ -819,7 +824,7 @@ function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label, onAd
         )}
       </div>
       <div className="space-y-1.5">
-        {leads.map(({ lead, score }) => (
+        {visible.map(({ lead, score }) => (
           <PipelineCard
             key={lead.id}
             lead={lead}
@@ -830,6 +835,17 @@ function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label, onAd
           />
         ))}
       </div>
+      {hasMore && (
+        <button onClick={() => setExpanded(e => !e)} className="w-full text-xs text-primary hover:underline py-1.5 flex items-center justify-center gap-1">
+          {expanded ? 'Show less' : `Show ${leads.length - 5} more`}
+          <ChevronDown className={cn('h-3 w-3 transition-transform', expanded && 'rotate-180')} />
+        </button>
+      )}
+      {onSeeAll && (
+        <button onClick={onSeeAll} className="w-full text-xs text-primary hover:underline py-1 flex items-center justify-center gap-1">
+          See all <ArrowRight className="h-3 w-3" />
+        </button>
+      )}
     </div>
   );
 }
