@@ -418,26 +418,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
       onRowTap: () => onOpenLead(l),
     });
   }
-  if (overdueTasks.length > 0) {
-    const t = overdueTasks[0];
-    moves.push({
-      icon: AlertTriangle, color: 'text-warning',
-      verb: `Clear "${t.title}" — it's overdue`,
-      detail: overdueTasks.length > 1 ? `+${overdueTasks.length - 1} more overdue` : 'Get this off your plate first',
-      actionLabel: completingTask === t.id ? '...' : 'Done ✓',
-      onAction: async () => {
-        setCompletingTask(t.id);
-        try {
-          await supabase.from('tasks').update({ completed_at: new Date().toISOString() } as any).eq('id', t.id);
-          await refreshData();
-          toast.success('Task completed');
-        } catch { toast.error('Failed to complete task'); }
-        setCompletingTask(null);
-      },
-      onRowTap: onTaskTap,
-      taskId: t.id,
-    });
-  }
+  // Overdue tasks handled by standalone OverdueTasksCard below
   // Fill remaining slots with warm leads
   if (moves.length < 3) {
     for (const { lead, score } of scoredLeads.filter(s => s.score >= 50).slice(0, 3 - moves.length)) {
@@ -1056,16 +1037,19 @@ function OverdueTasksCard({ tasks: overdueTasks, refreshData }: { tasks: Task[];
   const [expanded, setExpanded] = useState(false);
   const [completing, setCompleting] = useState<string | null>(null);
 
-  const handleMarkDone = async (taskId: string) => {
+  const handleMarkDone = async (e: React.MouseEvent, taskId: string) => {
+    e.stopPropagation();
+    e.preventDefault();
     setCompleting(taskId);
     try {
-      await supabase.from('tasks').update({
+      const { error } = await supabase.from('tasks').update({
         completed_at: new Date().toISOString(),
       } as any).eq('id', taskId);
+      if (error) throw error;
       await refreshData();
       toast.success('Task completed');
     } catch {
-      toast.error('Failed to complete task');
+      toast.error('Could not complete task');
     } finally {
       setCompleting(null);
     }
@@ -1121,8 +1105,8 @@ function OverdueTasksCard({ tasks: overdueTasks, refreshData }: { tasks: Task[];
               );
             } else {
               actionButton = (
-                <button
-                  onClick={() => handleMarkDone(task.id)}
+              <button
+                  onClick={(e) => handleMarkDone(e, task.id)}
                   disabled={isCompleting}
                   className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
                 >
