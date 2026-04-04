@@ -824,6 +824,95 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
   );
 }
 
+// ── Ghosting Risk Strip ──────────────────────────────────────────────
+
+function computeGhostScore(lead: Lead): { score: number; daysSinceTouch: number } {
+  const now = Date.now();
+  const touchDays = lead.lastTouchedAt
+    ? (now - new Date(lead.lastTouchedAt).getTime()) / 86400000
+    : lead.lastContactAt
+      ? (now - new Date(lead.lastContactAt).getTime()) / 86400000
+      : Infinity;
+  const contactDays = lead.lastContactAt
+    ? (now - new Date(lead.lastContactAt).getTime()) / 86400000
+    : Infinity;
+  const activityDays = lead.lastActivityAt
+    ? (now - new Date(lead.lastActivityAt).getTime()) / 86400000
+    : Infinity;
+
+  let score = 0;
+  if (contactDays > 10) score += 25;
+  else if (contactDays > 5) score += 15;
+  if ((lead.leadTemperature === 'hot' || lead.leadTemperature === 'warm') && lead.engagementScore <= 0) score += 15;
+  if ((lead.leadTemperature === 'hot' || lead.leadTemperature === 'warm') && activityDays > 7) score += 15;
+  if (touchDays > 7) score += 10;
+
+  return { score: Math.min(100, score), daysSinceTouch: Math.round(touchDays) };
+}
+
+function GhostingRiskStrip({ leads, onLeadAction, onOpenLead }: {
+  leads: Lead[];
+  onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email' | 'snooze') => void;
+  onOpenLead: (lead: Lead) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const atRisk = useMemo(() => {
+    return leads
+      .filter(l => l.leadTemperature === 'hot' || l.leadTemperature === 'warm' || (l.engagementScore || 0) >= 50)
+      .map(l => ({ lead: l, ...computeGhostScore(l) }))
+      .filter(r => r.score >= 35)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+  }, [leads]);
+
+  if (atRisk.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-warning/40 bg-warning/5 overflow-hidden">
+      <button
+        className="w-full flex items-center gap-2.5 p-3 min-h-[44px] text-left"
+        onClick={() => setExpanded(e => !e)}
+      >
+        <span className="text-base leading-none">⚠</span>
+        <p className="flex-1 text-sm font-medium">
+          {atRisk.length} lead{atRisk.length !== 1 ? 's' : ''} going quiet — tap to see who
+        </p>
+        {expanded ? (
+          <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+        )}
+      </button>
+      {expanded && (
+        <div className="px-3 pb-3 space-y-1.5">
+          {atRisk.map(({ lead, daysSinceTouch }) => (
+            <div key={lead.id} className="flex items-center gap-2.5 p-2 rounded-lg bg-card border border-border">
+              <div className="flex-1 min-w-0">
+                <button
+                  onClick={() => onOpenLead(lead)}
+                  className="text-sm font-medium text-primary hover:underline truncate block text-left"
+                >
+                  {lead.name}
+                </button>
+                <p className="text-[11px] text-warning">
+                  {daysSinceTouch === Infinity ? 'Never contacted' : `${daysSinceTouch}d since last contact`}
+                </p>
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); onLeadAction(lead, 'call'); }}
+                className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-lg hover:bg-primary/20 transition-colors"
+              >
+                <Phone className="h-3 w-3" /> Call
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Shared Pipeline Section ─────────────────────────────────────────
 
 function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label, onAddLead, onSeeAll }: {
