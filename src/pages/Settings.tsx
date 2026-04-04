@@ -274,7 +274,7 @@ function LeadSourcesInsight() {
 const TABS = ['Preferences', 'Admin'] as const;
 
 export default function Settings() {
-  const { user, logout, isReviewer, isProtected } = useAuth();
+  const { user, logout, isProtected } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const { currentMode, autoMode, override, setModeOverride } = useSessionMode();
