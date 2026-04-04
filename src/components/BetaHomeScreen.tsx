@@ -1010,6 +1010,7 @@ export default function BetaHomeScreen() {
   const { user } = useAuth();
   const { leads, deals, tasks, alerts, dealParticipants, hasData, loading, seedDemoData, refreshData } = useData();
   const { openWorkspace } = useWorkspace();
+  const navigate = useNavigate();
   const { isSyncing: syncing } = useSyncContext();
   const { currentMode, autoMode, override, setModeOverride } = useSessionMode();
   const [lastSync, setLastSync] = useState<string | null>(null);
