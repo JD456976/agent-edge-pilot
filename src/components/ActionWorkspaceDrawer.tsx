@@ -920,7 +920,7 @@ export function ActionWorkspaceDrawer({
                         onClick={async () => {
                           const subj = draft.email.subject;
                           const bod = displayEmail;
-                          if (quickSendMode) {
+                          if (quickSendModeEmail) {
                             const ok = await sendEmail(subj, bod);
                             if (ok) { setEmailSent(true); onLogTouch?.(context.entityType, context.entityId, context.entityName, 'email', `Sent via FUB: ${subj}`); }
                           } else {
