@@ -805,7 +805,7 @@ export function ActionWorkspaceDrawer({
                   )}
                   {fubPersonId && !textSent && (
                     <p className="text-[10px] text-muted-foreground text-center">
-                      {quickSendMode ? 'Sends immediately through FUB' : 'You\'ll preview before sending'}
+                      {quickSendModeText ? 'Sends immediately through FUB' : 'You\'ll preview before sending'}
                     </p>
                   )}
                 </div>
