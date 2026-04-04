@@ -392,7 +392,8 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
   const { hotLeads, riskDeals, overdueTasks, closingSoonDeals, totalPipelineValue, atRiskValue, scoredLeads } = intel;
 
   // Build the 3 directive moves
-  const moves: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void; onRowTap?: () => void }[] = [];
+  const [completingTask, setCompletingTask] = useState<string | null>(null);
+  const moves: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void; onRowTap?: () => void; taskId?: string }[] = [];
 
   if (riskDeals.length > 0) {
     const d = riskDeals[0];
