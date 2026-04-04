@@ -77,7 +77,7 @@ export function ImportCompletionModal({ result, onViewHistory, onClose }: Import
 
   // Undo countdown timer
   useEffect(() => {
-    if (isReviewer || undone) return;
+    if (undone) return;
     const committedAt = result.committedAt ? new Date(result.committedAt).getTime() : Date.now();
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - committedAt) / 1000);
