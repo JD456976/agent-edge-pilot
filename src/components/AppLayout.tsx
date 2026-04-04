@@ -373,8 +373,8 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
         open={showMobileSearch}
         onClose={() => setShowMobileSearch(false)}
         onOpenEntity={(entityId, entityType) => {
-          closeWorkspace();
           if (location.pathname !== '/') navigate('/');
+          openWorkspace('work');
           requestOpenEntity(entityId, entityType);
         }}
         onCreateTask={() => setShowQuickAdd(true)}
