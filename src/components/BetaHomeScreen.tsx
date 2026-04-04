@@ -772,7 +772,7 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
       {scoredLeads.length > 0 && (
         <div className="rounded-xl border border-border bg-card p-4 space-y-2">
           <h3 className="text-sm font-bold flex items-center gap-2">
-            <Sun className="h-4 w-4 text-warning" /> Tomorrow Morning: Call {scoredLeads[0].lead.name}
+            <Sun className="h-4 w-4 text-warning" /> Tomorrow Morning: Call <button onClick={() => onOpenLead(scoredLeads[0].lead)} className="text-primary hover:underline cursor-pointer">{scoredLeads[0].lead.name}</button>
           </h3>
           <p className="text-xs text-muted-foreground">
             Score {scoredLeads[0].score} · {scoredLeads[0].lead.source || 'Direct'} — make this your first move
@@ -816,11 +816,12 @@ function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label }: {
 
 // ── Directive Brief Card ────────────────────────────────────────────
 
-function DirectiveBriefCard({ mode, leads, ccData, onLeadAction }: {
+function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
   mode: string;
   leads: Lead[];
   ccData: any;
   onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email' | 'snooze') => void;
+  onOpenLead: (lead: Lead) => void;
 }) {
   const now = new Date();
   const firstName = ccData?.agentProfile?.user_id ? undefined : undefined; // not available here, handled in parent
@@ -860,7 +861,7 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction }: {
               <li key={lead.id} className="flex items-start gap-2 text-sm">
                 <span className="text-xs font-bold text-primary mt-0.5 shrink-0">{i + 1}.</span>
                 <div className="min-w-0 flex-1">
-                  <span className="font-medium">{lead.name}</span>
+                  <button onClick={() => onOpenLead(lead)} className="font-medium text-primary hover:underline cursor-pointer text-left">{lead.name}</button>
                   <span className="text-xs text-muted-foreground ml-1.5">
                     Score {lead.engagementScore || 0} · {lead.source || 'Direct'} · {daysSince !== null ? `${daysSince}d ago` : 'never contacted'}
                   </span>
@@ -909,7 +910,7 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction }: {
       <div className="rounded-xl border-l-[3px] border-l-warning border border-border bg-card p-4 space-y-3">
         {staleTop ? (
           <>
-            <h2 className="text-sm font-bold">{staleTop.name} hasn't heard from you</h2>
+            <h2 className="text-sm font-bold"><button onClick={() => onOpenLead(staleTop)} className="text-primary hover:underline cursor-pointer">{staleTop.name}</button> hasn't heard from you</h2>
             <p className="text-xs text-muted-foreground">
               Score {staleTop.engagementScore || 0} · Don't let that window close
             </p>
@@ -946,11 +947,11 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction }: {
       <div className="rounded-xl border-l-[3px] border-l-[#9333ea] border border-border bg-card p-4 space-y-2">
         <p className="text-sm">
           <span className="font-bold">{activeLeads.length}</span> lead{activeLeads.length !== 1 ? 's' : ''} in your pipeline
-          {hottest && <> · Hottest: <span className="font-semibold text-primary">{hottest.name}</span></>}
+          {hottest && <> · Hottest: <button onClick={() => onOpenLead(hottest)} className="font-semibold text-primary hover:underline cursor-pointer">{hottest.name}</button></>}
         </p>
         {leastRecent && leastRecent.id !== hottest?.id && (
           <p className="text-xs text-muted-foreground">
-            <Sun className="h-3 w-3 inline -mt-0.5 text-warning" /> Tomorrow start with <span className="font-medium text-foreground">{leastRecent.name}</span>
+            <Sun className="h-3 w-3 inline -mt-0.5 text-warning" /> Tomorrow start with <button onClick={() => onOpenLead(leastRecent)} className="font-medium text-primary hover:underline cursor-pointer">{leastRecent.name}</button>
           </p>
         )}
         <p className="text-xs text-muted-foreground">
@@ -1078,7 +1079,7 @@ export default function BetaHomeScreen() {
       </div>
 
       {/* Directive Brief Card — above everything */}
-      <DirectiveBriefCard mode={currentMode} leads={leads} ccData={ccData} onLeadAction={handleLeadAction} />
+      <DirectiveBriefCard mode={currentMode} leads={leads} ccData={ccData} onLeadAction={handleLeadAction} onOpenLead={handleOpenLeadDetail} />
 
       {/* Time-of-Day Content — first element */}
       {currentMode === 'morning' && (
