@@ -1319,6 +1319,7 @@ export default function BetaHomeScreen() {
           targetMarket={targetMarket}
           onAddLead={() => setShowQuickAddLead(true)}
           onSeeAll={() => navigate('/work')}
+          onTaskTap={() => navigate('/work')}
         />
       )}
       {currentMode === 'midday' && (
@@ -1329,6 +1330,7 @@ export default function BetaHomeScreen() {
           onOpenLead={handleOpenLeadDetail}
           targetMarket={targetMarket}
           totalMoneyAtRisk={ccData.totalMoneyAtRisk || 0}
+          onTaskTap={() => navigate('/work')}
         />
       )}
       {currentMode === 'evening' && (
@@ -1339,6 +1341,7 @@ export default function BetaHomeScreen() {
           onOpenLead={handleOpenLeadDetail}
           onOpenWorkspace={openWorkspace}
           targetMarket={targetMarket}
+          onTaskTap={() => navigate('/work')}
         />
       )}
       {currentMode === 'night' && (
