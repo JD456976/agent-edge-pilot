@@ -18,7 +18,6 @@ export default function Login() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [appleLoading, setAppleLoading] = useState(false);
   const { login, signup } = useAuth();
   const navigate = useNavigate();
 
