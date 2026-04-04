@@ -269,13 +269,6 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
         </div>
       )}
 
-      {/* Reviewer warning */}
-      {isReviewer && (
-        <div className="rounded-lg border border-border bg-muted/50 p-3 mb-4 flex items-center gap-2 text-sm">
-          <Info className="h-4 w-4 text-primary shrink-0" />
-          <span className="text-muted-foreground">Review mode: imports disabled.</span>
-        </div>
-      )}
 
       {/* Filter */}
       <div className="flex items-center gap-2 mb-3">
