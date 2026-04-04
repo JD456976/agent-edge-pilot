@@ -772,9 +772,9 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
       <div className="rounded-xl border border-border bg-card p-4 space-y-2">
         <h3 className="text-sm font-bold">Today's Results</h3>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span><span className="font-semibold text-foreground">{completedToday.length}</span> tasks done</span>
+          <span><span className="font-semibold text-foreground">{intel.touchedToday.length}</span> tasks done</span>
           <span><span className="font-semibold text-foreground">{intel.touchedToday.length}</span> leads touched</span>
-          <span><span className="font-semibold text-foreground">{riskDeals.length}</span> at risk</span>
+          <span><span className="font-semibold text-foreground">{leadsAtRisk.length}</span> at risk</span>
         </div>
       </div>
 
