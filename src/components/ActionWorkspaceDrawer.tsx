@@ -163,7 +163,8 @@ export function ActionWorkspaceDrawer({
 
   // Text tab state
   const [selectedSmsIndex, setSelectedSmsIndex] = useState(0);
-  const [quickSendMode, setQuickSendMode] = useState(false);
+  const [quickSendModeText, setQuickSendModeText] = useState(false);
+  const [quickSendModeEmail, setQuickSendModeEmail] = useState(false);
   const [textSent, setTextSent] = useState(false);
 
   // Email tab state
