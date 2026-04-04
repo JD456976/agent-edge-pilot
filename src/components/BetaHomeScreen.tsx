@@ -441,7 +441,7 @@ function useTimeIntelligence(leads: Lead[], deals: Deal[], tasks: Task[]) {
 
 // ── Morning Mode ────────────────────────────────────────────────────
 
-function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket, onAddLead, onSeeAll, onTaskTap, refreshData }: {
+function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket, onAddLead, onSeeAll, onTaskTap, refreshData, userId }: {
   intel: ReturnType<typeof useTimeIntelligence>;
   priorityLead: { lead: Lead; score: number } | null;
   ccData: any;
@@ -453,6 +453,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
   onSeeAll?: () => void;
   onTaskTap: () => void;
   refreshData: () => Promise<void> | void;
+  userId: string;
 }) {
   const { hotLeads, riskDeals, overdueTasks, closingSoonDeals, totalPipelineValue, atRiskValue, scoredLeads } = intel;
 
