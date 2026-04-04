@@ -1139,6 +1139,7 @@ export default function BetaHomeScreen() {
           onOpenLead={handleOpenLeadDetail}
           onOpenWorkspace={openWorkspace}
           targetMarket={targetMarket}
+          onAddLead={() => setShowQuickAddLead(true)}
         />
       )}
       {currentMode === 'midday' && (
