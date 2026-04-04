@@ -3,7 +3,7 @@ import {
   Phone, MessageSquare, Mail, Clock, ChevronDown, ChevronUp,
   Home, DollarSign, AlertTriangle, Flame, ShieldAlert,
   Sun, CloudSun, Moon, TrendingUp, TrendingDown, Minus,
-  CheckCircle2, Shield, Target, Zap, ArrowRight,
+  CheckCircle2, Shield, Target, Zap, ArrowRight, X, User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
