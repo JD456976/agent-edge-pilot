@@ -131,7 +131,7 @@ function LeadsTab() {
               >
                 <div className="flex-1 min-w-0 space-y-0.5">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm truncate">{lead.name}</span>
+                    <span className="font-medium text-sm truncate text-primary cursor-pointer underline-offset-2 hover:underline">{lead.name}</span>
                     <Badge variant="secondary" className="text-[10px] shrink-0">{lead.source || 'Direct'}</Badge>
                     <HeatBadge score={score} />
                   </div>
