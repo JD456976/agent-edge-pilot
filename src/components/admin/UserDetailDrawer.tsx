@@ -364,7 +364,7 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
             </Button>
 
             {/* Delete User */}
-            {!isReviewer && !detail.isProtected && !isSelf && (
+            {!detail.isProtected && !isSelf && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" className="w-full" size="sm">
