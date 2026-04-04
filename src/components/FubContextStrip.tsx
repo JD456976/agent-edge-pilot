@@ -161,9 +161,9 @@ export function FubContextStrip({ entityId, entity, personProfile: externalProfi
                   {statusTags.map(t => (
                     <Badge key={t} variant="outline" className={cn(
                       "text-[9px] py-0",
-                      t.toLowerCase().includes('hot') && "border-red-500/40 text-red-600 dark:text-red-400",
-                      t.toLowerCase().includes('warm') && "border-orange-500/40 text-orange-600 dark:text-orange-400",
-                      t.toLowerCase().includes('cold') && "border-blue-500/40 text-blue-600 dark:text-blue-400",
+                      t.toLowerCase().includes('hot') && "border-urgent/40 text-urgent",
+                      t.toLowerCase().includes('warm') && "border-warning/40 text-warning",
+                      t.toLowerCase().includes('cold') && "border-primary/40 text-primary",
                     )}>
                       {t}
                     </Badge>
