@@ -137,24 +137,6 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Apple Sign In */}
-          <Button
-            variant="outline"
-            className="w-full h-11 font-medium mb-4 gap-2"
-            onClick={handleAppleSignIn}
-            disabled={appleLoading}
-          >
-            <AppleIcon className="h-4.5 w-4.5" />
-            {appleLoading ? 'Connecting...' : 'Continue with Apple'}
-          </Button>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">or</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
           {/* Tabs */}
           {tab !== 'forgot' && (
             <div className="flex gap-1 mb-5 bg-muted rounded-lg p-1">
