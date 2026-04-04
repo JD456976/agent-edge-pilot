@@ -21,7 +21,6 @@ interface GhostingResult {
   leadName: string;
   score: number;
   signals: string[];
-  hasDealLink: boolean;
 }
 
 function daysSince(dateStr: string | undefined | null, now: Date): number {
