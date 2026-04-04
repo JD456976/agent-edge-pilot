@@ -18,7 +18,7 @@ export function FubContextStrip({ entityId, entity, personProfile: externalProfi
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    if (externalProfile) { setProfile(externalProfile); setLoading(false); return; }
+    if (externalProfile !== undefined) { setProfile(externalProfile); setLoading(false); return; }
     let cancelled = false;
     (async () => {
       setLoading(true);
