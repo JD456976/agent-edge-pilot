@@ -287,10 +287,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
                           </div>
                         </TableCell>
                         <TableCell>
-                          {isReviewer ? (
-                            <Badge variant="secondary" className="text-[10px] capitalize">{TEAM_ROLE_LABELS[m.teamRole]}</Badge>
-                          ) : (
-                            <Select
+                          <Select
                               value={m.teamRole}
                               onValueChange={(v) => handleRoleChange(m, v as TeamRole)}
                               disabled={isLastLeader(m)}
@@ -305,7 +302,6 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
                                 <SelectItem value="admin">Admin</SelectItem>
                               </SelectContent>
                             </Select>
-                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary" className="text-[10px] capitalize">{m.appRole}</Badge>
