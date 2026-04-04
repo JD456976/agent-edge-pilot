@@ -358,12 +358,10 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
             </div>
 
             {/* Save */}
-            {!isReviewer && (
-              <Button className="w-full" onClick={handleSave} disabled={saving}>
-                {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-                Save Changes
-              </Button>
-            )}
+            <Button className="w-full" onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Save Changes
+            </Button>
 
             {/* Delete User */}
             {!isReviewer && !detail.isProtected && !isSelf && (
