@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { getNoisePrefs, setNoisePrefs, type DriftFrequency, type WeeklyReviewDefault, type StableHideAfter } from '@/lib/noiseGovernor';
 import { useNavigate } from 'react-router-dom';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { DataExportSection } from '@/components/DataExportSection';
 import { SubscriptionStatusSection } from '@/components/SubscriptionStatusSection';
 import { ScoringCalibrationPanel } from '@/components/ScoringCalibrationPanel';
