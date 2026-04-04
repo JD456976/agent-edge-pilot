@@ -11,6 +11,7 @@ interface Props {
   onOpenEntity: (entityId: string, entityType: 'deal' | 'lead') => void;
   onCreateTask: () => void;
   onLogTouch: () => void;
+  onNavigateToTasks?: () => void;
 }
 
 const RECENT_STORAGE_KEY = 'dp-cmd-recent';
