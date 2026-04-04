@@ -200,10 +200,11 @@ export function ActionWorkspaceDrawer({
       .order('created_at', { ascending: false })
       .limit(20);
     const raw = (data || []) as Array<{ id: string; note: string; created_at: string }>;
-    // Deduplicate consecutive identical notes within 1 hour
-    const deduped = raw.filter((note, index) => {
+    // Filter out soft-deleted notes and deduplicate consecutive identical notes within 1 hour
+    const filtered = raw.filter(n => n.note !== '[deleted]');
+    const deduped = filtered.filter((note, index) => {
       if (index === 0) return true;
-      const prev = raw[index - 1];
+      const prev = filtered[index - 1];
       if (note.note === prev.note) {
         const timeDiff = Math.abs(new Date(note.created_at).getTime() - new Date(prev.created_at).getTime());
         return timeDiff > 60 * 60 * 1000;
@@ -427,6 +428,20 @@ export function ActionWorkspaceDrawer({
             <div className="flex items-center justify-between mb-2">
               <div className="min-w-0 flex-1">
                 <SheetTitle className="text-base leading-tight">{context.entityName}</SheetTitle>
+                {(fubProfile?.phones?.[0] || fubProfile?.emails?.[0]) && (
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
+                    {fubProfile.phones?.[0] && (
+                      <a href={`tel:${fubProfile.phones[0]}`} className="text-sm text-primary hover:underline flex items-center gap-1">
+                        <Phone className="h-3 w-3" />{fubProfile.phones[0]}
+                      </a>
+                    )}
+                    {fubProfile.emails?.[0] && (
+                      <a href={`mailto:${fubProfile.emails[0]}`} className="text-sm text-primary hover:underline flex items-center gap-1">
+                        <Mail className="h-3 w-3" />{fubProfile.emails[0]}
+                      </a>
+                    )}
+                  </div>
+                )}
                 <SheetDescription className="text-xs mt-0.5">{entityContextLabel}</SheetDescription>
               </div>
               <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
@@ -1124,7 +1139,7 @@ export function ActionWorkspaceDrawer({
                           <p className="text-foreground whitespace-pre-wrap flex-1">{n.note}</p>
                           <button
                             onClick={async () => {
-                              await supabase.from('activity_events').delete().eq('id', n.id);
+                              await supabase.from('activity_events').update({ note: '[deleted]' }).eq('id', n.id);
                               setSavedNotes(prev => prev.filter(x => x.id !== n.id));
                             }}
                             className="opacity-0 group-hover/note:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0 mt-0.5"
