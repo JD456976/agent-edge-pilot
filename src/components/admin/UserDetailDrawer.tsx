@@ -241,9 +241,6 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
           <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
         ) : (
           <div className="space-y-5">
-            {isReviewer && (
-              <Badge variant="secondary" className="text-[10px]">Reviewer Mode — actions disabled</Badge>
-            )}
 
             {/* Email (read-only) */}
             <div className="space-y-1.5">
