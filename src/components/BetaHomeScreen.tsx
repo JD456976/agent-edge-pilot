@@ -860,7 +860,7 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction }: {
               <li key={lead.id} className="flex items-start gap-2 text-sm">
                 <span className="text-xs font-bold text-primary mt-0.5 shrink-0">{i + 1}.</span>
                 <div className="min-w-0 flex-1">
-                  <span className="font-medium">{lead.name}</span>
+                  <button onClick={() => onOpenLead(lead)} className="font-medium text-primary hover:underline cursor-pointer text-left">{lead.name}</button>
                   <span className="text-xs text-muted-foreground ml-1.5">
                     Score {lead.engagementScore || 0} · {lead.source || 'Direct'} · {daysSince !== null ? `${daysSince}d ago` : 'never contacted'}
                   </span>
