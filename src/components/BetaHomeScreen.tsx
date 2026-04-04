@@ -376,7 +376,7 @@ function useTimeIntelligence(leads: Lead[], deals: Deal[], tasks: Task[]) {
 
 // ── Morning Mode ────────────────────────────────────────────────────
 
-function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket, onAddLead, onSeeAll, onTaskTap }: {
+function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket, onAddLead, onSeeAll, onTaskTap, refreshData }: {
   intel: ReturnType<typeof useTimeIntelligence>;
   priorityLead: { lead: Lead; score: number } | null;
   ccData: any;
@@ -387,11 +387,13 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
   onAddLead?: () => void;
   onSeeAll?: () => void;
   onTaskTap: () => void;
+  refreshData: () => Promise<void> | void;
 }) {
   const { hotLeads, riskDeals, overdueTasks, closingSoonDeals, totalPipelineValue, atRiskValue, scoredLeads } = intel;
 
   // Build the 3 directive moves
-  const moves: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void; onRowTap?: () => void }[] = [];
+  const [completingTask, setCompletingTask] = useState<string | null>(null);
+  const moves: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void; onRowTap?: () => void; taskId?: string }[] = [];
 
   if (riskDeals.length > 0) {
     const d = riskDeals[0];
@@ -417,11 +419,23 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
     });
   }
   if (overdueTasks.length > 0) {
+    const t = overdueTasks[0];
     moves.push({
       icon: AlertTriangle, color: 'text-warning',
-      verb: `Clear "${overdueTasks[0].title}" — it's overdue`,
+      verb: `Clear "${t.title}" — it's overdue`,
       detail: overdueTasks.length > 1 ? `+${overdueTasks.length - 1} more overdue` : 'Get this off your plate first',
+      actionLabel: completingTask === t.id ? '...' : 'Done ✓',
+      onAction: async () => {
+        setCompletingTask(t.id);
+        try {
+          await supabase.from('tasks').update({ completed_at: new Date().toISOString() } as any).eq('id', t.id);
+          await refreshData();
+          toast.success('Task completed');
+        } catch { toast.error('Failed to complete task'); }
+        setCompletingTask(null);
+      },
       onRowTap: onTaskTap,
+      taskId: t.id,
     });
   }
   // Fill remaining slots with warm leads
@@ -444,7 +458,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Target className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-bold">Your 3 Moves Today</h3>
+          <h3 className="text-sm font-bold">Priority Leads</h3>
         </div>
         {totalPipelineValue > 0 && (
           <p className="text-xs text-muted-foreground">
@@ -1320,6 +1334,7 @@ export default function BetaHomeScreen() {
           onAddLead={() => setShowQuickAddLead(true)}
           onSeeAll={() => navigate('/work')}
           onTaskTap={() => navigate('/work')}
+          refreshData={refreshData}
         />
       )}
       {currentMode === 'midday' && (
