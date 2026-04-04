@@ -382,7 +382,7 @@ export default function Admin() {
           orgName={selectedTeamOrg?.name || ''}
           createdAt={selectedTeam.createdAt}
           availableUsers={availableUsers}
-          isReviewer={isReviewer}
+          isReviewer={false}
           onClose={() => setSelectedTeamId(null)}
           onChanged={() => {
             loadOrgData();

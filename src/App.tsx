@@ -69,8 +69,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Show onboarding modal if not completed (reviewers skip — handled via auto-seed)
-  if (!onboardingDone && !isReviewer) {
+  // Show onboarding modal if not completed
+  if (!onboardingDone) {
     return (
       <AppLayout>
         <OnboardingModal onComplete={() => {

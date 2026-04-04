@@ -385,7 +385,7 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
         <div className="flex gap-3">
           <Button
             onClick={handleCommit}
-            disabled={committing || isReviewer || unresolvedConflicts > 0}
+            disabled={committing || unresolvedConflicts > 0}
             className="flex-1"
           >
             {committing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}

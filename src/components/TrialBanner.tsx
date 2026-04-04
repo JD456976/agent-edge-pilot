@@ -76,11 +76,10 @@ export function TrialBanner() {
  * Restricted mode banner for non-entitled, non-reviewer users.
  */
 export function RestrictedModeBanner({ onUpgrade }: { onUpgrade: () => void }) {
-  const { isReviewer } = useAuth();
   const { user } = useAuth();
 
-  // Hide for admins and reviewers
-  if (isReviewer || user?.role === 'admin') return null;
+  // Hide for admins
+  if (user?.role === 'admin') return null;
 
   return (
     <div className="flex items-center justify-between px-4 py-2.5 bg-muted/50 border-b border-border text-sm">

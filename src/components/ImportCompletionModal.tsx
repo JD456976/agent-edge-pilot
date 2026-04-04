@@ -330,7 +330,7 @@ export function ImportCompletionModal({ result, onViewHistory, onClose }: Import
       )}
 
       {/* Undo Import */}
-      {!isReviewer && undoTimeLeft > 0 && (
+      {undoTimeLeft > 0 && (
         <div className="rounded-lg border border-border bg-card p-3 mb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
