@@ -175,6 +175,15 @@ export function ActionWorkspaceDrawer({
   const [editedEmail, setEditedEmail] = useState<string | null>(null);
   const [emailSent, setEmailSent] = useState(false);
 
+  // Listing writer state
+  const [showListingWriter, setShowListingWriter] = useState(false);
+  const [listingAddress, setListingAddress] = useState('');
+  const [listingBeds, setListingBeds] = useState('');
+  const [listingBaths, setListingBaths] = useState('');
+  const [listingFeatures, setListingFeatures] = useState('');
+  const [listingResult, setListingResult] = useState('');
+  const [listingLoading, setListingLoading] = useState(false);
+
   // Task tab state
   const [taskTitle, setTaskTitle] = useState('');
   const [taskType, setTaskType] = useState<TaskType>('follow_up');
@@ -1016,6 +1025,114 @@ export function ActionWorkspaceDrawer({
                     }}>
                       Log Email Sent
                     </Button>
+                  )}
+                </div>
+
+                {/* Write Listing */}
+                <div className="border-t border-border pt-3 space-y-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs w-full"
+                    onClick={() => setShowListingWriter(v => !v)}
+                  >
+                    ✍ Write Listing
+                    {showListingWriter ? <ChevronUp className="h-3.5 w-3.5 ml-1.5" /> : <ChevronDown className="h-3.5 w-3.5 ml-1.5" />}
+                  </Button>
+
+                  {showListingWriter && (
+                    <div className="space-y-2.5 p-3 rounded-lg border border-border bg-muted/30">
+                      <Input
+                        placeholder="Property Address"
+                        value={listingAddress}
+                        onChange={e => setListingAddress(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <Label className="text-[10px] text-muted-foreground">Beds</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            placeholder="3"
+                            value={listingBeds}
+                            onChange={e => setListingBeds(e.target.value)}
+                            className="h-8 text-xs mt-0.5"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-[10px] text-muted-foreground">Baths</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            placeholder="2"
+                            value={listingBaths}
+                            onChange={e => setListingBaths(e.target.value)}
+                            className="h-8 text-xs mt-0.5"
+                          />
+                        </div>
+                      </div>
+                      <Textarea
+                        placeholder="Key features (comma-separated)"
+                        value={listingFeatures}
+                        onChange={e => setListingFeatures(e.target.value)}
+                        className="min-h-[60px] text-xs"
+                      />
+                      <Button
+                        size="sm"
+                        className="text-xs w-full"
+                        disabled={listingLoading || !listingAddress.trim()}
+                        onClick={async () => {
+                          setListingLoading(true);
+                          setListingResult('');
+                          try {
+                            const { data, error } = await supabase.functions.invoke('listing-writer', {
+                              body: {
+                                bedrooms: listingBeds || '3',
+                                bathrooms: listingBaths || '2',
+                                sqft: 'N/A',
+                                price: 'N/A',
+                                propertyType: 'Residential',
+                                neighborhood: listingAddress,
+                                features: listingFeatures,
+                                style: 'Professional',
+                              },
+                            });
+                            if (error) throw error;
+                            const mls = data?.mls || data?.social || JSON.stringify(data);
+                            setListingResult(mls);
+                          } catch (err: any) {
+                            toast({ title: 'Could not generate listing', description: err?.message || 'Try again', variant: 'destructive' });
+                          } finally {
+                            setListingLoading(false);
+                          }
+                        }}
+                      >
+                        {listingLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 mr-1.5" />}
+                        Generate
+                      </Button>
+
+                      {listingResult && (
+                        <div className="space-y-1.5">
+                          <Textarea
+                            readOnly
+                            value={listingResult}
+                            className="min-h-[120px] text-xs bg-card"
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs w-full"
+                            onClick={() => {
+                              navigator.clipboard.writeText(listingResult);
+                              toast({ title: 'Copied listing to clipboard' });
+                            }}
+                          >
+                            <Copy className="h-3 w-3 mr-1.5" /> Copy Listing
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
 
