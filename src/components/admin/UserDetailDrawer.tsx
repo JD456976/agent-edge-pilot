@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Loader2, ShieldCheck, Crown, Trash2 } from 'lucide-react';
+import { Loader2, ShieldCheck, Crown, Trash2, Copy, Check, Ban } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { UserRole } from '@/types';
 
@@ -27,8 +27,8 @@ interface UserDetail {
   status: string;
   isProtected: boolean;
   createdAt: string;
+  lastSignInAt: string | null;
   teams: { teamId: string; teamName: string; teamRole: string }[];
-  // Entitlement info
   isPro: boolean;
   isTrial: boolean;
   expiresAt: string | null;
@@ -37,6 +37,40 @@ interface UserDetail {
   stripeSubscriptionId: string | null;
 }
 
+function daysAgoLabel(dateStr: string | null): string {
+  if (!dateStr) return 'Never';
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+  if (diff === 0) return 'Today';
+  if (diff === 1) return '1 day ago';
+  return `${diff} days ago`;
+}
+
+function defaultExpiry(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 30);
+  return d.toISOString().slice(0, 10);
+}
+
+type AccessStatus = 'active' | 'expiring_soon' | 'expired' | 'revoked';
+
+function getAccessStatus(detail: UserDetail): AccessStatus {
+  if (detail.source === 'admin_revoked' || (!detail.isPro && !detail.isTrial && detail.source)) return 'revoked';
+  if (detail.expiresAt) {
+    const exp = new Date(detail.expiresAt);
+    if (exp < new Date()) return 'expired';
+    if (exp.getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000) return 'expiring_soon';
+  }
+  if (detail.isPro || detail.isTrial) return 'active';
+  return 'active';
+}
+
+const ACCESS_BADGE: Record<AccessStatus, { label: string; variant: 'opportunity' | 'warning' | 'destructive' | 'secondary' }> = {
+  active: { label: 'Active', variant: 'opportunity' },
+  expiring_soon: { label: 'Expiring Soon', variant: 'warning' },
+  expired: { label: 'Expired', variant: 'destructive' },
+  revoked: { label: 'Revoked', variant: 'destructive' },
+};
+
 export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
   const { user, logAdminAction } = useAuth();
   const { toast } = useToast();
@@ -44,15 +78,14 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
-  // Editable fields
   const [name, setName] = useState('');
   const [role, setRole] = useState<string>('agent');
   const [status, setStatus] = useState('active');
   const [allTeams, setAllTeams] = useState<{ id: string; name: string }[]>([]);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
 
-  // Pro access fields
   const [hasProGrant, setHasProGrant] = useState(false);
   const [proExpiresAt, setProExpiresAt] = useState('');
   const [originalProGrant, setOriginalProGrant] = useState(false);
@@ -71,7 +104,6 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
       supabase.from('user_entitlements').select('*').eq('user_id', userId).maybeSingle(),
     ]);
 
-    // Pro grant state
     const granted = !!entitlement?.is_pro;
     setHasProGrant(granted);
     setOriginalProGrant(granted);
@@ -89,6 +121,15 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
         teamRole: m.role,
       }));
 
+      // Try to get last_sign_in_at from auth metadata if available
+      let lastSignIn: string | null = null;
+      try {
+        const { data: authUser } = await supabase.rpc('get_user_last_sign_in' as any, { p_user_id: userId });
+        if (authUser) lastSignIn = authUser as unknown as string;
+      } catch {
+        // Not available, use created_at as fallback
+      }
+
       const d: UserDetail = {
         name: profile.name,
         email: profile.email,
@@ -96,6 +137,7 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
         status: (profile as any).status || 'active',
         isProtected: profile.is_protected,
         createdAt: profile.created_at,
+        lastSignInAt: lastSignIn,
         teams: userTeams,
         isPro: entitlement?.is_pro ?? false,
         isTrial: entitlement?.is_trial ?? false,
@@ -119,26 +161,22 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
     setSaving(true);
 
     try {
-      // Name
       if (name !== detail.name) {
         await supabase.from('profiles').update({ name } as any).eq('user_id', userId);
         await logAdminAction('user_updated', { userId, field: 'name', from: detail.name, to: name });
       }
 
-      // Role
       if (role !== detail.role && !detail.isProtected) {
         await supabase.from('user_roles').delete().eq('user_id', userId);
         await supabase.from('user_roles').insert({ user_id: userId, role: role as any });
         await logAdminAction('role_changed', { userId, from: detail.role, to: role });
       }
 
-      // Status
       if (status !== detail.status && !detail.isProtected) {
         await supabase.from('profiles').update({ status } as any).eq('user_id', userId);
         await logAdminAction(status === 'disabled' ? 'user_disabled' : 'user_updated', { userId, status });
       }
 
-      // Teams
       const prevTeams = new Set(detail.teams.map(t => t.teamId));
       const nextTeams = new Set(selectedTeamIds);
       const toAdd = selectedTeamIds.filter(t => !prevTeams.has(t));
@@ -157,7 +195,6 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
         await logAdminAction('team_membership_changed', { userId, removed: toRemove });
       }
 
-      // Pro access grant/revoke
       if (hasProGrant !== originalProGrant || (hasProGrant && proExpiresAt)) {
         if (hasProGrant) {
           await supabase.from('user_entitlements').upsert({
@@ -185,6 +222,30 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
     setSaving(false);
   };
 
+  const handleRevokeImmediately = async () => {
+    setSaving(true);
+    try {
+      await supabase.from('user_entitlements')
+        .update({
+          is_pro: false,
+          is_trial: false,
+          source: 'admin_revoked',
+          expires_at: null,
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq('user_id', userId);
+      await logAdminAction('pro_access_revoked', { userId, immediate: true });
+      toast({ description: 'Access revoked immediately.' });
+      setHasProGrant(false);
+      setOriginalProGrant(false);
+      setProExpiresAt('');
+      await loadDetail();
+    } catch (err: any) {
+      toast({ title: 'Revoke failed', description: err.message, variant: 'destructive' });
+    }
+    setSaving(false);
+  };
+
   const handleDeleteUser = async () => {
     setDeleting(true);
     try {
@@ -203,25 +264,40 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
     setDeleting(false);
   };
 
+  const handleCopyInviteLink = async () => {
+    const link = `${window.location.origin}/login`;
+    await navigator.clipboard.writeText(link);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+    toast({ description: 'Invite link copied to clipboard.' });
+  };
+
   const toggleTeam = (teamId: string) => {
     setSelectedTeamIds(prev =>
       prev.includes(teamId) ? prev.filter(t => t !== teamId) : [...prev, teamId]
     );
   };
 
+  const handleGrantToggle = (checked: boolean) => {
+    setHasProGrant(checked);
+    if (checked && !proExpiresAt) {
+      setProExpiresAt(defaultExpiry());
+    }
+  };
+
   const isSelf = userId === user?.id;
 
-  // Determine subscription status label
-  const getSubscriptionLabel = () => {
+  const accessStatus = detail ? getAccessStatus(detail) : 'active';
+  const badge = ACCESS_BADGE[accessStatus];
+
+  const subLabel = useMemo(() => {
     if (!detail) return null;
     if (detail.source === 'stripe' && detail.isPro) return { label: 'Stripe Pro', variant: 'default' as const };
     if (detail.source === 'stripe' && detail.isTrial) return { label: 'Stripe Trial', variant: 'secondary' as const };
     if (detail.source === 'admin_grant' && detail.isPro) return { label: 'Admin Granted', variant: 'outline' as const };
     if (detail.source === 'admin_revoked') return { label: 'Revoked', variant: 'destructive' as const };
     return { label: 'No Subscription', variant: 'secondary' as const };
-  };
-
-  const subLabel = getSubscriptionLabel();
+  }, [detail]);
 
   return (
     <Sheet open onOpenChange={onClose}>
@@ -235,6 +311,14 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
               </Badge>
             )}
           </SheetTitle>
+          {detail && (
+            <div className="flex items-center gap-2 flex-wrap mt-1">
+              <Badge variant={badge.variant} className="text-[10px]">{badge.label}</Badge>
+              <span className="text-[11px] text-muted-foreground">
+                Last login: {daysAgoLabel(detail.lastSignInAt || detail.createdAt)}
+              </span>
+            </div>
+          )}
         </SheetHeader>
 
         {loading || !detail ? (
@@ -242,10 +326,21 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
         ) : (
           <div className="space-y-5">
 
-            {/* Email (read-only) */}
+            {/* Email (read-only) + Copy invite link */}
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Email</Label>
-              <Input value={detail.email} disabled className="opacity-60" />
+              <div className="flex gap-2">
+                <Input value={detail.email} disabled className="opacity-60 flex-1" />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-9 px-2.5 shrink-0"
+                  onClick={handleCopyInviteLink}
+                >
+                  {copiedLink ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  <span className="ml-1 text-xs">{copiedLink ? 'Copied' : 'Invite Link'}</span>
+                </Button>
+              </div>
             </div>
 
             {/* Name */}
@@ -298,7 +393,7 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
               </div>
             )}
 
-            {/* Subscription Status */}
+            {/* Subscription & Access Control */}
             <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -308,7 +403,6 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
                 {subLabel && <Badge variant={subLabel.variant} className="text-[10px]">{subLabel.label}</Badge>}
               </div>
 
-              {/* Show current subscription details */}
               {detail.expiresAt && (
                 <p className="text-xs text-muted-foreground">
                   {detail.isPro ? 'Pro' : detail.isTrial ? 'Trial' : 'Access'} expires: {new Date(detail.expiresAt).toLocaleDateString()}
@@ -327,23 +421,42 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
 
               <div className="border-t border-primary/10 pt-2 mt-2">
                 <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wide">Admin Override</p>
+
+                {/* Expiry date picker — prominent, above toggle */}
+                <div className="space-y-1.5 mb-3">
+                  <Label className="text-xs font-medium">Access expires:</Label>
+                  <Input
+                    type="date"
+                    value={proExpiresAt}
+                    onChange={e => setProExpiresAt(e.target.value)}
+                    min={new Date().toISOString().slice(0, 10)}
+                    placeholder="No expiry"
+                  />
+                  {!proExpiresAt && hasProGrant && (
+                    <p className="text-[10px] text-muted-foreground">No expiry — access is indefinite</p>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Grant Pro access</span>
                   <Switch
                     checked={hasProGrant}
-                    onCheckedChange={setHasProGrant}
+                    onCheckedChange={handleGrantToggle}
                   />
                 </div>
-                {hasProGrant && (
-                  <div className="space-y-1.5 mt-2">
-                    <Label className="text-xs text-muted-foreground">Expiration date (blank = indefinite)</Label>
-                    <Input
-                      type="date"
-                      value={proExpiresAt}
-                      onChange={e => setProExpiresAt(e.target.value)}
-                      min={new Date().toISOString().slice(0, 10)}
-                    />
-                  </div>
+
+                {/* Revoke Immediately */}
+                {(detail.isPro || detail.isTrial) && !isSelf && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="w-full mt-3"
+                    onClick={handleRevokeImmediately}
+                    disabled={saving}
+                  >
+                    <Ban className="h-3.5 w-3.5 mr-1" />
+                    Revoke Immediately
+                  </Button>
                 )}
               </div>
             </div>
