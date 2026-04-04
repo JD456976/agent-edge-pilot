@@ -289,6 +289,175 @@ export function ClientPreferencesPanel({ entityId, entityType, entityName, entit
   );
 }
 
+// ── Manual Preferences Form ──────────────────────────────────────────
+
+interface ManualPrefs {
+  priceMin: string;
+  priceMax: string;
+  areas: string;
+  propertyType: string;
+  bedsMin: string;
+  timeline: string;
+}
+
+const DEFAULT_PREFS: ManualPrefs = {
+  priceMin: '', priceMax: '', areas: '', propertyType: 'any', bedsMin: '', timeline: '',
+};
+
+function ManualPreferencesForm({ entityId, entity }: { entityId: string; entity: any }) {
+  const [prefs, setPrefs] = useState<ManualPrefs>(() => {
+    const mp = entity?.manualPreferences || entity?.manual_preferences;
+    if (mp && typeof mp === 'object') {
+      return {
+        priceMin: mp.priceMin?.toString() || '',
+        priceMax: mp.priceMax?.toString() || '',
+        areas: mp.areas || '',
+        propertyType: mp.propertyType || 'any',
+        bedsMin: mp.bedsMin?.toString() || '',
+        timeline: mp.timeline || '',
+      };
+    }
+    return DEFAULT_PREFS;
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        priceMin: prefs.priceMin ? Number(prefs.priceMin) : null,
+        priceMax: prefs.priceMax ? Number(prefs.priceMax) : null,
+        areas: prefs.areas.trim(),
+        propertyType: prefs.propertyType,
+        bedsMin: prefs.bedsMin ? Number(prefs.bedsMin) : null,
+        timeline: prefs.timeline,
+      };
+      const { error } = await supabase
+        .from('leads')
+        .update({ manual_preferences: payload as any })
+        .eq('id', entityId);
+      if (error) throw error;
+      toast({ title: 'Preferences saved' });
+    } catch {
+      toast({ title: 'Failed to save', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const update = (field: keyof ManualPrefs, value: string) => setPrefs(p => ({ ...p, [field]: value }));
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3 mt-3">
+      <div className="flex items-center gap-2 mb-1">
+        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-xs font-semibold text-foreground">Manual Preferences</span>
+      </div>
+
+      {/* Price Range */}
+      <div>
+        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1 mb-1">
+          <DollarSign className="h-3 w-3" /> Price Range
+        </Label>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+            <Input
+              type="number"
+              placeholder="Min"
+              value={prefs.priceMin}
+              onChange={e => update('priceMin', e.target.value)}
+              className="h-8 text-xs pl-5"
+            />
+          </div>
+          <span className="text-xs text-muted-foreground">–</span>
+          <div className="relative flex-1">
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+            <Input
+              type="number"
+              placeholder="Max"
+              value={prefs.priceMax}
+              onChange={e => update('priceMax', e.target.value)}
+              className="h-8 text-xs pl-5"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Preferred Areas */}
+      <div>
+        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1 mb-1">
+          <MapPin className="h-3 w-3" /> Preferred Areas
+        </Label>
+        <Input
+          placeholder="e.g. Westlake, Lakewood, Rocky River"
+          value={prefs.areas}
+          onChange={e => update('areas', e.target.value)}
+          className="h-8 text-xs"
+        />
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        {/* Property Type */}
+        <div>
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1 mb-1">
+            <Home className="h-3 w-3" /> Type
+          </Label>
+          <Select value={prefs.propertyType} onValueChange={v => update('propertyType', v)}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="any">Any</SelectItem>
+              <SelectItem value="single_family">Single Family</SelectItem>
+              <SelectItem value="condo">Condo</SelectItem>
+              <SelectItem value="multi_family">Multi-Family</SelectItem>
+              <SelectItem value="land">Land</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Bedrooms */}
+        <div>
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1 mb-1">
+            <BedDouble className="h-3 w-3" /> Beds
+          </Label>
+          <Select value={prefs.bedsMin} onValueChange={v => update('bedsMin', v)}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">1+</SelectItem>
+              <SelectItem value="2">2+</SelectItem>
+              <SelectItem value="3">3+</SelectItem>
+              <SelectItem value="4">4+</SelectItem>
+              <SelectItem value="5">5+</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Timeline */}
+        <div>
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1 mb-1">
+            <Clock className="h-3 w-3" /> Timeline
+          </Label>
+          <Select value={prefs.timeline} onValueChange={v => update('timeline', v)}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="asap">ASAP</SelectItem>
+              <SelectItem value="1-3mo">1-3 months</SelectItem>
+              <SelectItem value="3-6mo">3-6 months</SelectItem>
+              <SelectItem value="6-12mo">6-12 months</SelectItem>
+              <SelectItem value="browsing">Just browsing</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <Button size="sm" className="w-full text-xs" onClick={handleSave} disabled={saving}>
+        <Save className="h-3.5 w-3.5 mr-1.5" />
+        {saving ? 'Saving…' : 'Save Preferences'}
+      </Button>
+    </div>
+  );
+}
+
 // ── Sub-components ───────────────────────────────────────────────────
 
 function PreferenceSection({ icon: Icon, label, children }: { icon: React.ElementType; label: string; children: React.ReactNode }) {
