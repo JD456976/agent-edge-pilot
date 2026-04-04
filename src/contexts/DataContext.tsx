@@ -42,6 +42,7 @@ function mapLead(row: any): Lead {
     importedAt: row.imported_at || null,
     lastTouchedAt: row.last_touched_at || undefined,
     snoozeUntil: row.snooze_until || null,
+    manualPreferences: row.manual_preferences || null,
   };
 }
 
