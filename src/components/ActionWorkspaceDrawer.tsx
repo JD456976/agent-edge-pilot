@@ -163,7 +163,8 @@ export function ActionWorkspaceDrawer({
 
   // Text tab state
   const [selectedSmsIndex, setSelectedSmsIndex] = useState(0);
-  const [quickSendMode, setQuickSendMode] = useState(false);
+  const [quickSendModeText, setQuickSendModeText] = useState(false);
+  const [quickSendModeEmail, setQuickSendModeEmail] = useState(false);
   const [textSent, setTextSent] = useState(false);
 
   // Email tab state
@@ -327,7 +328,8 @@ export function ActionWorkspaceDrawer({
     setCopiedField(null);
     setTextSent(false);
     setEmailSent(false);
-    setQuickSendMode(false);
+    setQuickSendModeText(false);
+    setQuickSendModeEmail(false);
     setFubProfile(null);
     setRecentFubActivities([]);
     onClose();
@@ -580,6 +582,8 @@ export function ActionWorkspaceDrawer({
                 entityType={context.entityType}
                 entityName={context.entityName}
                 entity={entity}
+                fubActivities={recentFubActivities}
+                personProfile={fubProfile}
               />
             )}
 
@@ -731,7 +735,7 @@ export function ActionWorkspaceDrawer({
                   {fubPersonId && (
                     <div className="flex items-center gap-2">
                       <Label className="text-[10px] text-muted-foreground">Quick Send</Label>
-                      <Switch checked={quickSendMode} onCheckedChange={setQuickSendMode} className="h-4 w-7" />
+                      <Switch checked={quickSendModeText} onCheckedChange={setQuickSendModeText} className="h-4 w-7" />
                     </div>
                   )}
                 </div>
@@ -771,7 +775,7 @@ export function ActionWorkspaceDrawer({
                       onClick={async () => {
                         const msg = smsVariants[selectedSmsIndex]?.text;
                         if (!msg) return;
-                        if (quickSendMode) {
+                        if (quickSendModeText) {
                           const ok = await sendText(msg);
                           if (ok) { setTextSent(true); onLogTouch?.(context.entityType, context.entityId, context.entityName, 'text', `Sent via FUB: ${msg}`); }
                         } else {
@@ -784,7 +788,7 @@ export function ActionWorkspaceDrawer({
                       }}
                     >
                       {sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
-                      {quickSendMode ? 'Send Text Now' : 'Review & Send via FUB'}
+                      {quickSendModeText ? 'Send Text Now' : 'Review & Send via FUB'}
                     </Button>
                   ) : (
                     <Button
@@ -801,7 +805,7 @@ export function ActionWorkspaceDrawer({
                   )}
                   {fubPersonId && !textSent && (
                     <p className="text-[10px] text-muted-foreground text-center">
-                      {quickSendMode ? 'Sends immediately through FUB' : 'You\'ll preview before sending'}
+                      {quickSendModeText ? 'Sends immediately through FUB' : 'You\'ll preview before sending'}
                     </p>
                   )}
                 </div>
@@ -907,7 +911,7 @@ export function ActionWorkspaceDrawer({
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <Label className="text-[10px] text-muted-foreground">Quick Send</Label>
-                        <Switch checked={quickSendMode} onCheckedChange={setQuickSendMode} className="h-4 w-7" />
+                        <Switch checked={quickSendModeEmail} onCheckedChange={setQuickSendModeEmail} className="h-4 w-7" />
                       </div>
                       <Button
                         size="sm"
@@ -916,7 +920,7 @@ export function ActionWorkspaceDrawer({
                         onClick={async () => {
                           const subj = draft.email.subject;
                           const bod = displayEmail;
-                          if (quickSendMode) {
+                          if (quickSendModeEmail) {
                             const ok = await sendEmail(subj, bod);
                             if (ok) { setEmailSent(true); onLogTouch?.(context.entityType, context.entityId, context.entityName, 'email', `Sent via FUB: ${subj}`); }
                           } else {
@@ -928,7 +932,7 @@ export function ActionWorkspaceDrawer({
                         }}
                       >
                         {sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
-                        {quickSendMode ? 'Send Email Now' : 'Review & Send via FUB'}
+                        {quickSendModeEmail ? 'Send Email Now' : 'Review & Send via FUB'}
                       </Button>
                     </div>
                   ) : (
