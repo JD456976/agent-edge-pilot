@@ -136,7 +136,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
   };
 
   const handleSaveName = async () => {
-    if (!name.trim() || name === initialName || isReviewer) return;
+    if (!name.trim() || name === initialName) return;
     setSavingName(true);
     await supabase.from('teams').update({ name: name.trim() }).eq('id', teamId);
     await logAdminAction('team_renamed', { teamId, from: initialName, to: name.trim() });
