@@ -271,7 +271,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
                       <TableHead>Team Role</TableHead>
                       <TableHead>App Role</TableHead>
                       <TableHead>Status</TableHead>
-                      {!isReviewer && <TableHead className="w-[40px]" />}
+                      {!false && <TableHead className="w-[40px]" />}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
