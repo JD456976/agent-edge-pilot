@@ -18,7 +18,6 @@ interface Props {
   userId: string;
   onClose: () => void;
   onSaved: () => void;
-  isReviewer: boolean;
 }
 
 interface UserDetail {
