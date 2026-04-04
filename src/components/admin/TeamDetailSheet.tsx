@@ -96,7 +96,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
   const isLastLeader = (m: TeamMemberRow) => m.teamRole === 'leader' && leaders.length <= 1;
 
   const handleRoleChange = async (member: TeamMemberRow, newRole: TeamRole) => {
-    if (isReviewer) return;
+    // Block removing last leader
     // Block removing last leader
     if (member.teamRole === 'leader' && newRole !== 'leader' && leaders.length <= 1) {
       toast({ title: 'Cannot change role', description: 'Team must have at least one Leader', variant: 'destructive' });
