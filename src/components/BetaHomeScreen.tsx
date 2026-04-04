@@ -691,7 +691,7 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
   onOpenWorkspace: (id: string) => void;
   targetMarket: TargetMarket;
 }) {
-  const { untouchedRiskDeals, untouchedHotLeads, overdueTasks, completedToday, riskDeals, hotLeads, scoredLeads } = intel;
+  const { untouchedRiskDeals, untouchedHotLeads, overdueTasks, completedToday, riskDeals, hotLeads, scoredLeads, leadsAtRisk } = intel;
   const hasOpenItems = untouchedRiskDeals.length > 0 || untouchedHotLeads.length > 0 || overdueTasks.length > 0;
 
   // Build evening directives — specific actions, not counts
