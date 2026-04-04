@@ -508,6 +508,9 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
 
       <DealMilestonesPanel />
 
+      {/* Ghosting Risk Strip */}
+      <GhostingRiskStrip leads={intel.scoredLeads.map(s => s.lead)} onLeadAction={onLeadAction} onOpenLead={onOpenLead} />
+
       {scoredLeads.length > 1 && (
         <PipelineSection
           leads={scoredLeads.slice(1)}
