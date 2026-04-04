@@ -86,7 +86,7 @@ export function ImportCompletionModal({ result, onViewHistory, onClose }: Import
       if (remaining <= 0) clearInterval(interval);
     }, 1000);
     return () => clearInterval(interval);
-  }, [result.committedAt, isReviewer, undone]);
+  }, [result.committedAt, undone]);
 
   // Post-import scoring refresh
   useEffect(() => {
