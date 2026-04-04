@@ -185,9 +185,9 @@ export function FubContextStrip({ entityId, entity, personProfile: externalProfi
             {/* Pre-Approval details */}
             {profile.preApproved && (
               <div className="flex items-center gap-1.5 text-xs">
-                <Shield className="h-3 w-3 text-green-600 dark:text-green-400" />
+                <Shield className="h-3 w-3 text-opportunity" />
                 <span className="text-muted-foreground">Pre-Approved:</span>
-                <span className="font-medium text-green-600 dark:text-green-400">
+                <span className="font-medium text-opportunity">
                   Yes{profile.preApprovalAmount ? ` — $${profile.preApprovalAmount.toLocaleString()}` : ''}
                 </span>
                 {profile.lenderName && (
