@@ -990,6 +990,12 @@ export default function BetaHomeScreen() {
   const [snoozeLeadId, setSnoozeLeadId] = useState<string | null>(null);
   const [snoozeDate, setSnoozeDate] = useState('');
   const [quickActionLead, setQuickActionLead] = useState<{ lead: Lead; score: number } | null>(null);
+  const [showQuickAddLead, setShowQuickAddLead] = useState(false);
+  const [qaName, setQaName] = useState('');
+  const [qaPhone, setQaPhone] = useState('');
+  const [qaSource, setQaSource] = useState('Referral');
+  const [qaTemp, setQaTemp] = useState<'hot' | 'warm' | 'cool'>('warm');
+  const [qaSaving, setQaSaving] = useState(false);
 
   // Load sync state + target market
   useEffect(() => {
