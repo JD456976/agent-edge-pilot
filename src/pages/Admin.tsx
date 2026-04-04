@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ShieldCheck, Users, Target, ListChecks, Database, Plus, Trash2, AlertTriangle, Building2, UsersRound, ScrollText, ChevronRight, Crown, BarChart3, TrendingUp, Clock, RefreshCw } from 'lucide-react';
 import { BrokerageDashboard } from '@/components/BrokerageDashboard';
 import { ImportHealthPanel } from '@/components/ImportHealthPanel';
-import { SeedPacksModal } from '@/components/SeedPacksModal';
+
 import { UserManagementPanel } from '@/components/admin/UserManagementPanel';
 import { CreateTeamModal } from '@/components/admin/CreateTeamModal';
 import { TeamDetailSheet } from '@/components/admin/TeamDetailSheet';
@@ -313,8 +313,7 @@ const ADMIN_TABS = ['Management', 'Reports'] as const;
 
 export default function Admin() {
   const { user, profiles, fetchProfiles, logAdminAction, isProtected } = useAuth();
-  const { leads, deals, tasks, seedDemoData, seedPacks, clearSeededData, wipeData, hasData, hasSeededData } = useData();
-  const [showSeedPacks, setShowSeedPacks] = useState(false);
+  const { leads, deals, tasks, wipeData } = useData();
   const [showWipeConfirm, setShowWipeConfirm] = useState(false);
   const [wipeConfirmText, setWipeConfirmText] = useState('');
   const [adminTab, setAdminTab] = useState<typeof ADMIN_TABS[number]>('Management');
@@ -390,10 +389,6 @@ export default function Admin() {
     await loadAuditLog();
   };
 
-  const handleSeedDemoData = async () => {
-    await seedDemoData();
-    await loadAuditLog();
-  };
 
   const handleWipeData = async () => {
     await wipeData();
@@ -487,8 +482,6 @@ export default function Admin() {
           <section className="rounded-lg border border-border bg-card p-4 mb-6">
             <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Database className="h-4 w-4" /> Data Tools</h2>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => setShowSeedPacks(true)}><Plus className="h-4 w-4 mr-1" /> Seed Packs</Button>
-              <Button size="sm" variant="outline" onClick={handleSeedDemoData}><Plus className="h-4 w-4 mr-1" /> Quick Seed</Button>
               <Button size="sm" variant="destructive" onClick={() => setShowWipeConfirm(true)}><Trash2 className="h-4 w-4 mr-1" /> Clear All Data</Button>
             </div>
             {showWipeConfirm && (
@@ -514,16 +507,6 @@ export default function Admin() {
               </div>
             )}
           </section>
-
-          {/* Seed Packs Modal */}
-          <SeedPacksModal
-            open={showSeedPacks}
-            onClose={() => setShowSeedPacks(false)}
-            onSeed={async (packIds) => { await seedPacks(packIds); await loadAuditLog(); }}
-            onClearSeeded={async () => { await clearSeededData(); await loadAuditLog(); }}
-            hasRealData={hasData}
-            hasSeededData={hasSeededData}
-          />
 
           {/* Organizations */}
           <section className="rounded-lg border border-border bg-card p-4 mb-6">
