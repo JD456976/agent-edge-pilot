@@ -390,7 +390,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
   const { hotLeads, riskDeals, overdueTasks, closingSoonDeals, totalPipelineValue, atRiskValue, scoredLeads } = intel;
 
   // Build the 3 directive moves
-  const moves: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void }[] = [];
+  const moves: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void; onRowTap?: () => void }[] = [];
 
   if (riskDeals.length > 0) {
     const d = riskDeals[0];
@@ -400,6 +400,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
       detail: `${formatCurrency(d.commission)} at risk — don't let this slip another day`,
       actionLabel: 'Call Now',
       onAction: () => onOpenWorkspace(d.id),
+      onRowTap: () => onOpenWorkspace(d.id),
     });
   }
   if (priorityLead) {
@@ -411,6 +412,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
       detail: `${l.source || 'Direct'} lead · ${l.leadTemperature === 'hot' ? 'hot' : 'warming up'}`,
       actionLabel: channel,
       onAction: () => onLeadAction(l, channel === 'Text' ? 'text' : 'call'),
+      onRowTap: () => onOpenLead(l),
     });
   }
   if (overdueTasks.length > 0) {
@@ -418,6 +420,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
       icon: AlertTriangle, color: 'text-warning',
       verb: `Clear "${overdueTasks[0].title}" — it's overdue`,
       detail: overdueTasks.length > 1 ? `+${overdueTasks.length - 1} more overdue` : 'Get this off your plate first',
+      onRowTap: onTaskTap,
     });
   }
   // Fill remaining slots with warm leads
@@ -429,6 +432,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
         detail: `Score ${score} · last active ${lead.lastTouchedAt ? new Date(lead.lastTouchedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'never'}`,
         actionLabel: 'Contact',
         onAction: () => onLeadAction(lead, 'call'),
+        onRowTap: () => onOpenLead(lead),
       });
     }
   }
