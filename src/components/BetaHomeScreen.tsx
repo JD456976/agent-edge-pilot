@@ -816,11 +816,12 @@ function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label }: {
 
 // ── Directive Brief Card ────────────────────────────────────────────
 
-function DirectiveBriefCard({ mode, leads, ccData, onLeadAction }: {
+function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
   mode: string;
   leads: Lead[];
   ccData: any;
   onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email' | 'snooze') => void;
+  onOpenLead: (lead: Lead) => void;
 }) {
   const now = new Date();
   const firstName = ccData?.agentProfile?.user_id ? undefined : undefined; // not available here, handled in parent
