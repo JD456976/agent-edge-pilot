@@ -90,7 +90,7 @@ export function ImportCompletionModal({ result, onViewHistory, onClose }: Import
 
   // Post-import scoring refresh
   useEffect(() => {
-    if (totalImported === 0 || isReviewer) return;
+    if (totalImported === 0) return;
     const timer = setTimeout(() => {
       setRescoring(true);
       // Trigger a data refresh which will cause Intelligence Engine to re-score
