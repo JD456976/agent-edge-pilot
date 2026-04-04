@@ -796,18 +796,26 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
 
 // ── Shared Pipeline Section ─────────────────────────────────────────
 
-function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label }: {
+function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label, onAddLead }: {
   leads: { lead: Lead; score: number }[];
   targetMarket: TargetMarket;
   onTap: (lead: Lead) => void;
   onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email') => void;
   label: string;
+  onAddLead?: () => void;
 }) {
   return (
     <div className="space-y-2">
-      <h2 className="text-sm font-semibold text-muted-foreground px-1 flex items-center gap-2">
-        <span className="w-[3px] h-4 rounded-full bg-primary inline-block" />{label}
-      </h2>
+      <div className="flex items-center justify-between px-1">
+        <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+          <span className="w-[3px] h-4 rounded-full bg-primary inline-block" />{label}
+        </h2>
+        {onAddLead && (
+          <button onClick={onAddLead} className="h-7 w-7 rounded-full bg-primary/15 text-primary flex items-center justify-center hover:bg-primary/25 transition-colors" aria-label="Add lead">
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
       <div className="space-y-1.5">
         {leads.map(({ lead, score }) => (
           <PipelineCard
