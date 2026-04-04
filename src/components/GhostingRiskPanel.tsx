@@ -21,7 +21,6 @@ interface GhostingResult {
   leadName: string;
   score: number;
   signals: string[];
-  hasDealLink: boolean;
 }
 
 function daysSince(dateStr: string | undefined | null, now: Date): number {
@@ -29,7 +28,8 @@ function daysSince(dateStr: string | undefined | null, now: Date): number {
   return (now.getTime() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24);
 }
 
-function computeGhostingScore(lead: Lead, tasks: Task[], deals: Deal[], now: Date): GhostingResult {
+function computeGhostingScore(lead: Lead, tasks: Task[]): GhostingResult {
+  const now = new Date();
   let score = 0;
   const signals: string[] = [];
 
@@ -75,29 +75,23 @@ function computeGhostingScore(lead: Lead, tasks: Task[], deals: Deal[], now: Dat
     signals.push('Communication gap widening');
   }
 
-  // Check if lead has deal links
-  const hasDealLink = deals.some(d => d.stage !== 'closed' && d.assignedToUserId === lead.assignedToUserId);
-
   return {
     leadId: lead.id,
     leadName: lead.name,
     score: Math.min(100, Math.max(0, score)),
     signals,
-    hasDealLink,
   };
 }
 
 export function GhostingRiskPanel({ leads, tasks, deals, onLogTouch, onCreateTask, onOpenLead }: Props) {
-  const now = useMemo(() => new Date(), []);
-
   const results = useMemo(() => {
     return leads
       .filter(l => l.leadTemperature === 'hot' || l.leadTemperature === 'warm')
-      .map(l => computeGhostingScore(l, tasks, deals, now))
+      .map(l => computeGhostingScore(l, tasks))
       .filter(r => r.score >= 35)
       .sort((a, b) => b.score - a.score)
       .slice(0, 5);
-  }, [leads, tasks, deals, now]);
+  }, [leads, tasks]);
 
   if (results.length === 0) return null;
 
@@ -152,9 +146,8 @@ export function GhostingRiskPanel({ leads, tasks, deals, onLogTouch, onCreateTas
 }
 
 /** Utility: check if any high ghosting risk on active deal clients */
-export function hasHighGhostingRisk(leads: Lead[], tasks: Task[], deals: Deal[]): boolean {
-  const now = new Date();
+export function hasHighGhostingRisk(leads: Lead[], tasks: Task[]): boolean {
   return leads
     .filter(l => l.leadTemperature === 'hot' || l.leadTemperature === 'warm')
-    .some(l => computeGhostingScore(l, tasks, deals, now).score >= 70);
+    .some(l => computeGhostingScore(l, tasks).score >= 70);
 }

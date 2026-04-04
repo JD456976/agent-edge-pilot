@@ -131,7 +131,7 @@ export function ClientFitPanel({ entityId, entityType, entityName, entity }: Pro
       }
     })();
     return () => { cancelled = true; };
-  }, [entityId, fubId, user]);
+  }, [fubId, user]);
 
   const handleRefresh = async () => {
     if (!clientIdentityId) return;
@@ -188,8 +188,7 @@ export function ClientFitPanel({ entityId, entityType, entityName, entity }: Pro
         <div className="mt-2 flex items-start gap-2">
           <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
           <p className="text-xs text-muted-foreground">
-            Not enough FUB activity data for this contact to generate a Client Fit score.
-            More interactions will unlock this analysis.
+            Client profile not yet linked — FUB sync will connect this automatically.
           </p>
         </div>
       </div>

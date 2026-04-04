@@ -244,7 +244,7 @@ export function useCommandCenterData(
     if (hasCriticalFailureRisk(deals, tasks, moneyResults)) {
       signals.push({ type: 'failure', label: 'A deal is at critical failure risk. Protect income now.', severity: 'high' });
     }
-    if (hasHighGhostingRisk(leads, tasks, deals)) {
+    if (hasHighGhostingRisk(leads, tasks)) {
       signals.push({ type: 'ghosting', label: 'A key client is at risk of going silent. Re-engage immediately.', severity: 'high' });
     }
     return signals;
