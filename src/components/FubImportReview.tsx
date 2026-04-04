@@ -74,9 +74,7 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
       const matchedDeals = stagedDeals.filter(d => d.match_status === 'matched').length;
       const matchedTasks = stagedTasks.filter(t => t.match_status === 'matched').length;
 
-      if (!isReviewer) {
-        markImportCompleted();
-      }
+      markImportCompleted();
 
       setCompletionResult({
         importRunId: runId,
