@@ -989,6 +989,7 @@ export default function BetaHomeScreen() {
   const [executionEntity, setExecutionEntity] = useState<any>(null);
   const [snoozeLeadId, setSnoozeLeadId] = useState<string | null>(null);
   const [snoozeDate, setSnoozeDate] = useState('');
+  const [quickActionLead, setQuickActionLead] = useState<{ lead: Lead; score: number } | null>(null);
 
   // Load sync state + target market
   useEffect(() => {
