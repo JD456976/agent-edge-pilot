@@ -946,7 +946,7 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction }: {
       <div className="rounded-xl border-l-[3px] border-l-[#9333ea] border border-border bg-card p-4 space-y-2">
         <p className="text-sm">
           <span className="font-bold">{activeLeads.length}</span> lead{activeLeads.length !== 1 ? 's' : ''} in your pipeline
-          {hottest && <> · Hottest: <span className="font-semibold text-primary">{hottest.name}</span></>}
+          {hottest && <> · Hottest: <button onClick={() => onOpenLead(hottest)} className="font-semibold text-primary hover:underline cursor-pointer">{hottest.name}</button></>}
         </p>
         {leastRecent && leastRecent.id !== hottest?.id && (
           <p className="text-xs text-muted-foreground">
