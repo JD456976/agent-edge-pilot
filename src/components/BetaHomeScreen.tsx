@@ -1037,16 +1037,19 @@ function OverdueTasksCard({ tasks: overdueTasks, refreshData }: { tasks: Task[];
   const [expanded, setExpanded] = useState(false);
   const [completing, setCompleting] = useState<string | null>(null);
 
-  const handleMarkDone = async (taskId: string) => {
+  const handleMarkDone = async (e: React.MouseEvent, taskId: string) => {
+    e.stopPropagation();
+    e.preventDefault();
     setCompleting(taskId);
     try {
-      await supabase.from('tasks').update({
+      const { error } = await supabase.from('tasks').update({
         completed_at: new Date().toISOString(),
       } as any).eq('id', taskId);
+      if (error) throw error;
       await refreshData();
       toast.success('Task completed');
     } catch {
-      toast.error('Failed to complete task');
+      toast.error('Could not complete task');
     } finally {
       setCompleting(null);
     }
