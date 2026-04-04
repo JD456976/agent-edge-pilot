@@ -81,7 +81,7 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
         committed,
         skipped: { leads: skippedLeads, deals: skippedDeals, tasks: skippedTasks },
         matched: { leads: matchedLeads, deals: matchedDeals, tasks: matchedTasks },
-        isReviewer,
+        isReviewer: false,
         partialFailures: data.failures || undefined,
         durationMs,
         committedAt: new Date().toISOString(),
