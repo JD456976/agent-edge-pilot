@@ -277,7 +277,7 @@ export default function Admin() {
           <div className="text-center py-8 border border-dashed border-border rounded-lg">
             <UsersRound className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">No teams yet</p>
-            {organizations.length > 0 && !isReviewer && (
+            {organizations.length > 0 && (
               <Button size="sm" variant="outline" className="mt-2" onClick={() => setShowCreateTeam(true)}>
                 <Plus className="h-3.5 w-3.5 mr-1" /> Create your first team
               </Button>
