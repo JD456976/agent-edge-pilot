@@ -435,8 +435,54 @@ export function ActionWorkspaceDrawer({
     }
   }, [context]);
 
+  const renderOpenerSection = (channel: 'call' | 'text' | 'email', useLabel: string, onUse: (text: string) => void) => {
+    const isExpanded = openerExpanded[channel] ?? true;
+    const isLoading = openerLoading === channel;
+    const result = openerResult[channel];
+    return (
+      <div className="rounded-lg border border-border bg-muted/30 overflow-hidden">
+        <button
+          className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-accent/30 transition-colors"
+          onClick={() => setOpenerExpanded(prev => ({ ...prev, [channel]: !prev[channel] }))}
+        >
+          <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
+            <Sparkles className="h-3 w-3 text-primary" /> AI Suggested Opener
+          </span>
+          {isExpanded ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+        </button>
+        {isExpanded && (
+          <div className="px-3 pb-3 space-y-2">
+            {!result && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs h-7 gap-1.5"
+                disabled={isLoading}
+                onClick={() => handleFetchOpener(channel)}
+              >
+                {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                {isLoading ? 'Generating…' : '✨ Suggest'}
+              </Button>
+            )}
+            {result && (
+              <div className="space-y-2">
+                <p className="text-sm text-foreground italic">"{result}"</p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="default" className="text-xs h-7 gap-1" onClick={() => onUse(result)}>
+                    <Check className="h-3 w-3" /> {useLabel}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-xs h-7 gap-1" onClick={() => handleFetchOpener(channel)} disabled={isLoading}>
+                    {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Regenerate
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
-  const tabs: { key: WorkspaceTab; label: string; icon: typeof Phone; subtitle: string }[] = [
     { key: 'intel', label: 'Intel', icon: Zap, subtitle: 'Data brief' },
     { key: 'prefs', label: 'Preferences', icon: Target, subtitle: 'Client wants' },
     { key: 'call', label: 'Call', icon: Phone, subtitle: 'Script & outcomes' },
