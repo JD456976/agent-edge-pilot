@@ -200,10 +200,11 @@ export function ActionWorkspaceDrawer({
       .order('created_at', { ascending: false })
       .limit(20);
     const raw = (data || []) as Array<{ id: string; note: string; created_at: string }>;
-    // Deduplicate consecutive identical notes within 1 hour
-    const deduped = raw.filter((note, index) => {
+    // Filter out soft-deleted notes and deduplicate consecutive identical notes within 1 hour
+    const filtered = raw.filter(n => n.note !== '[deleted]');
+    const deduped = filtered.filter((note, index) => {
       if (index === 0) return true;
-      const prev = raw[index - 1];
+      const prev = filtered[index - 1];
       if (note.note === prev.note) {
         const timeDiff = Math.abs(new Date(note.created_at).getTime() - new Date(prev.created_at).getTime());
         return timeDiff > 60 * 60 * 1000;
