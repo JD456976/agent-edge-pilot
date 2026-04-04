@@ -40,7 +40,7 @@ import {
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type WorkspaceTab = 'call' | 'text' | 'email' | 'task' | 'notes' | 'intel' | 'prefs';
+type WorkspaceTab = 'call' | 'text' | 'email' | 'task' | 'notes' | 'activity' | 'intel' | 'prefs';
 
 interface Props {
   open: boolean;
