@@ -146,9 +146,8 @@ export function GhostingRiskPanel({ leads, tasks, deals, onLogTouch, onCreateTas
 }
 
 /** Utility: check if any high ghosting risk on active deal clients */
-export function hasHighGhostingRisk(leads: Lead[], tasks: Task[], deals: Deal[]): boolean {
-  const now = new Date();
+export function hasHighGhostingRisk(leads: Lead[], tasks: Task[]): boolean {
   return leads
     .filter(l => l.leadTemperature === 'hot' || l.leadTemperature === 'warm')
-    .some(l => computeGhostingScore(l, tasks, deals, now).score >= 70);
+    .some(l => computeGhostingScore(l, tasks).score >= 70);
 }
