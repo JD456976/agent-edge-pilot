@@ -788,7 +788,7 @@ export function ActionWorkspaceDrawer({
                       }}
                     >
                       {sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
-                      {quickSendMode ? 'Send Text Now' : 'Review & Send via FUB'}
+                      {quickSendModeText ? 'Send Text Now' : 'Review & Send via FUB'}
                     </Button>
                   ) : (
                     <Button
