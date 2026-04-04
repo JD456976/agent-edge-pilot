@@ -333,7 +333,7 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
                   <Switch
                     checked={hasProGrant}
                     onCheckedChange={setHasProGrant}
-                    disabled={isReviewer}
+                    disabled={false}
                   />
                 </div>
                 {hasProGrant && (
