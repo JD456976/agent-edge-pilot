@@ -84,16 +84,14 @@ function computeGhostingScore(lead: Lead, tasks: Task[]): GhostingResult {
 }
 
 export function GhostingRiskPanel({ leads, tasks, deals, onLogTouch, onCreateTask, onOpenLead }: Props) {
-  const now = useMemo(() => new Date(), []);
-
   const results = useMemo(() => {
     return leads
       .filter(l => l.leadTemperature === 'hot' || l.leadTemperature === 'warm')
-      .map(l => computeGhostingScore(l, tasks, deals, now))
+      .map(l => computeGhostingScore(l, tasks))
       .filter(r => r.score >= 35)
       .sort((a, b) => b.score - a.score)
       .slice(0, 5);
-  }, [leads, tasks, deals, now]);
+  }, [leads, tasks]);
 
   if (results.length === 0) return null;
 
