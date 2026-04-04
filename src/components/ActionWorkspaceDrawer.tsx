@@ -895,6 +895,10 @@ export function ActionWorkspaceDrawer({
             {/* ── TEXT TAB ─────────────────────────────────────────── */}
             {activeTab === 'text' && (
               <div className="space-y-4">
+                {renderOpenerSection('text', 'Copy text', (text) => {
+                  navigator.clipboard.writeText(text);
+                  toast({ description: 'Text opener copied to clipboard' });
+                })}
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Suggested Messages</p>
                   {fubPersonId && (
