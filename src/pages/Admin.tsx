@@ -316,7 +316,6 @@ export default function Admin() {
   const { leads, deals, tasks, wipeData } = useData();
   const [showWipeConfirm, setShowWipeConfirm] = useState(false);
   const [wipeConfirmText, setWipeConfirmText] = useState('');
-  const [wipeConfirmText, setWipeConfirmText] = useState('');
   const [adminTab, setAdminTab] = useState<typeof ADMIN_TABS[number]>('Management');
 
   // Org/Team state
