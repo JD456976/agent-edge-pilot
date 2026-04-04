@@ -1215,6 +1215,11 @@ export default function BetaHomeScreen() {
         <NightMode intel={intel} />
       )}
 
+      {/* Overdue Tasks Card */}
+      {intel.overdueTasks.length > 0 && (
+        <OverdueTasksCard tasks={intel.overdueTasks} refreshData={refreshData} />
+      )}
+
       {/* Daily Briefing */}
       <div className="rounded-xl border border-border bg-card p-3.5 flex items-start gap-3">
         <span className="text-xl leading-none mt-0.5">{briefing.icon}</span>
