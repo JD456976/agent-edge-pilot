@@ -20,10 +20,7 @@ export function getDailyBriefing(
   const hotLeads = leads.filter(l => l.engagementScore >= 80 || l.leadTemperature === 'hot');
 
   // Overdue tasks are handled by the dedicated OverdueTasksCard — skip here
-  if (riskDeals.length > 0 && overdueTasks.length === 0) {
-    // fall through to risk deals below
-  }
-  if (overdueTasks.length === 0 && riskDeals.length > 0) {
+  if (riskDeals.length > 0) {
     return {
       icon: '⚠️',
       text: `You have ${riskDeals.length} deal${riskDeals.length !== 1 ? 's' : ''} at risk today.`,
