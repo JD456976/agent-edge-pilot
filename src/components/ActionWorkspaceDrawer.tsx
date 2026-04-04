@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap, Send, Clock, ArrowUpRight, ArrowDownLeft, Loader2, CalendarDays, Activity, Flame, StickyNote as NotesIcon, History, AlertTriangle } from 'lucide-react';
+import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap, Send, Clock, ArrowUpRight, ArrowDownLeft, Loader2, CalendarDays, Activity, Flame, StickyNote as NotesIcon, History, AlertTriangle, Sparkles } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { relativeTime } from '@/lib/relativeTime';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -189,6 +189,11 @@ export function ActionWorkspaceDrawer({
   const [taskType, setTaskType] = useState<TaskType>('follow_up');
   const [taskDueAt, setTaskDueAt] = useState('');
   const [taskCreated, setTaskCreated] = useState(false);
+
+  // AI Opener state
+  const [openerResult, setOpenerResult] = useState<Record<string, string>>({});
+  const [openerLoading, setOpenerLoading] = useState<string | null>(null);
+  const [openerExpanded, setOpenerExpanded] = useState<Record<string, boolean>>({ call: true, text: true, email: true });
 
   // Notes tab state
   const [noteText, setNoteText] = useState('');
@@ -404,7 +409,79 @@ export function ActionWorkspaceDrawer({
     }
   }, [context, noteText, user?.id]);
 
-  if (!entity || !context || !draft) return null;
+  const handleFetchOpener = useCallback(async (channel: 'call' | 'text' | 'email') => {
+    if (!context) return;
+    setOpenerLoading(channel);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-follow-up', {
+        body: {
+          entity_type: context.entityType,
+          entity_id: context.entityId,
+          draft_type: 'opener',
+          channel,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) {
+        toast({ description: data.message || data.error, variant: 'destructive' });
+      } else if (data?.opener) {
+        setOpenerResult(prev => ({ ...prev, [channel]: data.opener }));
+      }
+    } catch (err) {
+      console.error('Opener fetch error:', err);
+      toast({ description: 'Could not generate suggestion', variant: 'destructive' });
+    } finally {
+      setOpenerLoading(null);
+    }
+  }, [context]);
+
+  const renderOpenerSection = (channel: 'call' | 'text' | 'email', useLabel: string, onUse: (text: string) => void) => {
+    const isExpanded = openerExpanded[channel] ?? true;
+    const isLoading = openerLoading === channel;
+    const result = openerResult[channel];
+    return (
+      <div className="rounded-lg border border-border bg-muted/30 overflow-hidden">
+        <button
+          className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-accent/30 transition-colors"
+          onClick={() => setOpenerExpanded(prev => ({ ...prev, [channel]: !prev[channel] }))}
+        >
+          <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
+            <Sparkles className="h-3 w-3 text-primary" /> AI Suggested Opener
+          </span>
+          {isExpanded ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+        </button>
+        {isExpanded && (
+          <div className="px-3 pb-3 space-y-2">
+            {!result && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs h-7 gap-1.5"
+                disabled={isLoading}
+                onClick={() => handleFetchOpener(channel)}
+              >
+                {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                {isLoading ? 'Generating…' : '✨ Suggest'}
+              </Button>
+            )}
+            {result && (
+              <div className="space-y-2">
+                <p className="text-sm text-foreground italic">"{result}"</p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="default" className="text-xs h-7 gap-1" onClick={() => onUse(result)}>
+                    <Check className="h-3 w-3" /> {useLabel}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-xs h-7 gap-1" onClick={() => handleFetchOpener(channel)} disabled={isLoading}>
+                    {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Regenerate
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const tabs: { key: WorkspaceTab; label: string; icon: typeof Phone; subtitle: string }[] = [
     { key: 'intel', label: 'Intel', icon: Zap, subtitle: 'Data brief' },
@@ -674,6 +751,10 @@ export function ActionWorkspaceDrawer({
             {/* ── CALL TAB ─────────────────────────────────────────── */}
             {activeTab === 'call' && callBrief && (
               <div className="space-y-4">
+                {renderOpenerSection('call', 'Copy opener', (text) => {
+                  navigator.clipboard.writeText(text);
+                  toast({ description: 'Opener copied to clipboard' });
+                })}
                 {/* Call History from FUB */}
                 {(() => {
                   const callHistory = recentFubActivities.filter(a => a.activity_type === 'call' || a.activity_type === 'phone');
@@ -814,6 +895,10 @@ export function ActionWorkspaceDrawer({
             {/* ── TEXT TAB ─────────────────────────────────────────── */}
             {activeTab === 'text' && (
               <div className="space-y-4">
+                {renderOpenerSection('text', 'Copy text', (text) => {
+                  navigator.clipboard.writeText(text);
+                  toast({ description: 'Text opener copied to clipboard' });
+                })}
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Suggested Messages</p>
                   {fubPersonId && (
@@ -934,6 +1019,11 @@ export function ActionWorkspaceDrawer({
             {/* ── EMAIL TAB ────────────────────────────────────────── */}
             {activeTab === 'email' && (
               <div className="space-y-4">
+                {renderOpenerSection('email', 'Use as subject', (text) => {
+                  // The draft.email.subject is read-only, so we copy to clipboard
+                  navigator.clipboard.writeText(text);
+                  toast({ description: 'Subject line copied to clipboard' });
+                })}
                 {/* Tone & Length selectors */}
                 <div className="flex gap-3">
                   <div className="flex-1">
