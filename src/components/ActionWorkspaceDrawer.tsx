@@ -483,6 +483,7 @@ export function ActionWorkspaceDrawer({
     );
   };
 
+  const tabs: { key: WorkspaceTab; label: string; icon: typeof Phone; subtitle: string }[] = [
     { key: 'intel', label: 'Intel', icon: Zap, subtitle: 'Data brief' },
     { key: 'prefs', label: 'Preferences', icon: Target, subtitle: 'Client wants' },
     { key: 'call', label: 'Call', icon: Phone, subtitle: 'Script & outcomes' },
