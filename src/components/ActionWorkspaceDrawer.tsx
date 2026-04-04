@@ -1139,7 +1139,7 @@ export function ActionWorkspaceDrawer({
                           <p className="text-foreground whitespace-pre-wrap flex-1">{n.note}</p>
                           <button
                             onClick={async () => {
-                              await supabase.from('activity_events').delete().eq('id', n.id);
+                              await supabase.from('activity_events').update({ note: '[deleted]' }).eq('id', n.id);
                               setSavedNotes(prev => prev.filter(x => x.id !== n.id));
                             }}
                             className="opacity-0 group-hover/note:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0 mt-0.5"
