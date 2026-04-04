@@ -1,15 +1,22 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useData } from '@/contexts/DataContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
-import { Flame, Search } from 'lucide-react';
+import { Flame, Search, Plus, MapPin, Calendar, Clock, Users, ChevronRight } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import Pipeline from '@/pages/Pipeline';
 import Tasks from '@/pages/Tasks';
 import type { Lead } from '@/types';
 
-const TABS = ['Leads', 'Pipeline', 'Tasks'] as const;
+const TABS = ['Leads', 'Pipeline', 'Tasks', 'Open House'] as const;
 const HEAT_FILTERS = ['All', 'Hot', 'Warm', 'Cool'] as const;
 
 function getLeadHeatScore(lead: Lead): number {
@@ -81,7 +88,6 @@ function LeadsTab() {
 
   return (
     <div className="space-y-3">
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -92,7 +98,6 @@ function LeadsTab() {
         />
       </div>
 
-      {/* Heat filter chips */}
       <div className="flex gap-1.5">
         {HEAT_FILTERS.map(f => (
           <button
@@ -110,10 +115,8 @@ function LeadsTab() {
         ))}
       </div>
 
-      {/* Count */}
       <p className="text-xs text-muted-foreground">{filtered.length} lead{filtered.length !== 1 ? 's' : ''}</p>
 
-      {/* Lead rows */}
       {filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">No leads match your filters.</p>
       ) : (
@@ -148,7 +151,6 @@ function LeadsTab() {
         </div>
       )}
 
-      {/* Execution drawer */}
       {executionEntity && (
         <ActionComposerDrawer
           open={!!executionEntity}
@@ -161,19 +163,220 @@ function LeadsTab() {
   );
 }
 
+interface OpenHouseItem {
+  id: string;
+  property_address: string;
+  event_date: string | null;
+  notes: string | null;
+  status: string;
+  created_at: string;
+}
+
+function OpenHouseTab() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [openHouses, setOpenHouses] = useState<OpenHouseItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Form state
+  const [address, setAddress] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const fetchOpenHouses = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('open_houses')
+        .select('id, property_address, event_date, notes, status, created_at')
+        .eq('user_id', user.id)
+        .order('event_date', { ascending: false, nullsFirst: false });
+      if (error) throw error;
+      setOpenHouses((data as OpenHouseItem[]) || []);
+    } catch {
+      toast.error('Could not load open houses');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOpenHouses();
+  }, [user]);
+
+  const handleSave = async () => {
+    if (!user) return;
+    if (!address.trim()) {
+      toast.error('Property address is required');
+      return;
+    }
+    setSaving(true);
+    try {
+      const eventDate = date && time
+        ? new Date(`${date}T${time}`).toISOString()
+        : date
+          ? new Date(`${date}T12:00`).toISOString()
+          : null;
+
+      const { error } = await supabase.from('open_houses').insert({
+        user_id: user.id,
+        property_address: address.trim(),
+        event_date: eventDate,
+        notes: notes.trim() || null,
+      } as any);
+      if (error) throw error;
+      toast.success('Open house scheduled');
+      setAddress('');
+      setDate('');
+      setTime('');
+      setNotes('');
+      setSheetOpen(false);
+      await fetchOpenHouses();
+    } catch {
+      toast.error('Could not save open house');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const formatEventDate = (dateStr: string | null) => {
+    if (!dateStr) return 'No date set';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
+      ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {openHouses.length} open house{openHouses.length !== 1 ? 's' : ''}
+        </p>
+        <Button size="sm" className="h-8 text-xs rounded-lg gap-1.5" onClick={() => setSheetOpen(true)}>
+          <Plus className="h-3.5 w-3.5" /> Schedule Open House
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : openHouses.length === 0 ? (
+        <div className="text-center py-12 space-y-2">
+          <MapPin className="h-8 w-8 text-muted-foreground mx-auto" />
+          <p className="text-sm text-muted-foreground">No open houses yet</p>
+          <p className="text-xs text-muted-foreground">Schedule your first one to start capturing visitors.</p>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {openHouses.map(oh => {
+            const isPast = oh.event_date && new Date(oh.event_date) < new Date();
+            return (
+              <div
+                key={oh.id}
+                className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+              >
+                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <MapPin className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0 space-y-0.5">
+                  <p className="text-sm font-medium truncate">{oh.property_address}</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Calendar className="h-3 w-3" />
+                    <span>{formatEventDate(oh.event_date)}</span>
+                    {isPast && (
+                      <Badge variant="secondary" className="text-[9px]">Past</Badge>
+                    )}
+                  </div>
+                  {oh.notes && (
+                    <p className="text-xs text-muted-foreground truncate">{oh.notes}</p>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="shrink-0 h-8 text-xs gap-1 text-primary"
+                  onClick={() => navigate(`/open-house/${oh.id}`)}
+                >
+                  <Users className="h-3.5 w-3.5" /> Sign-Ins
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[80vh]">
+          <SheetHeader>
+            <SheetTitle className="text-base">Schedule Open House</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Property Address</label>
+              <Input
+                placeholder="123 Main St, City, ST"
+                value={address}
+                onChange={e => setAddress(e.target.value)}
+                className="h-10 text-sm"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Date</label>
+                <Input
+                  type="date"
+                  value={date}
+                  onChange={e => setDate(e.target.value)}
+                  className="h-10 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Time</label>
+                <Input
+                  type="time"
+                  value={time}
+                  onChange={e => setTime(e.target.value)}
+                  className="h-10 text-sm"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Notes</label>
+              <Textarea
+                placeholder="Any details about the event…"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                className="text-sm min-h-[80px]"
+              />
+            </div>
+            <Button className="w-full h-10" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving…' : 'Save Open House'}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
 export default function Work() {
   const [tab, setTab] = useState<typeof TABS[number]>('Leads');
 
   return (
     <div className="animate-fade-in">
-      {/* Tab bar */}
-      <div className="flex gap-1 mb-4 bg-muted rounded-lg p-1 max-w-sm">
+      <div className="flex gap-1 mb-4 bg-muted rounded-lg p-1">
         {TABS.map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={cn(
-              'flex-1 text-sm font-medium py-1.5 rounded-md transition-colors',
+              'flex-1 text-sm font-medium py-1.5 rounded-md transition-colors whitespace-nowrap',
               tab === t ? 'bg-card shadow-sm' : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -185,6 +388,7 @@ export default function Work() {
       {tab === 'Leads' && <LeadsTab />}
       {tab === 'Pipeline' && <Pipeline />}
       {tab === 'Tasks' && <Tasks />}
+      {tab === 'Open House' && <OpenHouseTab />}
     </div>
   );
 }
