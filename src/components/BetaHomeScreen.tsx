@@ -3,7 +3,7 @@ import {
   Phone, MessageSquare, Mail, Clock, ChevronDown, ChevronUp,
   Home, DollarSign, AlertTriangle, Flame, ShieldAlert,
   Sun, CloudSun, Moon, TrendingUp, TrendingDown, Minus,
-  CheckCircle2, Shield, Target, Zap, ArrowRight,
+  CheckCircle2, Shield, Target, Zap, ArrowRight, X, User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -989,6 +989,7 @@ export default function BetaHomeScreen() {
   const [executionEntity, setExecutionEntity] = useState<any>(null);
   const [snoozeLeadId, setSnoozeLeadId] = useState<string | null>(null);
   const [snoozeDate, setSnoozeDate] = useState('');
+  const [quickActionLead, setQuickActionLead] = useState<{ lead: Lead; score: number } | null>(null);
 
   // Load sync state + target market
   useEffect(() => {
@@ -1048,7 +1049,8 @@ export default function BetaHomeScreen() {
   }, [snoozeLeadId, snoozeDate, refreshData]);
 
   const handleOpenLeadDetail = useCallback((lead: Lead) => {
-    setExecutionEntity({ entity: lead, entityType: 'lead' });
+    const score = getLeadHeatScore(lead);
+    setQuickActionLead({ lead, score });
   }, []);
 
   if (loading) {
@@ -1203,6 +1205,92 @@ export default function BetaHomeScreen() {
           </div>
         </div>
       )}
+
+      {/* Lead Quick Action Bottom Sheet */}
+      {quickActionLead && (() => {
+        const { lead, score } = quickActionLead;
+        const phone = (lead as any).phone as string | undefined;
+        const email = (lead as any).email as string | undefined;
+        const daysSince = lead.lastTouchedAt
+          ? Math.floor((Date.now() - new Date(lead.lastTouchedAt).getTime()) / 86400000)
+          : null;
+        const verdict = getClientVerdict(lead, score, computeRisk(lead, score).level);
+        return (
+          <div className="fixed inset-0 z-50 bg-background/60 backdrop-blur-sm" onClick={() => setQuickActionLead(null)}>
+            <div
+              className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border-t border-border bg-card p-5 space-y-4 animate-slide-up max-w-lg mx-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1 space-y-1">
+                  <h3 className="text-base font-bold truncate">{lead.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-[10px]">{lead.source || 'Direct'}</Badge>
+                    <HeatBadge score={score} />
+                  </div>
+                </div>
+                <button onClick={() => setQuickActionLead(null)} className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 hover:bg-accent transition-colors">
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </div>
+
+              {/* Contact info */}
+              <div className="space-y-1.5">
+                {phone && (
+                  <a href={`tel:${phone}`} className="flex items-center gap-2 text-sm text-primary hover:underline cursor-pointer">
+                    <Phone className="h-3.5 w-3.5" /> {phone}
+                  </a>
+                )}
+                {email && (
+                  <a href={`mailto:${email}`} className="flex items-center gap-2 text-sm text-primary hover:underline cursor-pointer">
+                    <Mail className="h-3.5 w-3.5" /> {email}
+                  </a>
+                )}
+                {!phone && !email && (
+                  <p className="text-xs text-muted-foreground">No contact info on file</p>
+                )}
+              </div>
+
+              {/* Status line */}
+              <div className="space-y-0.5">
+                <p className="text-xs text-muted-foreground">
+                  {daysSince !== null ? `Last touched ${daysSince} day${daysSince !== 1 ? 's' : ''} ago` : 'Never contacted'}
+                </p>
+                <p className={cn('text-xs font-medium', verdict.color)}>{verdict.text}</p>
+              </div>
+
+              {/* 2x2 Action Grid */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  onClick={() => { handleLeadAction(lead, 'call'); setQuickActionLead(null); }}
+                  className="flex items-center justify-center gap-2 h-12 rounded-xl bg-opportunity/15 text-opportunity font-medium text-sm hover:bg-opportunity/25 transition-colors"
+                >
+                  <Phone className="h-4 w-4" /> Call
+                </button>
+                <button
+                  onClick={() => { handleLeadAction(lead, 'text'); setQuickActionLead(null); }}
+                  className="flex items-center justify-center gap-2 h-12 rounded-xl bg-primary/15 text-primary font-medium text-sm hover:bg-primary/25 transition-colors"
+                >
+                  <MessageSquare className="h-4 w-4" /> Text
+                </button>
+                <button
+                  onClick={() => { handleLeadAction(lead, 'email'); setQuickActionLead(null); }}
+                  className="flex items-center justify-center gap-2 h-12 rounded-xl bg-[hsl(var(--accent))]/15 text-[hsl(var(--accent))] font-medium text-sm hover:bg-[hsl(var(--accent))]/25 transition-colors"
+                >
+                  <Mail className="h-4 w-4" /> Email
+                </button>
+                <button
+                  onClick={() => { setQuickActionLead(null); setExecutionEntity({ entity: lead, entityType: 'lead' }); }}
+                  className="flex items-center justify-center gap-2 h-12 rounded-xl bg-muted text-muted-foreground font-medium text-sm hover:bg-accent hover:text-foreground transition-colors"
+                >
+                  <User className="h-4 w-4" /> Open File
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Execution drawer */}
       {executionEntity && (
