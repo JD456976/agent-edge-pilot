@@ -560,7 +560,7 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
   const MomentumIcon = momentumIcon;
 
   // Build directive midday actions
-  const middayDirectives: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void }[] = [];
+  const middayDirectives: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void; onRowTap?: () => void }[] = [];
 
   // Most urgent: risk deals not yet touched
   for (const d of riskDeals.slice(0, 2)) {
@@ -579,6 +579,7 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
       detail: `${lead.source || 'Direct'} · hasn't heard from you today`,
       actionLabel: 'Call',
       onAction: () => onLeadAction(lead, 'call'),
+      onRowTap: () => onOpenLead(lead),
     });
   }
   // Overdue tasks
@@ -587,6 +588,7 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
       icon: AlertTriangle, color: 'text-warning',
       verb: `Knock out "${overdueTasks[0].title}" — ${overdueTasks.length} overdue`,
       detail: 'Clear this before end of day',
+      onRowTap: onTaskTap,
     });
   }
 
