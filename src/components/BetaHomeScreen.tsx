@@ -419,11 +419,23 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
     });
   }
   if (overdueTasks.length > 0) {
+    const t = overdueTasks[0];
     moves.push({
       icon: AlertTriangle, color: 'text-warning',
-      verb: `Clear "${overdueTasks[0].title}" — it's overdue`,
+      verb: `Clear "${t.title}" — it's overdue`,
       detail: overdueTasks.length > 1 ? `+${overdueTasks.length - 1} more overdue` : 'Get this off your plate first',
+      actionLabel: completingTask === t.id ? '...' : 'Done ✓',
+      onAction: async () => {
+        setCompletingTask(t.id);
+        try {
+          await supabase.from('tasks').update({ completed_at: new Date().toISOString() } as any).eq('id', t.id);
+          await refreshData();
+          toast.success('Task completed');
+        } catch { toast.error('Failed to complete task'); }
+        setCompletingTask(null);
+      },
       onRowTap: onTaskTap,
+      taskId: t.id,
     });
   }
   // Fill remaining slots with warm leads
