@@ -427,6 +427,20 @@ export function ActionWorkspaceDrawer({
             <div className="flex items-center justify-between mb-2">
               <div className="min-w-0 flex-1">
                 <SheetTitle className="text-base leading-tight">{context.entityName}</SheetTitle>
+                {(fubProfile?.phones?.[0] || fubProfile?.emails?.[0]) && (
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
+                    {fubProfile.phones?.[0] && (
+                      <a href={`tel:${fubProfile.phones[0]}`} className="text-sm text-primary hover:underline flex items-center gap-1">
+                        <Phone className="h-3 w-3" />{fubProfile.phones[0]}
+                      </a>
+                    )}
+                    {fubProfile.emails?.[0] && (
+                      <a href={`mailto:${fubProfile.emails[0]}`} className="text-sm text-primary hover:underline flex items-center gap-1">
+                        <Mail className="h-3 w-3" />{fubProfile.emails[0]}
+                      </a>
+                    )}
+                  </div>
+                )}
                 <SheetDescription className="text-xs mt-0.5">{entityContextLabel}</SheetDescription>
               </div>
               <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
