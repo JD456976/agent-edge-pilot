@@ -81,7 +81,7 @@ const STAGE_LABELS: Record<string, string> = {
   closed: 'Closed',
 };
 
-export function CommandPalette({ onOpenEntity, onCreateTask, onLogTouch }: Props) {
+export function CommandPalette({ onOpenEntity, onCreateTask, onLogTouch, onNavigateToTasks }: Props) {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [category, setCategory] = useState<SearchCategory>('all');
