@@ -44,7 +44,7 @@ interface ProfileOption {
 }
 
 export default function Admin() {
-  const { user, profiles, fetchProfiles, logAdminAction, isReviewer } = useAuth();
+  const { user, profiles, fetchProfiles, logAdminAction } = useAuth();
   const { leads, deals, tasks, seedDemoData, seedPacks, clearSeededData, wipeData, hasData, hasSeededData } = useData();
   const [showSeedPacks, setShowSeedPacks] = useState(false);
   const [showWipeConfirm, setShowWipeConfirm] = useState(false);
