@@ -1049,7 +1049,8 @@ export default function BetaHomeScreen() {
   }, [snoozeLeadId, snoozeDate, refreshData]);
 
   const handleOpenLeadDetail = useCallback((lead: Lead) => {
-    setExecutionEntity({ entity: lead, entityType: 'lead' });
+    const score = getLeadHeatScore(lead);
+    setQuickActionLead({ lead, score });
   }, []);
 
   if (loading) {
