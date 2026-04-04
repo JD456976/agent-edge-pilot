@@ -505,12 +505,13 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
 
       {scoredLeads.length > 1 && (
         <PipelineSection
-          leads={scoredLeads.slice(1, 6)}
+          leads={scoredLeads.slice(1)}
           targetMarket={targetMarket}
           onTap={onOpenLead}
           onLeadAction={onLeadAction}
           label="Next Up"
           onAddLead={onAddLead}
+          onSeeAll={onSeeAll}
         />
       )}
     </div>
