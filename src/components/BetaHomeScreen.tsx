@@ -530,13 +530,14 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
 
 // ── Midday Mode ─────────────────────────────────────────────────────
 
-function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, totalMoneyAtRisk }: {
+function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, totalMoneyAtRisk, onTaskTap }: {
   intel: ReturnType<typeof useTimeIntelligence>;
   ccData: any;
   onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email' | 'snooze') => void;
   onOpenLead: (lead: Lead) => void;
   targetMarket: TargetMarket;
   totalMoneyAtRisk: number;
+  onTaskTap: () => void;
 }) {
   const { hotLeads, riskDeals, overdueTasks, completedToday, todayTasks, scoredLeads, totalPipelineValue, atRiskValue } = intel;
   const sessionStart = useSessionStartRisk(totalMoneyAtRisk, true);
