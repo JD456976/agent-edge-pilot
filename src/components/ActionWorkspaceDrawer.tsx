@@ -175,6 +175,15 @@ export function ActionWorkspaceDrawer({
   const [editedEmail, setEditedEmail] = useState<string | null>(null);
   const [emailSent, setEmailSent] = useState(false);
 
+  // Listing writer state
+  const [showListingWriter, setShowListingWriter] = useState(false);
+  const [listingAddress, setListingAddress] = useState('');
+  const [listingBeds, setListingBeds] = useState('');
+  const [listingBaths, setListingBaths] = useState('');
+  const [listingFeatures, setListingFeatures] = useState('');
+  const [listingResult, setListingResult] = useState('');
+  const [listingLoading, setListingLoading] = useState(false);
+
   // Task tab state
   const [taskTitle, setTaskTitle] = useState('');
   const [taskType, setTaskType] = useState<TaskType>('follow_up');
