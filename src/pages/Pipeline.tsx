@@ -55,7 +55,7 @@ function DealCard({ deal, onClick, onProbabilityChange }: DealCardProps) {
 
   return (
     <button onClick={onClick} className="w-full text-left p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors space-y-2">
-      <p className="text-sm font-semibold leading-tight">{deal.title}</p>
+      <p className="text-sm font-semibold leading-tight text-primary cursor-pointer underline-offset-2 hover:underline">{deal.title}</p>
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <DollarSign className="h-3 w-3" />
         <span>${deal.price.toLocaleString()}</span>
