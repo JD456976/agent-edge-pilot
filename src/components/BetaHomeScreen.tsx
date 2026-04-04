@@ -1059,6 +1059,27 @@ export default function BetaHomeScreen() {
     setQuickActionLead({ lead, score });
   }, []);
 
+  const handleQuickAddSave = useCallback(async () => {
+    if (!qaName.trim() || !user?.id) return;
+    setQaSaving(true);
+    try {
+      await supabase.from('leads').insert({
+        name: qaName.trim(),
+        source: qaSource,
+        lead_temperature: qaTemp,
+        assigned_to_user_id: user.id,
+        last_contact_at: new Date().toISOString(),
+        engagement_score: qaTemp === 'hot' ? 80 : qaTemp === 'warm' ? 50 : 25,
+      } as any);
+      await refreshData();
+      setShowQuickAddLead(false);
+      setQaName(''); setQaPhone(''); setQaSource('Referral'); setQaTemp('warm');
+      toast.success('Lead added');
+    } finally {
+      setQaSaving(false);
+    }
+  }, [qaName, qaPhone, qaSource, qaTemp, user?.id, refreshData]);
+
   if (loading) {
     return (
       <div className="max-w-lg mx-auto space-y-4 animate-pulse">
