@@ -343,6 +343,15 @@ function useTimeIntelligence(leads: Lead[], deals: Deal[], tasks: Task[]) {
     // Leads touched today
     const touchedToday = leads.filter(l => l.lastTouchedAt && new Date(l.lastTouchedAt) >= todayStart);
 
+    // Leads at risk: engaged (score >= 50) but untouched or stale > 7 days
+    const leadsAtRisk = leads.filter(l => {
+      const score = getLeadHeatScore(l);
+      if (score < 50) return false;
+      if (!l.lastTouchedAt) return true;
+      const daysSince = (now.getTime() - new Date(l.lastTouchedAt).getTime()) / 86400000;
+      return daysSince > 7;
+    });
+
     return {
       scoredLeads,
       hotLeads,
@@ -359,6 +368,7 @@ function useTimeIntelligence(leads: Lead[], deals: Deal[], tasks: Task[]) {
       untouchedHotLeads,
       snoozedLeads,
       touchedToday,
+      leadsAtRisk,
     };
   }, [leads, deals, tasks]);
 }
@@ -681,7 +691,7 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
   onOpenWorkspace: (id: string) => void;
   targetMarket: TargetMarket;
 }) {
-  const { untouchedRiskDeals, untouchedHotLeads, overdueTasks, completedToday, riskDeals, hotLeads, scoredLeads } = intel;
+  const { untouchedRiskDeals, untouchedHotLeads, overdueTasks, completedToday, riskDeals, hotLeads, scoredLeads, leadsAtRisk } = intel;
   const hasOpenItems = untouchedRiskDeals.length > 0 || untouchedHotLeads.length > 0 || overdueTasks.length > 0;
 
   // Build evening directives — specific actions, not counts
@@ -762,9 +772,9 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
       <div className="rounded-xl border border-border bg-card p-4 space-y-2">
         <h3 className="text-sm font-bold">Today's Results</h3>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span><span className="font-semibold text-foreground">{completedToday.length}</span> tasks done</span>
+          <span><span className="font-semibold text-foreground">{intel.touchedToday.length}</span> tasks done</span>
           <span><span className="font-semibold text-foreground">{intel.touchedToday.length}</span> leads touched</span>
-          <span><span className="font-semibold text-foreground">{riskDeals.length}</span> at risk</span>
+          <span><span className="font-semibold text-foreground">{leadsAtRisk.length}</span> at risk</span>
         </div>
       </div>
 
