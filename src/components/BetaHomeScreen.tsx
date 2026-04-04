@@ -455,7 +455,12 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
           {moves.length > 0 ? moves.map((m, i) => {
             const Icon = m.icon;
             return (
-              <div key={i} className="flex items-start gap-2.5">
+              <div
+                key={i}
+                className={cn('flex items-start gap-2.5 rounded-lg -mx-1 px-1 py-1', m.onRowTap && 'cursor-pointer active:bg-muted/50 transition-colors')}
+                onClick={m.onRowTap}
+                role={m.onRowTap ? 'button' : undefined}
+              >
                 <span className={cn('mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0', m.color === 'text-urgent' ? 'bg-urgent/15' : m.color === 'text-opportunity' ? 'bg-opportunity/15' : m.color === 'text-warning' ? 'bg-warning/15' : 'bg-primary/15')}>
                   <Icon className={cn('h-3 w-3', m.color)} />
                 </span>
@@ -464,7 +469,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
                   <p className="text-xs text-muted-foreground">{m.detail}</p>
                 </div>
                 {m.actionLabel && m.onAction && (
-                  <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={m.onAction}>
+                  <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={(e) => { e.stopPropagation(); m.onAction!(); }}>
                     {m.actionLabel}
                   </Button>
                 )}
