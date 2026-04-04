@@ -258,11 +258,9 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
             ) : members.length === 0 ? (
               <div className="text-center py-8 border border-dashed border-border rounded-lg">
                 <p className="text-sm text-muted-foreground">No members assigned</p>
-                {!isReviewer && (
-                  <Button size="sm" variant="outline" className="mt-2" onClick={() => setShowAddMembers(true)}>
-                    <Plus className="h-3.5 w-3.5 mr-1" /> Add Members
-                  </Button>
-                )}
+                <Button size="sm" variant="outline" className="mt-2" onClick={() => setShowAddMembers(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Add Members
+                </Button>
               </div>
             ) : (
               <div className="rounded-lg border border-border overflow-hidden">
