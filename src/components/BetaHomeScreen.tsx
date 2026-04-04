@@ -507,6 +507,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
           onTap={onOpenLead}
           onLeadAction={onLeadAction}
           label="Next Up"
+          onAddLead={onAddLead}
         />
       )}
     </div>
