@@ -1483,6 +1483,7 @@ export default function BetaHomeScreen() {
           onSeeAll={() => navigate('/work')}
           onTaskTap={() => navigate('/work')}
           refreshData={refreshData}
+          userId={user?.id || ''}
         />
       )}
       {currentMode === 'midday' && (
