@@ -775,7 +775,7 @@ export function ActionWorkspaceDrawer({
                       onClick={async () => {
                         const msg = smsVariants[selectedSmsIndex]?.text;
                         if (!msg) return;
-                        if (quickSendMode) {
+                        if (quickSendModeText) {
                           const ok = await sendText(msg);
                           if (ok) { setTextSent(true); onLogTouch?.(context.entityType, context.entityId, context.entityName, 'text', `Sent via FUB: ${msg}`); }
                         } else {
