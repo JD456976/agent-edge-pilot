@@ -21,6 +21,7 @@ import { useCommandCenterData } from '@/hooks/useCommandCenterData';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { useSessionMode, useSessionStartRisk } from '@/hooks/useSessionMode';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import type { Lead, Deal, Task } from '@/types';
 import { computeRisk, RiskDot, RiskPanel } from '@/components/DealRiskRadar';
 import { getDailyBriefing } from '@/lib/dailyIntelligence';
@@ -375,7 +376,7 @@ function useTimeIntelligence(leads: Lead[], deals: Deal[], tasks: Task[]) {
 
 // ── Morning Mode ────────────────────────────────────────────────────
 
-function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket, onAddLead }: {
+function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket, onAddLead, onSeeAll }: {
   intel: ReturnType<typeof useTimeIntelligence>;
   priorityLead: { lead: Lead; score: number } | null;
   ccData: any;
@@ -384,6 +385,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
   onOpenWorkspace: (id: string) => void;
   targetMarket: TargetMarket;
   onAddLead?: () => void;
+  onSeeAll?: () => void;
 }) {
   const { hotLeads, riskDeals, overdueTasks, closingSoonDeals, totalPipelineValue, atRiskValue, scoredLeads } = intel;
 
@@ -503,12 +505,13 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
 
       {scoredLeads.length > 1 && (
         <PipelineSection
-          leads={scoredLeads.slice(1, 6)}
+          leads={scoredLeads.slice(1)}
           targetMarket={targetMarket}
           onTap={onOpenLead}
           onLeadAction={onLeadAction}
           label="Next Up"
           onAddLead={onAddLead}
+          onSeeAll={onSeeAll}
         />
       )}
     </div>
@@ -798,14 +801,19 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
 
 // ── Shared Pipeline Section ─────────────────────────────────────────
 
-function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label, onAddLead }: {
+function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label, onAddLead, onSeeAll }: {
   leads: { lead: Lead; score: number }[];
   targetMarket: TargetMarket;
   onTap: (lead: Lead) => void;
   onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email') => void;
   label: string;
   onAddLead?: () => void;
+  onSeeAll?: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? leads : leads.slice(0, 5);
+  const hasMore = leads.length > 5;
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between px-1">
@@ -819,7 +827,7 @@ function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label, onAd
         )}
       </div>
       <div className="space-y-1.5">
-        {leads.map(({ lead, score }) => (
+        {visible.map(({ lead, score }) => (
           <PipelineCard
             key={lead.id}
             lead={lead}
@@ -830,6 +838,17 @@ function PipelineSection({ leads, targetMarket, onTap, onLeadAction, label, onAd
           />
         ))}
       </div>
+      {hasMore && (
+        <button onClick={() => setExpanded(e => !e)} className="w-full text-xs text-primary hover:underline py-1.5 flex items-center justify-center gap-1">
+          {expanded ? 'Show less' : `Show ${leads.length - 5} more`}
+          <ChevronDown className={cn('h-3 w-3 transition-transform', expanded && 'rotate-180')} />
+        </button>
+      )}
+      {onSeeAll && (
+        <button onClick={onSeeAll} className="w-full text-xs text-primary hover:underline py-1 flex items-center justify-center gap-1">
+          See all <ArrowRight className="h-3 w-3" />
+        </button>
+      )}
     </div>
   );
 }
@@ -991,6 +1010,7 @@ export default function BetaHomeScreen() {
   const { user } = useAuth();
   const { leads, deals, tasks, alerts, dealParticipants, hasData, loading, seedDemoData, refreshData } = useData();
   const { openWorkspace } = useWorkspace();
+  const navigate = useNavigate();
   const { isSyncing: syncing } = useSyncContext();
   const { currentMode, autoMode, override, setModeOverride } = useSessionMode();
   const [lastSync, setLastSync] = useState<string | null>(null);
@@ -1141,6 +1161,7 @@ export default function BetaHomeScreen() {
           onOpenWorkspace={openWorkspace}
           targetMarket={targetMarket}
           onAddLead={() => setShowQuickAddLead(true)}
+          onSeeAll={() => navigate('/work')}
         />
       )}
       {currentMode === 'midday' && (
