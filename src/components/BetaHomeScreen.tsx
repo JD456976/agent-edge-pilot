@@ -719,7 +719,7 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
   const hasOpenItems = untouchedRiskDeals.length > 0 || untouchedHotLeads.length > 0 || overdueTasks.length > 0;
 
   // Build evening directives — specific actions, not counts
-  const eveningActions: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void }[] = [];
+  const eveningActions: { icon: typeof Shield; color: string; verb: string; detail: string; actionLabel?: string; onAction?: () => void; onRowTap?: () => void }[] = [];
 
   for (const d of untouchedRiskDeals.slice(0, 2)) {
     eveningActions.push({
@@ -728,6 +728,7 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
       detail: `${formatCurrency(d.commission)} at risk — a 30-second text keeps this alive`,
       actionLabel: 'Text',
       onAction: () => onOpenWorkspace(d.id),
+      onRowTap: () => onOpenWorkspace(d.id),
     });
   }
   for (const { lead } of untouchedHotLeads.slice(0, 2)) {
@@ -737,6 +738,7 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
       detail: `${lead.source || 'Direct'} lead · hasn't heard from you today`,
       actionLabel: 'Text',
       onAction: () => onLeadAction(lead, 'text'),
+      onRowTap: () => onOpenLead(lead),
     });
   }
   if (overdueTasks.length > 0) {
@@ -744,6 +746,7 @@ function EveningMode({ intel, ccData, onLeadAction, onOpenLead, onOpenWorkspace,
       icon: AlertTriangle, color: 'text-warning',
       verb: `Clear "${overdueTasks[0].title}" or reschedule it now`,
       detail: `${overdueTasks.length} overdue — don't carry this into tomorrow`,
+      onRowTap: onTaskTap,
     });
   }
 
