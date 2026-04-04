@@ -14,11 +14,11 @@ interface Props {
 /** FUB Intel Card — surfaces stage, tags, pre-approval, lender, collaborators, at-a-glance specs */
 export function FubContextStrip({ entityId, entity, personProfile: externalProfile }: Props) {
   const [profile, setProfile] = useState<FubPersonProfile | null>(externalProfile ?? null);
-  const [loading, setLoading] = useState(!externalProfile);
+  const [loading, setLoading] = useState(externalProfile === undefined);
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    if (externalProfile) { setProfile(externalProfile); setLoading(false); return; }
+    if (externalProfile !== undefined) { setProfile(externalProfile); setLoading(false); return; }
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -114,7 +114,7 @@ export function FubContextStrip({ entityId, entity, personProfile: externalProfi
               </Badge>
             )}
             {profile.preApprovalAmount && (
-              <Badge variant="outline" className="text-[10px] gap-1 py-0 border-green-500/40 text-green-600 dark:text-green-400">
+              <Badge variant="outline" className="text-[10px] gap-1 py-0 border-opportunity/40 text-opportunity">
                 <Shield className="h-2.5 w-2.5" />
                 Pre-approved {profile.preApprovalAmount >= 1_000_000
                   ? `$${(profile.preApprovalAmount / 1_000_000).toFixed(1)}M`
@@ -161,9 +161,9 @@ export function FubContextStrip({ entityId, entity, personProfile: externalProfi
                   {statusTags.map(t => (
                     <Badge key={t} variant="outline" className={cn(
                       "text-[9px] py-0",
-                      t.toLowerCase().includes('hot') && "border-red-500/40 text-red-600 dark:text-red-400",
-                      t.toLowerCase().includes('warm') && "border-orange-500/40 text-orange-600 dark:text-orange-400",
-                      t.toLowerCase().includes('cold') && "border-blue-500/40 text-blue-600 dark:text-blue-400",
+                      t.toLowerCase().includes('hot') && "border-urgent/40 text-urgent",
+                      t.toLowerCase().includes('warm') && "border-warning/40 text-warning",
+                      t.toLowerCase().includes('cold') && "border-primary/40 text-primary",
                     )}>
                       {t}
                     </Badge>
@@ -185,9 +185,9 @@ export function FubContextStrip({ entityId, entity, personProfile: externalProfi
             {/* Pre-Approval details */}
             {profile.preApproved && (
               <div className="flex items-center gap-1.5 text-xs">
-                <Shield className="h-3 w-3 text-green-600 dark:text-green-400" />
+                <Shield className="h-3 w-3 text-opportunity" />
                 <span className="text-muted-foreground">Pre-Approved:</span>
-                <span className="font-medium text-green-600 dark:text-green-400">
+                <span className="font-medium text-opportunity">
                   Yes{profile.preApprovalAmount ? ` — $${profile.preApprovalAmount.toLocaleString()}` : ''}
                 </span>
                 {profile.lenderName && (
