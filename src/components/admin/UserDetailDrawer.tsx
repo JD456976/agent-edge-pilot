@@ -343,7 +343,7 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
                       type="date"
                       value={proExpiresAt}
                       onChange={e => setProExpiresAt(e.target.value)}
-                      disabled={isReviewer}
+                      disabled={false}
                       min={new Date().toISOString().slice(0, 10)}
                     />
                   </div>
