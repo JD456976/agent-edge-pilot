@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap, Send, Clock, ArrowUpRight, ArrowDownLeft, Loader2, CalendarDays, Activity, Flame, StickyNote as NotesIcon, History, AlertTriangle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { relativeTime } from '@/lib/relativeTime';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
