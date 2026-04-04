@@ -242,9 +242,6 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
               </div>
             </div>
 
-            {isReviewer && (
-              <Badge variant="secondary" className="text-[10px]">Reviewer Mode — actions disabled</Badge>
-            )}
           </div>
 
           {/* Members Table */}
