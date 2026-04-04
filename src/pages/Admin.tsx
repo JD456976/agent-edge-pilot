@@ -482,8 +482,6 @@ export default function Admin() {
           <section className="rounded-lg border border-border bg-card p-4 mb-6">
             <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Database className="h-4 w-4" /> Data Tools</h2>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => setShowSeedPacks(true)}><Plus className="h-4 w-4 mr-1" /> Seed Packs</Button>
-              <Button size="sm" variant="outline" onClick={handleSeedDemoData}><Plus className="h-4 w-4 mr-1" /> Quick Seed</Button>
               <Button size="sm" variant="destructive" onClick={() => setShowWipeConfirm(true)}><Trash2 className="h-4 w-4 mr-1" /> Clear All Data</Button>
             </div>
             {showWipeConfirm && (
@@ -509,16 +507,6 @@ export default function Admin() {
               </div>
             )}
           </section>
-
-          {/* Seed Packs Modal */}
-          <SeedPacksModal
-            open={showSeedPacks}
-            onClose={() => setShowSeedPacks(false)}
-            onSeed={async (packIds) => { await seedPacks(packIds); await loadAuditLog(); }}
-            onClearSeeded={async () => { await clearSeededData(); await loadAuditLog(); }}
-            hasRealData={hasData}
-            hasSeededData={hasSeededData}
-          />
 
           {/* Organizations */}
           <section className="rounded-lg border border-border bg-card p-4 mb-6">
