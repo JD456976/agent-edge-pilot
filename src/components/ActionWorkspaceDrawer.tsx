@@ -911,7 +911,7 @@ export function ActionWorkspaceDrawer({
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <Label className="text-[10px] text-muted-foreground">Quick Send</Label>
-                        <Switch checked={quickSendMode} onCheckedChange={setQuickSendMode} className="h-4 w-7" />
+                        <Switch checked={quickSendModeEmail} onCheckedChange={setQuickSendModeEmail} className="h-4 w-7" />
                       </div>
                       <Button
                         size="sm"
