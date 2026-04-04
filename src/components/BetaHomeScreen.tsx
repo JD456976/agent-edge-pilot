@@ -1201,6 +1201,77 @@ export default function BetaHomeScreen() {
         </div>
       )}
 
+      {/* Quick Add Lead Bottom Sheet */}
+      {showQuickAddLead && (
+        <div className="fixed inset-0 z-50 bg-background/60 backdrop-blur-sm" onClick={() => setShowQuickAddLead(false)}>
+          <div
+            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border-t border-border bg-card p-5 space-y-4 animate-slide-up max-w-lg mx-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <h3 className="text-base font-bold">Quick Add Lead</h3>
+              <button onClick={() => setShowQuickAddLead(false)} className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 hover:bg-accent transition-colors">
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Name *</label>
+                <input
+                  value={qaName}
+                  onChange={e => setQaName(e.target.value.slice(0, 100))}
+                  placeholder="Contact name"
+                  autoFocus
+                  maxLength={100}
+                  className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Phone</label>
+                <input
+                  type="tel"
+                  value={qaPhone}
+                  onChange={e => setQaPhone(e.target.value)}
+                  placeholder="(555) 123-4567"
+                  className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Source</label>
+                  <select
+                    value={qaSource}
+                    onChange={e => setQaSource(e.target.value)}
+                    className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="Zillow">Zillow</option>
+                    <option value="Realtor.com">Realtor.com</option>
+                    <option value="Sphere">Sphere</option>
+                    <option value="Open House">Open House</option>
+                    <option value="Referral">Referral</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Temperature</label>
+                  <select
+                    value={qaTemp}
+                    onChange={e => setQaTemp(e.target.value as 'hot' | 'warm' | 'cool')}
+                    className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="hot">🔥 Hot</option>
+                    <option value="warm">☀️ Warm</option>
+                    <option value="cool">❄️ Cool</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <Button className="w-full h-11" onClick={handleQuickAddSave} disabled={qaSaving || !qaName.trim()}>
+              {qaSaving ? 'Saving...' : 'Save Lead'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Income Control (collapsed) — all modes */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
