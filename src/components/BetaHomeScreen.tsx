@@ -1161,6 +1161,7 @@ export default function BetaHomeScreen() {
           onOpenWorkspace={openWorkspace}
           targetMarket={targetMarket}
           onAddLead={() => setShowQuickAddLead(true)}
+          onSeeAll={() => navigate('/work')}
         />
       )}
       {currentMode === 'midday' && (
