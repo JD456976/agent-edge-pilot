@@ -7,7 +7,6 @@ interface AuthContextType {
   loading: boolean;
   profiles: User[];
   onboardingCompleted: boolean;
-  isReviewer: boolean;
   isProtected: boolean;
   login: (email: string, password: string) => Promise<{ error?: string }>;
   signup: (email: string, password: string, name: string) => Promise<{ error?: string }>;
