@@ -62,7 +62,7 @@ function getFailureGuidance(category: string): string {
 
 export function ImportCompletionModal({ result, onViewHistory, onClose }: ImportCompletionModalProps) {
   const navigate = useNavigate();
-  const { isReviewer, logAdminAction } = useAuth();
+  const { logAdminAction } = useAuth();
   const { refreshData } = useData();
   const [undoing, setUndoing] = useState(false);
   const [undone, setUndone] = useState(false);
