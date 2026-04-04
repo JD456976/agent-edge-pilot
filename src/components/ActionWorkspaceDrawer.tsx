@@ -409,7 +409,32 @@ export function ActionWorkspaceDrawer({
     }
   }, [context, noteText, user?.id]);
 
-  if (!entity || !context || !draft) return null;
+  const handleFetchOpener = useCallback(async (channel: 'call' | 'text' | 'email') => {
+    if (!context) return;
+    setOpenerLoading(channel);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-follow-up', {
+        body: {
+          entity_type: context.entityType,
+          entity_id: context.entityId,
+          draft_type: 'opener',
+          channel,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) {
+        toast({ description: data.message || data.error, variant: 'destructive' });
+      } else if (data?.opener) {
+        setOpenerResult(prev => ({ ...prev, [channel]: data.opener }));
+      }
+    } catch (err) {
+      console.error('Opener fetch error:', err);
+      toast({ description: 'Could not generate suggestion', variant: 'destructive' });
+    } finally {
+      setOpenerLoading(null);
+    }
+  }, [context]);
+
 
   const tabs: { key: WorkspaceTab; label: string; icon: typeof Phone; subtitle: string }[] = [
     { key: 'intel', label: 'Intel', icon: Zap, subtitle: 'Data brief' },
