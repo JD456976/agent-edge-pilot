@@ -751,6 +751,10 @@ export function ActionWorkspaceDrawer({
             {/* ── CALL TAB ─────────────────────────────────────────── */}
             {activeTab === 'call' && callBrief && (
               <div className="space-y-4">
+                {renderOpenerSection('call', 'Copy opener', (text) => {
+                  navigator.clipboard.writeText(text);
+                  toast({ description: 'Opener copied to clipboard' });
+                })}
                 {/* Call History from FUB */}
                 {(() => {
                   const callHistory = recentFubActivities.filter(a => a.activity_type === 'call' || a.activity_type === 'phone');
