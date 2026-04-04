@@ -14,7 +14,7 @@ interface Props {
 /** FUB Intel Card — surfaces stage, tags, pre-approval, lender, collaborators, at-a-glance specs */
 export function FubContextStrip({ entityId, entity, personProfile: externalProfile }: Props) {
   const [profile, setProfile] = useState<FubPersonProfile | null>(externalProfile ?? null);
-  const [loading, setLoading] = useState(!externalProfile);
+  const [loading, setLoading] = useState(externalProfile === undefined);
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
