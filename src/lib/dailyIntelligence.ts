@@ -19,13 +19,7 @@ export function getDailyBriefing(
   const riskDeals = deals.filter(d => d.stage !== 'closed' && (d.riskLevel === 'red' || d.riskLevel === 'yellow'));
   const hotLeads = leads.filter(l => l.engagementScore >= 80 || l.leadTemperature === 'hot');
 
-  // Priority: overdue > risk deals > hot leads > quiet
-  if (overdueTasks.length > 0) {
-    return {
-      icon: '🚨',
-      text: `${overdueTasks.length} overdue action${overdueTasks.length !== 1 ? 's' : ''} need${overdueTasks.length === 1 ? 's' : ''} attention.`,
-    };
-  }
+  // Overdue tasks are handled by the dedicated OverdueTasksCard — skip here
   if (riskDeals.length > 0) {
     return {
       icon: '⚠️',
