@@ -11,6 +11,7 @@ interface Props {
   onOpenEntity: (entityId: string, entityType: 'deal' | 'lead') => void;
   onCreateTask: () => void;
   onLogTouch: () => void;
+  onNavigateToTasks?: () => void;
 }
 
 const RECENT_STORAGE_KEY = 'dp-cmd-recent';
@@ -80,7 +81,7 @@ const STAGE_LABELS: Record<string, string> = {
   closed: 'Closed',
 };
 
-export function CommandPalette({ onOpenEntity, onCreateTask, onLogTouch }: Props) {
+export function CommandPalette({ onOpenEntity, onCreateTask, onLogTouch, onNavigateToTasks }: Props) {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [category, setCategory] = useState<SearchCategory>('all');
@@ -212,13 +213,13 @@ export function CommandPalette({ onOpenEntity, onCreateTask, onLogTouch }: Props
       onOpenEntity(result.entityId, 'lead');
     } else if (result.type === 'deal' && result.entityId) {
       onOpenEntity(result.entityId, 'deal');
-    } else if (result.type === 'task' && result.entityId) {
-      // Navigate to related entity
+    } else if (result.type === 'task') {
       const task = tasks.find(t => t.id === result.id.replace('task-', ''));
       if (task?.relatedDealId) onOpenEntity(task.relatedDealId, 'deal');
       else if (task?.relatedLeadId) onOpenEntity(task.relatedLeadId, 'lead');
+      else onNavigateToTasks?.();
     }
-  }, [onOpenEntity, onCreateTask, onLogTouch, searchValue, tasks]);
+  }, [onOpenEntity, onCreateTask, onLogTouch, onNavigateToTasks, searchValue, tasks]);
 
   // Keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {

@@ -356,13 +356,16 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
       {/* Global Command Palette (Cmd+K / Ctrl+K) */}
       <CommandPalette
         onOpenEntity={(entityId, entityType) => {
-          // Navigate to Command Center, close workspace, and request entity open
-          closeWorkspace();
           if (location.pathname !== '/') navigate('/');
+          openWorkspace('work');
           requestOpenEntity(entityId, entityType);
         }}
         onCreateTask={() => setShowQuickAdd(true)}
         onLogTouch={() => setShowQuickAdd(true)}
+        onNavigateToTasks={() => {
+          if (location.pathname !== '/') navigate('/');
+          openWorkspace('work');
+        }}
       />
 
       {/* Mobile Search Overlay */}
@@ -370,8 +373,8 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
         open={showMobileSearch}
         onClose={() => setShowMobileSearch(false)}
         onOpenEntity={(entityId, entityType) => {
-          closeWorkspace();
           if (location.pathname !== '/') navigate('/');
+          openWorkspace('work');
           requestOpenEntity(entityId, entityType);
         }}
         onCreateTask={() => setShowQuickAdd(true)}
