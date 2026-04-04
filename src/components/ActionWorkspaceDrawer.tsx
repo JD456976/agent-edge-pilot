@@ -328,7 +328,8 @@ export function ActionWorkspaceDrawer({
     setCopiedField(null);
     setTextSent(false);
     setEmailSent(false);
-    setQuickSendMode(false);
+    setQuickSendModeText(false);
+    setQuickSendModeEmail(false);
     setFubProfile(null);
     setRecentFubActivities([]);
     onClose();
