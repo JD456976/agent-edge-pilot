@@ -3,21 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Mail, Shield, Zap, TrendingUp, ArrowLeft } from 'lucide-react';
 import appIcon from '@/assets/app-icon.png';
 import { useAuth } from '@/contexts/AuthContext';
-import { lovable } from '@/integrations/lovable/index';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 type Tab = 'signin' | 'signup' | 'forgot';
-
-function AppleIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-    </svg>
-  );
-}
 
 export default function Login() {
   const [tab, setTab] = useState<Tab>('signin');
@@ -27,7 +18,6 @@ export default function Login() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [appleLoading, setAppleLoading] = useState(false);
   const { login, signup } = useAuth();
   const navigate = useNavigate();
 
@@ -71,23 +61,6 @@ export default function Login() {
       setError(error.message);
     } else {
       setSuccess("If an account exists with that email, you'll receive a password reset link.");
-    }
-  };
-
-  const handleAppleSignIn = async () => {
-    setError('');
-    setAppleLoading(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth('apple', {
-        redirect_uri: window.location.origin,
-      });
-      if (result.error) {
-        setError(result.error instanceof Error ? result.error.message : String(result.error));
-      }
-    } catch (err) {
-      setError('Apple sign in failed. Please try again.');
-    } finally {
-      setAppleLoading(false);
     }
   };
 
@@ -162,24 +135,6 @@ export default function Login() {
             <p className="text-sm text-muted-foreground mt-1">
               {tab === 'signin' ? 'Sign in to your command center' : 'Start protecting your income today'}
             </p>
-          </div>
-
-          {/* Apple Sign In */}
-          <Button
-            variant="outline"
-            className="w-full h-11 font-medium mb-4 gap-2"
-            onClick={handleAppleSignIn}
-            disabled={appleLoading}
-          >
-            <AppleIcon className="h-4.5 w-4.5" />
-            {appleLoading ? 'Connecting...' : 'Continue with Apple'}
-          </Button>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">or</span>
-            <div className="flex-1 h-px bg-border" />
           </div>
 
           {/* Tabs */}

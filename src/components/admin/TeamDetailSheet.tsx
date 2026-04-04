@@ -37,12 +37,11 @@ interface Props {
   orgName: string;
   createdAt: string;
   availableUsers: ProfileOption[];
-  isReviewer: boolean;
   onClose: () => void;
   onChanged: () => void;
 }
 
-export function TeamDetailSheet({ teamId, teamName: initialName, orgName, createdAt, availableUsers, isReviewer, onClose, onChanged }: Props) {
+export function TeamDetailSheet({ teamId, teamName: initialName, orgName, createdAt, availableUsers, onClose, onChanged }: Props) {
   const { user, logAdminAction } = useAuth();
   const { toast } = useToast();
 
@@ -96,7 +95,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
   const isLastLeader = (m: TeamMemberRow) => m.teamRole === 'leader' && leaders.length <= 1;
 
   const handleRoleChange = async (member: TeamMemberRow, newRole: TeamRole) => {
-    if (isReviewer) return;
+    // Block removing last leader
     // Block removing last leader
     if (member.teamRole === 'leader' && newRole !== 'leader' && leaders.length <= 1) {
       toast({ title: 'Cannot change role', description: 'Team must have at least one Leader', variant: 'destructive' });
@@ -113,7 +112,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
   };
 
   const handleRemoveMember = async () => {
-    if (!removingMember || isReviewer) return;
+    if (!removingMember) return;
     setRemoving(true);
 
     if (isLastLeader(removingMember)) {
@@ -136,7 +135,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
   };
 
   const handleSaveName = async () => {
-    if (!name.trim() || name === initialName || isReviewer) return;
+    if (!name.trim() || name === initialName) return;
     setSavingName(true);
     await supabase.from('teams').update({ name: name.trim() }).eq('id', teamId);
     await logAdminAction('team_renamed', { teamId, from: initialName, to: name.trim() });
@@ -174,7 +173,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
   };
 
   const handleBulkAdd = async () => {
-    if (bulkSelected.size === 0 || isReviewer) return;
+    if (bulkSelected.size === 0) return;
     const inserts = Array.from(bulkSelected.entries()).map(([userId, role]) => ({
       team_id: teamId,
       user_id: userId,
@@ -210,7 +209,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
               {editingName ? (
                 <div className="flex gap-2">
                   <Input value={name} onChange={e => setName(e.target.value)} className="h-8" autoFocus />
-                  <Button size="sm" className="h-8" onClick={handleSaveName} disabled={savingName || !name.trim() || isReviewer}>
+                  <Button size="sm" className="h-8" onClick={handleSaveName} disabled={savingName || !name.trim()}>
                     {savingName ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                   </Button>
                   <Button size="sm" variant="ghost" className="h-8" onClick={() => { setName(initialName); setEditingName(false); }}>
@@ -220,11 +219,9 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
               ) : (
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium">{name}</p>
-                  {!isReviewer && (
-                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingName(true)}>
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                  )}
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingName(true)}>
+                    <Pencil className="h-3 w-3" />
+                  </Button>
                 </div>
               )}
             </div>
@@ -244,20 +241,15 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
               </div>
             </div>
 
-            {isReviewer && (
-              <Badge variant="secondary" className="text-[10px]">Reviewer Mode — actions disabled</Badge>
-            )}
           </div>
 
           {/* Members Table */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-xs text-muted-foreground">Members</Label>
-              {!isReviewer && (
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowAddMembers(true)}>
-                  <Plus className="h-3.5 w-3.5 mr-1" /> Add Members
-                </Button>
-              )}
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowAddMembers(true)}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add Members
+              </Button>
             </div>
 
             {loading ? (
@@ -265,11 +257,9 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
             ) : members.length === 0 ? (
               <div className="text-center py-8 border border-dashed border-border rounded-lg">
                 <p className="text-sm text-muted-foreground">No members assigned</p>
-                {!isReviewer && (
-                  <Button size="sm" variant="outline" className="mt-2" onClick={() => setShowAddMembers(true)}>
-                    <Plus className="h-3.5 w-3.5 mr-1" /> Add Members
-                  </Button>
-                )}
+                <Button size="sm" variant="outline" className="mt-2" onClick={() => setShowAddMembers(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Add Members
+                </Button>
               </div>
             ) : (
               <div className="rounded-lg border border-border overflow-hidden">
@@ -280,7 +270,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
                       <TableHead>Team Role</TableHead>
                       <TableHead>App Role</TableHead>
                       <TableHead>Status</TableHead>
-                      {!isReviewer && <TableHead className="w-[40px]" />}
+                      <TableHead className="w-[40px]" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -296,10 +286,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
                           </div>
                         </TableCell>
                         <TableCell>
-                          {isReviewer ? (
-                            <Badge variant="secondary" className="text-[10px] capitalize">{TEAM_ROLE_LABELS[m.teamRole]}</Badge>
-                          ) : (
-                            <Select
+                          <Select
                               value={m.teamRole}
                               onValueChange={(v) => handleRoleChange(m, v as TeamRole)}
                               disabled={isLastLeader(m)}
@@ -314,7 +301,6 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
                                 <SelectItem value="admin">Admin</SelectItem>
                               </SelectContent>
                             </Select>
-                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary" className="text-[10px] capitalize">{m.appRole}</Badge>
@@ -324,8 +310,7 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
                             {m.status}
                           </Badge>
                         </TableCell>
-                        {!isReviewer && (
-                          <TableCell>
+                        <TableCell>
                             <Button
                               size="icon"
                               variant="ghost"
@@ -337,7 +322,6 @@ export function TeamDetailSheet({ teamId, teamName: initialName, orgName, create
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </TableCell>
-                        )}
                       </TableRow>
                     ))}
                   </TableBody>

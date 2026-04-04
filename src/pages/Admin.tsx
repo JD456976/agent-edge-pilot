@@ -44,7 +44,7 @@ interface ProfileOption {
 }
 
 export default function Admin() {
-  const { user, profiles, fetchProfiles, logAdminAction, isReviewer } = useAuth();
+  const { user, profiles, fetchProfiles, logAdminAction } = useAuth();
   const { leads, deals, tasks, seedDemoData, seedPacks, clearSeededData, wipeData, hasData, hasSeededData } = useData();
   const [showSeedPacks, setShowSeedPacks] = useState(false);
   const [showWipeConfirm, setShowWipeConfirm] = useState(false);
@@ -269,7 +269,7 @@ export default function Admin() {
       <section className="rounded-lg border border-border bg-card p-4 mb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold flex items-center gap-2"><UsersRound className="h-4 w-4" /> Teams</h2>
-          <Button size="sm" variant="outline" onClick={() => setShowCreateTeam(true)} disabled={organizations.length === 0 || isReviewer}>
+          <Button size="sm" variant="outline" onClick={() => setShowCreateTeam(true)} disabled={organizations.length === 0}>
             <Plus className="h-4 w-4 mr-1" /> Create Team
           </Button>
         </div>
@@ -277,7 +277,7 @@ export default function Admin() {
           <div className="text-center py-8 border border-dashed border-border rounded-lg">
             <UsersRound className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">No teams yet</p>
-            {organizations.length > 0 && !isReviewer && (
+            {organizations.length > 0 && (
               <Button size="sm" variant="outline" className="mt-2" onClick={() => setShowCreateTeam(true)}>
                 <Plus className="h-3.5 w-3.5 mr-1" /> Create your first team
               </Button>
@@ -382,7 +382,6 @@ export default function Admin() {
           orgName={selectedTeamOrg?.name || ''}
           createdAt={selectedTeam.createdAt}
           availableUsers={availableUsers}
-          isReviewer={isReviewer}
           onClose={() => setSelectedTeamId(null)}
           onChanged={() => {
             loadOrgData();

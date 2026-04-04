@@ -34,7 +34,7 @@ import { PWAUpdatePrompt } from "@/components/PWAUpdatePrompt";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading, onboardingCompleted, setOnboardingCompleted, isReviewer } = useAuth();
+  const { user, loading, onboardingCompleted, setOnboardingCompleted } = useAuth();
   const [onboardingDone, setOnboardingDone] = useState(onboardingCompleted);
 
   // Keep local state in sync with context
@@ -69,8 +69,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Show onboarding modal if not completed (reviewers skip — handled via auto-seed)
-  if (!onboardingDone && !isReviewer) {
+  // Show onboarding modal if not completed
+  if (!onboardingDone) {
     return (
       <AppLayout>
         <OnboardingModal onComplete={() => {

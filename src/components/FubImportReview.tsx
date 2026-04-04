@@ -21,7 +21,7 @@ interface ImportReviewProps {
 type MatchFilter = 'all' | 'new' | 'matched' | 'conflict';
 
 export function FubImportReview({ runId, onBack }: ImportReviewProps) {
-  const { isReviewer, logAdminAction } = useAuth();
+  const { logAdminAction } = useAuth();
   const [loading, setLoading] = useState(true);
   const [committing, setCommitting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -74,16 +74,14 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
       const matchedDeals = stagedDeals.filter(d => d.match_status === 'matched').length;
       const matchedTasks = stagedTasks.filter(t => t.match_status === 'matched').length;
 
-      if (!isReviewer) {
-        markImportCompleted();
-      }
+      markImportCompleted();
 
       setCompletionResult({
         importRunId: runId,
         committed,
         skipped: { leads: skippedLeads, deals: skippedDeals, tasks: skippedTasks },
         matched: { leads: matchedLeads, deals: matchedDeals, tasks: matchedTasks },
-        isReviewer,
+        isReviewer: false,
         partialFailures: data.failures || undefined,
         durationMs,
         committedAt: new Date().toISOString(),
@@ -271,13 +269,6 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
         </div>
       )}
 
-      {/* Reviewer warning */}
-      {isReviewer && (
-        <div className="rounded-lg border border-border bg-muted/50 p-3 mb-4 flex items-center gap-2 text-sm">
-          <Info className="h-4 w-4 text-primary shrink-0" />
-          <span className="text-muted-foreground">Review mode: imports disabled.</span>
-        </div>
-      )}
 
       {/* Filter */}
       <div className="flex items-center gap-2 mb-3">
@@ -394,7 +385,7 @@ export function FubImportReview({ runId, onBack }: ImportReviewProps) {
         <div className="flex gap-3">
           <Button
             onClick={handleCommit}
-            disabled={committing || isReviewer || unresolvedConflicts > 0}
+            disabled={committing || unresolvedConflicts > 0}
             className="flex-1"
           >
             {committing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}

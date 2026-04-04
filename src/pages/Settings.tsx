@@ -274,7 +274,7 @@ function LeadSourcesInsight() {
 const TABS = ['Preferences', 'Admin'] as const;
 
 export default function Settings() {
-  const { user, logout, isReviewer, isProtected } = useAuth();
+  const { user, logout, isProtected } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const { currentMode, autoMode, override, setModeOverride } = useSessionMode();
@@ -345,12 +345,6 @@ export default function Settings() {
       <h1 className="text-xl font-bold mb-1">Settings</h1>
       <p className="text-sm text-muted-foreground mb-6">Preferences and account</p>
 
-      {isReviewer && (
-        <div className="rounded-lg border border-border bg-muted/50 p-3 mb-4 flex items-center gap-2 text-sm">
-          <Info className="h-4 w-4 text-primary shrink-0" />
-          <span className="text-muted-foreground">Reviewer Demo Mode is active.</span>
-        </div>
-      )}
 
       {/* Theme & Skin */}
       <section className="rounded-lg border border-border bg-card p-4 mb-4">

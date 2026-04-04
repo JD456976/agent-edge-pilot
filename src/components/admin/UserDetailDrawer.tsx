@@ -18,7 +18,6 @@ interface Props {
   userId: string;
   onClose: () => void;
   onSaved: () => void;
-  isReviewer: boolean;
 }
 
 interface UserDetail {
@@ -38,7 +37,7 @@ interface UserDetail {
   stripeSubscriptionId: string | null;
 }
 
-export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props) {
+export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
   const { user, logAdminAction } = useAuth();
   const { toast } = useToast();
   const [detail, setDetail] = useState<UserDetail | null>(null);
@@ -116,7 +115,7 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
   };
 
   const handleSave = async () => {
-    if (!detail || isReviewer) return;
+    if (!detail) return;
     setSaving(true);
 
     try {
@@ -242,9 +241,6 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
           <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
         ) : (
           <div className="space-y-5">
-            {isReviewer && (
-              <Badge variant="secondary" className="text-[10px]">Reviewer Mode — actions disabled</Badge>
-            )}
 
             {/* Email (read-only) */}
             <div className="space-y-1.5">
@@ -255,13 +251,13 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
             {/* Name */}
             <div className="space-y-1.5">
               <Label className="text-xs">Full Name</Label>
-              <Input value={name} onChange={e => setName(e.target.value)} disabled={isReviewer} />
+              <Input value={name} onChange={e => setName(e.target.value)} />
             </div>
 
             {/* Role */}
             <div className="space-y-1.5">
               <Label className="text-xs">Role</Label>
-              <Select value={role} onValueChange={setRole} disabled={detail.isProtected || isReviewer || isSelf}>
+              <Select value={role} onValueChange={setRole} disabled={detail.isProtected || isSelf}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
@@ -275,7 +271,7 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
             {/* Status */}
             <div className="space-y-1.5">
               <Label className="text-xs">Status</Label>
-              <Select value={status} onValueChange={setStatus} disabled={detail.isProtected || isReviewer || isSelf}>
+              <Select value={status} onValueChange={setStatus} disabled={detail.isProtected || isSelf}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
@@ -294,7 +290,6 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
                       <Checkbox
                         checked={selectedTeamIds.includes(team.id)}
                         onCheckedChange={() => toggleTeam(team.id)}
-                        disabled={isReviewer}
                       />
                       <span className="text-sm">{team.name}</span>
                     </div>
@@ -337,7 +332,6 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
                   <Switch
                     checked={hasProGrant}
                     onCheckedChange={setHasProGrant}
-                    disabled={isReviewer}
                   />
                 </div>
                 {hasProGrant && (
@@ -347,7 +341,6 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
                       type="date"
                       value={proExpiresAt}
                       onChange={e => setProExpiresAt(e.target.value)}
-                      disabled={isReviewer}
                       min={new Date().toISOString().slice(0, 10)}
                     />
                   </div>
@@ -362,15 +355,13 @@ export function UserDetailDrawer({ userId, onClose, onSaved, isReviewer }: Props
             </div>
 
             {/* Save */}
-            {!isReviewer && (
-              <Button className="w-full" onClick={handleSave} disabled={saving}>
-                {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-                Save Changes
-              </Button>
-            )}
+            <Button className="w-full" onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Save Changes
+            </Button>
 
             {/* Delete User */}
-            {!isReviewer && !detail.isProtected && !isSelf && (
+            {!detail.isProtected && !isSelf && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" className="w-full" size="sm">

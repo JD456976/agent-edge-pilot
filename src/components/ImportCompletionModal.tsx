@@ -62,7 +62,7 @@ function getFailureGuidance(category: string): string {
 
 export function ImportCompletionModal({ result, onViewHistory, onClose }: ImportCompletionModalProps) {
   const navigate = useNavigate();
-  const { isReviewer, logAdminAction } = useAuth();
+  const { logAdminAction } = useAuth();
   const { refreshData } = useData();
   const [undoing, setUndoing] = useState(false);
   const [undone, setUndone] = useState(false);
@@ -77,7 +77,7 @@ export function ImportCompletionModal({ result, onViewHistory, onClose }: Import
 
   // Undo countdown timer
   useEffect(() => {
-    if (isReviewer || undone) return;
+    if (undone) return;
     const committedAt = result.committedAt ? new Date(result.committedAt).getTime() : Date.now();
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - committedAt) / 1000);
@@ -86,11 +86,11 @@ export function ImportCompletionModal({ result, onViewHistory, onClose }: Import
       if (remaining <= 0) clearInterval(interval);
     }, 1000);
     return () => clearInterval(interval);
-  }, [result.committedAt, isReviewer, undone]);
+  }, [result.committedAt, undone]);
 
   // Post-import scoring refresh
   useEffect(() => {
-    if (totalImported === 0 || isReviewer) return;
+    if (totalImported === 0) return;
     const timer = setTimeout(() => {
       setRescoring(true);
       // Trigger a data refresh which will cause Intelligence Engine to re-score
@@ -100,7 +100,7 @@ export function ImportCompletionModal({ result, onViewHistory, onClose }: Import
       });
     }, 500);
     return () => clearTimeout(timer);
-  }, [totalImported, isReviewer, refreshData]);
+  }, [totalImported, refreshData]);
 
   const handleUndo = useCallback(async () => {
     setUndoing(true);
@@ -180,9 +180,7 @@ export function ImportCompletionModal({ result, onViewHistory, onClose }: Import
           {hasFailures ? 'Import Partially Complete' : 'Import Complete'}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {isReviewer
-            ? 'Demo import completed — no permanent data saved.'
-            : hasFailures
+          {hasFailures
               ? 'Some items could not be imported.'
               : 'All records have been safely processed.'}
         </p>
@@ -275,7 +273,7 @@ export function ImportCompletionModal({ result, onViewHistory, onClose }: Import
       )}
 
       {/* Impact Section */}
-      {!isReviewer && totalImported > 0 && (
+      {totalImported > 0 && (
         <div className="rounded-lg border border-border bg-muted/30 p-4 mb-4">
           <h3 className="text-sm font-semibold mb-2">Your Command Center has been updated</h3>
           <div className="space-y-1.5">
@@ -332,7 +330,7 @@ export function ImportCompletionModal({ result, onViewHistory, onClose }: Import
       )}
 
       {/* Undo Import */}
-      {!isReviewer && undoTimeLeft > 0 && (
+      {undoTimeLeft > 0 && (
         <div className="rounded-lg border border-border bg-card p-3 mb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

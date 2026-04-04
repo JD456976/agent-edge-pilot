@@ -28,7 +28,7 @@ interface ManagedUser {
 }
 
 export function UserManagementPanel() {
-  const { user, logAdminAction, isReviewer } = useAuth();
+  const { user, logAdminAction } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -315,7 +315,6 @@ export function UserManagementPanel() {
       {viewingUserId && (
         <UserDetailDrawer
           userId={viewingUserId}
-          isReviewer={isReviewer}
           onClose={() => setViewingUserId(null)}
           onSaved={() => { loadUsers(); setViewingUserId(null); }}
         />
