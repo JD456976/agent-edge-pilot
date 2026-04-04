@@ -153,14 +153,24 @@ function getClientVerdict(lead: Lead, score: number, riskLevel: string): { text:
   return { text: 'Cold — low activity, low engagement', color: 'text-muted-foreground' };
 }
 
-function PipelineCard({ lead, score, outsideTarget, onTap, onAction }: {
+function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onRefresh }: {
   lead: Lead;
   score: number;
   outsideTarget: boolean;
   onTap: () => void;
   onAction: (type: 'call' | 'text' | 'email') => void;
+  userId: string;
+  onRefresh: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [taskOpen, setTaskOpen] = useState(false);
+  const [taskType, setTaskType] = useState<string>('call');
+  const [taskDue, setTaskDue] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + 1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [taskNotes, setTaskNotes] = useState('');
+  const [taskSaving, setTaskSaving] = useState(false);
   const risk = useMemo(() => computeRisk(lead, score), [lead, score]);
   const verdict = useMemo(() => getClientVerdict(lead, score, risk.level), [lead, score, risk.level]);
   const borderColor = score >= 80 ? 'border-l-opportunity' : score >= 60 ? 'border-l-warning' : 'border-l-muted-foreground/30';
@@ -177,6 +187,24 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction }: {
       return 'Active and hot — strike while the iron is hot.';
     return `Last touched ${daysSince} day${daysSince === 1 ? '' : 's'} ago.`;
   }, [lead.lastTouchedAt, lead.leadTemperature]);
+
+  const handleSaveTask = async () => {
+    setTaskSaving(true);
+    const typeLabel = taskType.charAt(0).toUpperCase() + taskType.slice(1).replace('_', ' ');
+    const { error } = await supabase.from('tasks').insert({
+      type: taskType as any,
+      due_at: new Date(taskDue).toISOString(),
+      title: `${typeLabel} ${lead.name}`,
+      related_lead_id: lead.id,
+      assigned_to_user_id: userId,
+    });
+    setTaskSaving(false);
+    if (error) { toast.error('Failed to save task'); return; }
+    toast.success('Task created');
+    setTaskOpen(false);
+    setTaskNotes('');
+    onRefresh();
+  };
 
   return (
     <div className={cn("rounded-xl border border-border bg-card overflow-hidden transition-all duration-200 hover:-translate-y-[1px] hover:shadow-md border-l-[3px]", borderColor)}>
@@ -212,8 +240,45 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction }: {
         <button onClick={(e) => { e.stopPropagation(); onAction('email'); }} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Email">
           <Mail className="h-3.5 w-3.5" />
         </button>
+        <button onClick={(e) => { e.stopPropagation(); setTaskOpen(true); }} className="text-muted-foreground hover:text-foreground transition-colors ml-auto" aria-label="Add task">
+          <Plus className="h-3.5 w-3.5" />
+        </button>
       </div>
       {expanded && <div className="px-3 pb-3"><RiskPanel lead={lead} risk={risk} /></div>}
+
+      {/* Quick Task Bottom Sheet */}
+      {taskOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setTaskOpen(false)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-full max-w-md rounded-t-2xl bg-card border-t border-border p-4 space-y-3 animate-in slide-in-from-bottom-4 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold">Quick Task — {lead.name}</p>
+              <button onClick={() => setTaskOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground">Type</label>
+              <select value={taskType} onChange={e => setTaskType(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
+                <option value="call">Call</option>
+                <option value="text">Text</option>
+                <option value="email">Email</option>
+                <option value="follow_up">Follow Up</option>
+                <option value="showing">Showing</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground">Due Date</label>
+              <input type="date" value={taskDue} onChange={e => setTaskDue(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground">Notes (optional)</label>
+              <input type="text" value={taskNotes} onChange={e => setTaskNotes(e.target.value)} placeholder="Quick note…" className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm" />
+            </div>
+            <Button className="w-full h-11 rounded-xl" onClick={handleSaveTask} disabled={taskSaving}>
+              {taskSaving ? 'Saving…' : 'Save Task'}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
