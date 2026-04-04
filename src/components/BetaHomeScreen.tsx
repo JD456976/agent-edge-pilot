@@ -950,7 +950,7 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction }: {
         </p>
         {leastRecent && leastRecent.id !== hottest?.id && (
           <p className="text-xs text-muted-foreground">
-            <Sun className="h-3 w-3 inline -mt-0.5 text-warning" /> Tomorrow start with <span className="font-medium text-foreground">{leastRecent.name}</span>
+            <Sun className="h-3 w-3 inline -mt-0.5 text-warning" /> Tomorrow start with <button onClick={() => onOpenLead(leastRecent)} className="font-medium text-primary hover:underline cursor-pointer">{leastRecent.name}</button>
           </p>
         )}
         <p className="text-xs text-muted-foreground">
