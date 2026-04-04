@@ -101,8 +101,9 @@ export function ClientPreferencesPanel({ entityId, entityType, entityName, entit
       <div className="rounded-lg border border-border bg-muted/30 p-4 flex flex-col items-center gap-2 text-center">
         <Target className="h-5 w-5 text-muted-foreground" />
         <span className="text-xs text-muted-foreground">Connect Follow Up Boss to see inferred buyer preferences</span>
-      </div>
-    );
+      <ManualPreferencesForm entityId={entityId} entity={entity} />
+    </div>
+  );
   }
 
   const { profile, confidence, reasons } = result;
