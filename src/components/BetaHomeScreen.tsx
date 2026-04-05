@@ -783,6 +783,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
           onSeeAll={onSeeAll}
           userId={userId}
           onRefresh={refreshData as () => void}
+          allLeads={scoredLeads.map(s => s.lead)}
         />
       )}
     </div>
