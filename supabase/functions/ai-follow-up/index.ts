@@ -87,6 +87,7 @@ Risk Flags: ${(deal.risk_flags || []).join(", ") || "None"}`;
       email: "Write a short email (subject + body). Keep it under 150 words.",
       text: "Write a brief text message. Keep it under 50 words. No subject needed.",
       call_script: "Write a brief call talking points script with 3-4 key points to cover.",
+      showing_prep: "Generate exactly 3 concise talking points for a real estate showing. Each should be 1 sentence. Return JSON: {\"talking_points\": [\"...\", \"...\", \"...\"]}. Base points on the client's preferences, price range, location interests, and engagement history. Be specific and actionable.",
     };
 
     // Rate limit check
