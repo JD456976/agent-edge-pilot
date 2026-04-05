@@ -1469,6 +1469,9 @@ export default function BetaHomeScreen() {
         );
       })()}
 
+      {/* Showings Today */}
+      <ShowingTodayCard userId={user?.id || ''} leads={leads} refreshData={refreshData} />
+
       {/* Time-of-Day Content — first element */}
       {currentMode === 'morning' && (
         <MorningMode
