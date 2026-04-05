@@ -4,6 +4,7 @@ import {
   Home, DollarSign, AlertTriangle, Flame, ShieldAlert,
   Sun, CloudSun, Moon, TrendingUp, TrendingDown, Minus,
   CheckCircle2, Shield, Target, Zap, ArrowRight, X, User, Plus,
+  Sparkles, MapPin,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -279,6 +280,139 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onR
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Showing Today Card ──────────────────────────────────────────────
+
+function ShowingTodayCard({ userId, leads, refreshData }: { userId: string; leads: Lead[]; refreshData: () => void }) {
+  const [showings, setShowings] = useState<any[]>([]);
+  const [prepLoading, setPrepLoading] = useState<Record<string, boolean>>({});
+  const [prepResults, setPrepResults] = useState<Record<string, string[]>>({});
+  const [markingDone, setMarkingDone] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+      const { data } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('assigned_to_user_id', userId)
+        .eq('type', 'showing')
+        .is('completed_at', null)
+        .gte('due_at', todayStart.toISOString())
+        .lte('due_at', todayEnd.toISOString())
+        .order('due_at', { ascending: true });
+      if (data) setShowings(data);
+    })();
+  }, [userId]);
+
+  const handlePrepWithAI = useCallback(async (task: any) => {
+    const leadId = task.related_lead_id;
+    if (!leadId) { toast.error('No lead linked to this showing'); return; }
+    setPrepLoading(p => ({ ...p, [task.id]: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-follow-up', {
+        body: {
+          entity_type: 'lead',
+          entity_id: leadId,
+          draft_type: 'showing_prep',
+          context: `Showing scheduled: ${task.title}. Notes: ${task.notes || 'None'}`,
+        },
+      });
+      if (error) throw error;
+      const points = data?.talking_points || data?.body?.split('\n').filter(Boolean) || ['No suggestions available'];
+      setPrepResults(p => ({ ...p, [task.id]: Array.isArray(points) ? points : [points] }));
+    } catch {
+      toast.error('Failed to generate prep');
+    } finally {
+      setPrepLoading(p => ({ ...p, [task.id]: false }));
+    }
+  }, []);
+
+  const handleMarkDone = useCallback(async (taskId: string) => {
+    setMarkingDone(p => ({ ...p, [taskId]: true }));
+    await supabase.from('tasks').update({ completed_at: new Date().toISOString() } as any).eq('id', taskId);
+    setShowings(prev => prev.filter(s => s.id !== taskId));
+    setMarkingDone(p => ({ ...p, [taskId]: false }));
+    toast.success('Showing marked complete');
+    refreshData();
+  }, [refreshData]);
+
+  if (showings.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border-2 border-[hsl(var(--accent))] bg-[hsl(var(--accent))/0.08] p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Home className="h-5 w-5 text-[hsl(var(--accent))]" />
+        <h3 className="text-sm font-bold text-foreground">Showings Today</h3>
+        <Badge variant="secondary" className="text-[10px] ml-auto">{showings.length}</Badge>
+      </div>
+      <div className="space-y-3">
+        {showings.map(task => {
+          const lead = leads.find(l => l.id === task.related_lead_id);
+          const leadName = lead?.name || task.title?.replace(/^Showing\s*/i, '') || 'Unknown';
+          const notes = task.notes || '';
+          const dueTime = new Date(task.due_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          const prep = prepResults[task.id];
+
+          return (
+            <div key={task.id} className="rounded-lg bg-card border border-border p-3 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold truncate">{leadName}</p>
+                  {notes && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                      <MapPin className="h-3 w-3 shrink-0" /> {notes}
+                    </p>
+                  )}
+                </div>
+                <Badge variant="outline" className="text-[10px] shrink-0">
+                  <Clock className="h-2.5 w-2.5 mr-0.5" /> {dueTime}
+                </Badge>
+              </div>
+
+              {prep && (
+                <div className="rounded-md bg-[hsl(var(--accent))/0.1] p-2.5 space-y-1.5">
+                  <p className="text-[10px] font-semibold text-[hsl(var(--accent))] uppercase tracking-wide">Talking Points</p>
+                  {prep.map((point, i) => (
+                    <p key={i} className="text-xs text-foreground flex items-start gap-1.5">
+                      <span className="text-[hsl(var(--accent))] font-bold shrink-0">{i + 1}.</span> {point}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 h-9 text-xs"
+                  onClick={() => handlePrepWithAI(task)}
+                  disabled={!!prepLoading[task.id]}
+                >
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  {prepLoading[task.id] ? 'Generating…' : prep ? 'Refresh Prep' : 'Prep with AI'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-9 text-xs text-opportunity"
+                  onClick={() => handleMarkDone(task.id)}
+                  disabled={!!markingDone[task.id]}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Done
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1468,6 +1602,9 @@ export default function BetaHomeScreen() {
           </div>
         );
       })()}
+
+      {/* Showings Today */}
+      <ShowingTodayCard userId={user?.id || ''} leads={leads} refreshData={refreshData} />
 
       {/* Time-of-Day Content — first element */}
       {currentMode === 'morning' && (
