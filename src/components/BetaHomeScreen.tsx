@@ -4,6 +4,7 @@ import {
   Home, DollarSign, AlertTriangle, Flame, ShieldAlert,
   Sun, CloudSun, Moon, TrendingUp, TrendingDown, Minus,
   CheckCircle2, Shield, Target, Zap, ArrowRight, X, User, Plus,
+  Sparkles, MapPin,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
