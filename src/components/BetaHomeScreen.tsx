@@ -214,7 +214,7 @@ function getClientVerdict(lead: Lead, score: number, riskLevel: string): { text:
   return { text: 'Cold — low activity, low engagement', color: 'text-muted-foreground' };
 }
 
-function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onRefresh }: {
+function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onRefresh, allLeads }: {
   lead: Lead;
   score: number;
   outsideTarget: boolean;
@@ -222,6 +222,7 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onR
   onAction: (type: 'call' | 'text' | 'email') => void;
   userId: string;
   onRefresh: () => void;
+  allLeads?: Lead[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
