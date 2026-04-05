@@ -284,7 +284,7 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onR
               <AlertTriangle className="h-2 w-2 mr-0.5" /> Outside
             </Badge>
           )}
-          <HeatBadge score={score} />
+          <HeatBadge score={score} lead={lead} allLeads={allLeads} interactive />
           <ShieldAlert className={cn(
             'h-3.5 w-3.5 transition-transform shrink-0',
             expanded && 'rotate-180',
