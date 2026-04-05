@@ -51,12 +51,72 @@ function SyncDot({ syncing, lastSync }: { syncing: boolean; lastSync: string | n
   );
 }
 
-function HeatBadge({ score }: { score: number }) {
+function HeatBadge({ score, lead, allLeads, interactive }: { score: number; lead?: Lead; allLeads?: Lead[]; interactive?: boolean }) {
+  const [open, setOpen] = useState(false);
   const bg = score >= 75 ? 'bg-urgent/15 text-urgent' : score >= 50 ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground';
   const label = score >= 75 ? 'Hot' : score >= 50 ? 'Warm' : 'Cool';
+
+  const bullets = useMemo(() => {
+    if (!interactive || !lead || !allLeads) return [];
+    const lines: string[] = [];
+    // Percentile
+    const allScores = allLeads.map(l => getLeadHeatScore(l)).sort((a, b) => b - a);
+    const rank = allScores.findIndex(s => s <= score);
+    const pct = allScores.length > 1 ? Math.round(((rank) / allScores.length) * 100) : 0;
+    if (pct <= 25) lines.push(`Score ${score} — top ${Math.max(pct, 1)}% of your pipeline`);
+    else lines.push(`Score ${score} — ranks in the ${pct <= 50 ? 'upper' : 'lower'} half of your pipeline`);
+    // Source
+    if (lead.source) {
+      const sameSource = allLeads.filter(l => l.source === lead.source);
+      const avgScore = sameSource.length > 0 ? Math.round(sameSource.reduce((s, l) => s + getLeadHeatScore(l), 0) / sameSource.length) : 0;
+      if (avgScore >= 60) lines.push(`From ${lead.source} — historically your strongest source`);
+      else lines.push(`From ${lead.source} — avg score ${avgScore} across ${sameSource.length} lead${sameSource.length !== 1 ? 's' : ''}`);
+    }
+    // Recency
+    if (!lead.lastTouchedAt) {
+      lines.push('Never contacted — urgency is high');
+    } else {
+      const days = Math.floor((Date.now() - new Date(lead.lastTouchedAt).getTime()) / 86400000);
+      if (days === 0) lines.push('Contacted today — momentum is strong');
+      else if (days <= 3) lines.push(`Touched ${days}d ago — still warm`);
+      else if (days <= 7) lines.push(`${days}d since contact — follow up soon`);
+      else lines.push(`${days}d silent — risk of going cold`);
+    }
+    return lines;
+  }, [interactive, lead, allLeads, score]);
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    if (!interactive) return;
+    e.stopPropagation();
+    setOpen(o => !o);
+  }, [interactive]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [open]);
+
   return (
-    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium', bg)}>
-      <Flame className="h-2.5 w-2.5" /> {score} · {label}
+    <span className="relative inline-flex">
+      <span
+        className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium', bg, interactive && 'cursor-pointer')}
+        onClick={handleClick}
+      >
+        <Flame className="h-2.5 w-2.5" /> {score} · {label}
+      </span>
+      {open && bullets.length > 0 && (
+        <div
+          className="absolute bottom-full right-0 mb-1.5 z-50 w-56 rounded-lg bg-foreground text-background p-2.5 shadow-lg text-[11px] space-y-1"
+          onClick={e => e.stopPropagation()}
+        >
+          {bullets.map((b, i) => (
+            <p key={i} className="leading-snug">• {b}</p>
+          ))}
+        </div>
+      )}
     </span>
   );
 }
