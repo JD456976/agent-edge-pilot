@@ -52,7 +52,7 @@ const DEMO_LEADS: Lead[] = [
     engagementScore: 45, notes: 'Browsing listings, early stage', statusTags: [],
     assignedToUserId: '', createdAt: new Date().toISOString(),
     lastTouchedAt: new Date(Date.now() - 14 * 86400000).toISOString(),
-    leadTemperature: 'cool', importedFrom: null, importRunId: null, importedAt: null,
+    leadTemperature: 'cold', importedFrom: null, importRunId: null, importedAt: null,
     snoozeUntil: null, manualPreferences: null,
   },
 ];
