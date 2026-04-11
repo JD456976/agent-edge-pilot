@@ -1392,6 +1392,11 @@ export function ActionWorkspaceDrawer({
               </div>
             )}
 
+            {/* ── SHOWING TAB ──────────────────────────────────────── */}
+            {activeTab === 'showing' && entity && (
+              <ShowingFeedbackTab leadId={entity.id || ''} leadName={context.entityName} />
+            )}
+
             {/* ── ACTIVITY TAB ──────────────────────────────────────── */}
             {activeTab === 'activity' && (
               <ActivityTimeline entityId={entity?.id || ''} entityType={entityType} entity={entity} />
