@@ -13,6 +13,7 @@ import { EntityNavigationProvider } from "@/contexts/EntityNavigationContext";
 import { AppLayout } from "@/components/AppLayout";
 import { WorkspaceOverlayShell } from "@/components/WorkspaceOverlayShell";
 import { EntitlementProvider } from "@/contexts/EntitlementContext";
+import { DemoProvider, DemoBannerOverlay } from "@/contexts/DemoContext";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import Login from "@/pages/Login";
 import BetaHomeScreen from "@/components/BetaHomeScreen";
@@ -160,19 +161,22 @@ const App = () => (
       <AuthProvider>
         <EntitlementProvider>
           <DataProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <WorkspaceProvider>
-                  <EntityNavigationProvider>
-                    <AppRoutes />
-                    <ReviewPrompt />
-                    <PWAUpdatePrompt />
-                  </EntityNavigationProvider>
-                </WorkspaceProvider>
-              </BrowserRouter>
-            </TooltipProvider>
+            <DemoProvider>
+              <TooltipProvider>
+                <DemoBannerOverlay />
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <WorkspaceProvider>
+                    <EntityNavigationProvider>
+                      <AppRoutes />
+                      <ReviewPrompt />
+                      <PWAUpdatePrompt />
+                    </EntityNavigationProvider>
+                  </WorkspaceProvider>
+                </BrowserRouter>
+              </TooltipProvider>
+            </DemoProvider>
           </DataProvider>
         </EntitlementProvider>
       </AuthProvider>

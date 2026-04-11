@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useDemo } from '@/contexts/DemoContext';
 import { TargetMarketSettings } from '@/components/TargetMarketSettings';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar, Volume2, Trash2, AlertTriangle, Shield, FileText, HelpCircle, ExternalLink, Camera, Bell, BellOff, Layers, BarChart3, RefreshCw, Loader2, CheckCircle2 } from 'lucide-react';
@@ -317,6 +318,28 @@ function LeadSourcesInsight() {
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+function DemoModeSection() {
+  const { isDemoMode, toggleDemoMode } = useDemo();
+  return (
+    <section className="rounded-lg border border-border bg-card p-4 mb-4">
+      <h2 className="text-sm font-semibold mb-1 flex items-center gap-2">
+        <Layers className="h-4 w-4" /> Demo Mode
+      </h2>
+      <p className="text-xs text-muted-foreground mb-3">Load sample data for presentations. Not persisted.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium">Demo Mode</p>
+          <p className="text-xs text-muted-foreground">Load sample leads for presentations</p>
+        </div>
+        <Switch checked={isDemoMode} onCheckedChange={toggleDemoMode} />
+      </div>
+      {isDemoMode && (
+        <p className="text-xs text-warning mt-2">5 sample leads are loaded in memory. Toggle off to return to real data.</p>
+      )}
     </section>
   );
 }
@@ -684,6 +707,9 @@ export default function Settings() {
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Shield className="h-4 w-4" /> Subscription</h2>
         <SubscriptionStatusSection />
       </section>
+
+      {/* Demo Mode */}
+      <DemoModeSection />
 
       {/* Legal & Support Links */}
       <section className="rounded-lg border border-border bg-card p-4 mb-4">

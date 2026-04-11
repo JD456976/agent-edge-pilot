@@ -28,6 +28,7 @@ import { computeRisk, RiskDot, RiskPanel } from '@/components/DealRiskRadar';
 import { WeeklyPerformanceDigest } from '@/components/WeeklyPerformanceDigest';
 import { UnderContractBadge, UnderContractSheet, isUnderContract } from '@/components/UnderContractAction';
 import { getDailyBriefing } from '@/lib/dailyIntelligence';
+import { useDemo } from '@/contexts/DemoContext';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -1746,7 +1747,9 @@ function OverdueTasksCard({ tasks: overdueTasks, refreshData }: { tasks: Task[];
 
 export default function BetaHomeScreen() {
   const { user } = useAuth();
-  const { leads, deals, tasks, alerts, dealParticipants, hasData, loading, refreshData } = useData();
+  const { leads: realLeads, deals, tasks, alerts, dealParticipants, hasData, loading, refreshData } = useData();
+  const { isDemoMode, demoLeads } = useDemo();
+  const leads = isDemoMode ? demoLeads : realLeads;
   const { openWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const { isSyncing: syncing } = useSyncContext();
@@ -1885,8 +1888,22 @@ export default function BetaHomeScreen() {
         </div>
       </div>
 
-      {/* Directive Brief Card — above everything */}
-      <DirectiveBriefCard mode={currentMode} leads={leads} ccData={ccData} onLeadAction={handleLeadAction} onOpenLead={handleOpenLeadDetail} />
+      {/* Directive Brief Card — only when leads exist */}
+      {leads.length > 0 && (
+        <DirectiveBriefCard mode={currentMode} leads={leads} ccData={ccData} onLeadAction={handleLeadAction} onOpenLead={handleOpenLeadDetail} />
+      )}
+
+      {/* Empty state when no leads */}
+      {leads.length === 0 && (
+        <div className="rounded-xl border border-border bg-card p-6 space-y-3 text-center">
+          <Target className="h-10 w-10 text-muted-foreground mx-auto" />
+          <h3 className="text-base font-semibold">Welcome, {user?.name?.split(' ')[0] || 'Agent'} 👋</h3>
+          <p className="text-sm text-muted-foreground">Your pipeline is empty. Tap Sync to import your leads from Follow Up Boss.</p>
+          <Button className="gap-2 h-11" onClick={() => openWorkspace('sync')}>
+            <RefreshCw className="h-4 w-4" /> Sync with FUB
+          </Button>
+        </div>
+      )}
 
       {/* Income Progress Bar */}
       {(() => {
