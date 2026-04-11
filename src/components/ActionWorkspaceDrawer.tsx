@@ -16,6 +16,7 @@ import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
 import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
 import { ClientFitPanel } from '@/components/ClientFitPanel';
 import { ClientCommitmentPanel } from '@/components/ClientCommitmentPanel';
+import { MessageTemplatesSheet, TemplatesButton } from '@/components/MessageTemplatesSheet';
 import { FubContextStrip } from '@/components/FubContextStrip';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
