@@ -895,9 +895,15 @@ export function ActionWorkspaceDrawer({
             {/* ── TEXT TAB ─────────────────────────────────────────── */}
             {activeTab === 'text' && (
               <div className="space-y-4">
-                {renderOpenerSection('text', 'Copy text', (text) => {
-                  navigator.clipboard.writeText(text);
-                  toast({ description: 'Text opener copied to clipboard' });
+                {renderOpenerSection('text', 'Insert opener', (text) => {
+                  // Insert opener at start of selected SMS variant text
+                  if (selectedSmsIndex >= 0 && smsVariants[selectedSmsIndex]) {
+                    navigator.clipboard.writeText(text + ' ' + smsVariants[selectedSmsIndex].text);
+                    toast({ description: 'Opener + message copied — paste into your SMS app' });
+                  } else {
+                    navigator.clipboard.writeText(text);
+                    toast({ description: 'Opener copied to clipboard' });
+                  }
                 })}
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Suggested Messages</p>
@@ -1019,10 +1025,11 @@ export function ActionWorkspaceDrawer({
             {/* ── EMAIL TAB ────────────────────────────────────────── */}
             {activeTab === 'email' && (
               <div className="space-y-4">
-                {renderOpenerSection('email', 'Use as subject', (text) => {
-                  // The draft.email.subject is read-only, so we copy to clipboard
-                  navigator.clipboard.writeText(text);
-                  toast({ description: 'Subject line copied to clipboard' });
+                {renderOpenerSection('email', 'Insert into email', (text) => {
+                  // Prepend opener to email body
+                  const current = editedEmail ?? emailBody;
+                  setEditedEmail(text + '\n\n' + current);
+                  toast({ description: 'Opener inserted at top of email' });
                 })}
                 {/* Tone & Length selectors */}
                 <div className="flex gap-3">
