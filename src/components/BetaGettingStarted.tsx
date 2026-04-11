@@ -12,7 +12,7 @@ interface Props {
   hasIncomeTarget: boolean;
   onConnectCrm: () => void;
   onSetIncomeTarget: () => void;
-  onLoadDemo: () => void;
+  onLoadDemo?: () => void;
 }
 
 const DISMISS_KEY = 'dp-beta-getting-started-dismissed';
@@ -101,12 +101,6 @@ export function BetaGettingStarted({ hasFubConnected, hasLeads, hasDeals, hasInc
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => { e.stopPropagation(); onLoadDemo(); }}
-            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1"
-          >
-            Try demo data
-          </button>
           <button
             onClick={(e) => { e.stopPropagation(); setDismissed(true); localStorage.setItem(DISMISS_KEY, 'true'); }}
             className="text-[11px] text-muted-foreground hover:text-foreground transition-colors px-1"

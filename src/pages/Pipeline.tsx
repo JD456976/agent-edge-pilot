@@ -348,7 +348,7 @@ function DealDetail({ deal, tasks, participants, onClose, onCommissionSave, onAd
 
 export default function Pipeline() {
   const { user } = useAuth();
-  const { deals, tasks, dealParticipants, hasData, seedDemoData, refreshData, updateDealParticipant, addDealParticipant, deleteDealParticipant } = useData();
+  const { deals, tasks, dealParticipants, hasData, refreshData, updateDealParticipant, addDealParticipant, deleteDealParticipant } = useData();
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [orgUsers, setOrgUsers] = useState<{ id: string; name: string }[]>([]);
 
@@ -423,7 +423,7 @@ export default function Pipeline() {
       <div className="max-w-5xl mx-auto">
         <h1 className="text-xl font-bold mb-1">Pipeline</h1>
         <p className="text-sm text-muted-foreground mb-6">Your deals by stage</p>
-        <EmptyState title="No deals yet" description="Load demo data to see a realistic pipeline with deals at various stages." actionLabel="Load Demo Data" onAction={seedDemoData} icon={<Target className="h-8 w-8 text-muted-foreground" />} />
+        <EmptyState title="No deals yet" description="Connect Follow Up Boss to import your deals, or add them manually." icon={<Target className="h-8 w-8 text-muted-foreground" />} />
       </div>
     );
   }

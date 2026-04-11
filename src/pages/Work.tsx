@@ -2,19 +2,30 @@ import { useState, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSyncContext } from '@/contexts/SyncContext';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
-import { Flame, Search, Plus, MapPin, Calendar, Clock, Users, ChevronRight } from 'lucide-react';
+import { Flame, Search, Plus, MapPin, Calendar, Clock, Users, ChevronRight, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import Pipeline from '@/pages/Pipeline';
 import Tasks from '@/pages/Tasks';
 import type { Lead } from '@/types';
+
+function SyncButton() {
+  const { syncNow, isSyncing } = useSyncContext();
+  return (
+    <Button size="sm" className="gap-1.5" onClick={() => syncNow()} disabled={isSyncing}>
+      <RefreshCw className={cn('h-3.5 w-3.5', isSyncing && 'animate-spin')} />
+      {isSyncing ? 'Syncing…' : 'Sync with Follow Up Boss'}
+    </Button>
+  );
+}
 
 const TABS = ['Leads', 'Pipeline', 'Tasks', 'Open House'] as const;
 const HEAT_FILTERS = ['All', 'Hot', 'Warm', 'Cool'] as const;
@@ -120,7 +131,12 @@ function LeadsTab() {
 
       <p className="text-xs text-muted-foreground">{filtered.length} lead{filtered.length !== 1 ? 's' : ''}</p>
 
-      {filtered.length === 0 ? (
+      {filtered.length === 0 && leads.length === 0 ? (
+        <div className="text-center py-12 space-y-3">
+          <p className="text-sm text-muted-foreground">Your pipeline is empty. Sync with Follow Up Boss to import your leads.</p>
+          <SyncButton />
+        </div>
+      ) : filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">No leads match your filters.</p>
       ) : (
         <div className="space-y-1">

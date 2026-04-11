@@ -35,7 +35,7 @@ const TOTAL_STEPS = 4;
 
 export function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const { user } = useAuth();
-  const { seedDemoData, hasData } = useData();
+  const { hasData } = useData();
   const [step, setStep] = useState(1);
   const [choice, setChoice] = useState<'demo' | 'empty' | null>(null);
   const [seeding, setSeeding] = useState(false);
@@ -53,10 +53,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
     setStep(next);
   };
 
-  const handleDemoSeed = async () => {
-    setSeeding(true);
-    await seedDemoData();
-    setSeeding(false);
+  const handleSkipToFub = () => {
     goToStep(3);
   };
 
@@ -193,48 +190,19 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 <Rocket className="h-7 w-7 text-primary" />
               </motion.div>
               <h2 className="text-lg font-bold">Welcome to Deal Pilot</h2>
-              <p className="text-sm text-muted-foreground">Let's get you started. How would you like to begin?</p>
+              <p className="text-sm text-muted-foreground">Let's get you started. Connect Follow Up Boss to import your leads.</p>
               <div className="space-y-2 pt-2">
-                <Button className="w-full" onClick={() => { setChoice('demo'); goToStep(2); }}>
-                  <Sparkles className="h-4 w-4 mr-2" /> Use Demo Data (Recommended)
+                <Button className="w-full" onClick={() => goToStep(3)}>
+                  <Link2 className="h-4 w-4 mr-2" /> Connect Follow Up Boss
                 </Button>
-                <Button variant="outline" className="w-full" onClick={() => { setChoice('empty'); goToStep(3); }}>
-                  Connect CRM Later (Start empty)
-                </Button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Step 2: Seed demo data */}
-          {step === 2 && (
-            <motion.div
-              key="step2"
-              variants={stepVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-              className="text-center space-y-4"
-            >
-              <motion.div variants={iconPulse} initial="initial" animate="animate" className="mx-auto h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center ring-4 ring-primary/5">
-                <Sparkles className="h-7 w-7 text-primary" />
-              </motion.div>
-              <h2 className="text-lg font-bold">Load Sample Data</h2>
-              <p className="text-sm text-muted-foreground">
-                We'll populate your account with realistic demo scenarios so you can explore every feature.
-              </p>
-              <div className="space-y-2 pt-2">
-                <Button className="w-full" onClick={handleDemoSeed} disabled={seeding}>
-                  {seeding ? (
-                    <span className="flex items-center gap-2"><span className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> Loading demo data...</span>
-                  ) : 'Load Demo Data'}
-                </Button>
-                <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => goToStep(3)}>
+                <Button variant="outline" className="w-full" onClick={() => goToStep(4)}>
                   Skip — start empty
                 </Button>
               </div>
             </motion.div>
           )}
+
+          {/* Step 2 is now skipped — goes directly to step 3 (Connect FUB) */}
 
           {/* Step 3: Connect FUB */}
           {step === 3 && (

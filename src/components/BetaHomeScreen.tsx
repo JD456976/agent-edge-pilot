@@ -4,7 +4,7 @@ import {
   Home, DollarSign, AlertTriangle, Flame, ShieldAlert,
   Sun, CloudSun, Moon, TrendingUp, TrendingDown, Minus,
   CheckCircle2, Shield, Target, Zap, ArrowRight, X, User, Plus,
-  Sparkles, MapPin,
+  Sparkles, MapPin, RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -781,6 +781,40 @@ function ActivityStreakStrip({ userId }: { userId: string }) {
   );
 }
 
+// ── Empty Moves Card (shown when no leads) ───────────────────────
+
+function EmptyMovesCard() {
+  const { syncNow, isSyncing } = useSyncContext();
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  const handleSync = async () => {
+    setStatus('idle');
+    try {
+      await syncNow();
+      setStatus('success');
+    } catch {
+      setStatus('error');
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 space-y-3 text-center">
+      <Target className="h-8 w-8 text-muted-foreground mx-auto" />
+      <h3 className="text-sm font-semibold">No leads yet</h3>
+      <p className="text-xs text-muted-foreground">Tap Sync to import from Follow Up Boss</p>
+      <Button
+        size="sm"
+        className="gap-1.5"
+        onClick={handleSync}
+        disabled={isSyncing}
+      >
+        <RefreshCw className={cn('h-3.5 w-3.5', isSyncing && 'animate-spin')} />
+        {isSyncing ? 'Syncing…' : status === 'success' ? 'Synced ✓' : 'Sync Now'}
+      </Button>
+    </div>
+  );
+}
+
 // ── Pipeline Value Widget ─────────────────────────────────────────
 
 function PipelineValueWidget({ leads }: { leads: Lead[] }) {
@@ -796,35 +830,25 @@ function PipelineValueWidget({ leads }: { leads: Lead[] }) {
     return `$${Math.round(n)}`;
   };
 
-  if (hotCount === 0 && warmCount === 0) return null;
-
+  // Always show widget, but with dashes when empty
   return (
     <div className="rounded-lg border-l-[3px] border-l-primary bg-card border border-border p-3">
       <div className="flex items-stretch gap-3">
-        {/* Column 1 — Pipeline Value */}
         <div className="flex-1 min-w-0 flex flex-col justify-center">
           <p className="text-lg font-bold text-foreground leading-tight">
             {pipelineValue > 0 ? formatCurrencyCompact(pipelineValue) : '—'}
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">Est. total deal value</p>
         </div>
-        
-        {/* Divider */}
         <div className="w-px bg-border self-stretch my-0.5" />
-        
-        {/* Column 2 — Hot Leads */}
         <div className="flex-1 min-w-0 flex flex-col justify-center">
           <div className="flex items-center gap-1.5">
-            <p className="text-lg font-bold text-primary leading-tight">{hotCount}</p>
+            <p className="text-lg font-bold text-primary leading-tight">{hotCount > 0 ? hotCount : '—'}</p>
             {hotCount > 3 && <TrendingUp className="h-3.5 w-3.5 text-primary" />}
           </div>
           <p className="text-[11px] text-muted-foreground mt-0.5">Needs action now</p>
         </div>
-        
-        {/* Divider */}
         <div className="w-px bg-border self-stretch my-0.5" />
-        
-        {/* Column 3 — Proj. Commission */}
         <div className="flex-1 min-w-0 flex flex-col justify-center">
           <p className="text-lg font-bold text-opportunity leading-tight">
             {hotCount > 0 ? formatCurrencyCompact(projCommission) : '—'}
@@ -898,46 +922,50 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
 
   return (
     <div className="space-y-4">
-      {/* Your 3 Moves */}
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <Target className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-bold">Priority Leads</h3>
-        </div>
-        {totalPipelineValue > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {formatCurrency(totalPipelineValue)} in pipeline{atRiskValue > 0 ? <> · <span className="text-urgent">{formatCurrency(atRiskValue)} at risk</span></> : ''}
-          </p>
-        )}
-        <div className="space-y-2.5">
-          {moves.length > 0 ? moves.map((m, i) => {
-            const Icon = m.icon;
-            return (
-              <div
-                key={i}
-                className={cn('flex items-start gap-2.5 rounded-lg -mx-1 px-1 py-1', m.onRowTap && 'cursor-pointer active:bg-muted/50 transition-colors')}
-                onClick={m.onRowTap}
-                role={m.onRowTap ? 'button' : undefined}
-              >
-                <span className={cn('mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0', m.color === 'text-urgent' ? 'bg-urgent/15' : m.color === 'text-opportunity' ? 'bg-opportunity/15' : m.color === 'text-warning' ? 'bg-warning/15' : 'bg-primary/15')}>
-                  <Icon className={cn('h-3 w-3', m.color)} />
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium leading-snug">{m.verb}</p>
-                  <p className="text-xs text-muted-foreground">{m.detail}</p>
-                </div>
-                {m.actionLabel && m.onAction && (
-                  <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={(e) => { e.stopPropagation(); m.onAction!(); }}>
-                    {m.actionLabel}
-                  </Button>
-                )}
-              </div>
-            );
-          }) : (
-            <p className="text-sm text-muted-foreground">Clear skies — pick a warm lead and start a conversation.</p>
+      {/* Your 3 Moves / Empty State */}
+      {scoredLeads.length === 0 ? (
+        <EmptyMovesCard />
+      ) : (
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-bold">Priority Leads</h3>
+          </div>
+          {totalPipelineValue > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {formatCurrency(totalPipelineValue)} in pipeline{atRiskValue > 0 ? <> · <span className="text-urgent">{formatCurrency(atRiskValue)} at risk</span></> : ''}
+            </p>
           )}
+          <div className="space-y-2.5">
+            {moves.length > 0 ? moves.map((m, i) => {
+              const Icon = m.icon;
+              return (
+                <div
+                  key={i}
+                  className={cn('flex items-start gap-2.5 rounded-lg -mx-1 px-1 py-1', m.onRowTap && 'cursor-pointer active:bg-muted/50 transition-colors')}
+                  onClick={m.onRowTap}
+                  role={m.onRowTap ? 'button' : undefined}
+                >
+                  <span className={cn('mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0', m.color === 'text-urgent' ? 'bg-urgent/15' : m.color === 'text-opportunity' ? 'bg-opportunity/15' : m.color === 'text-warning' ? 'bg-warning/15' : 'bg-primary/15')}>
+                    <Icon className={cn('h-3 w-3', m.color)} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium leading-snug">{m.verb}</p>
+                    <p className="text-xs text-muted-foreground">{m.detail}</p>
+                  </div>
+                  {m.actionLabel && m.onAction && (
+                    <Button size="sm" variant="outline" className="shrink-0 text-xs h-8 rounded-lg" onClick={(e) => { e.stopPropagation(); m.onAction!(); }}>
+                      {m.actionLabel}
+                    </Button>
+                  )}
+                </div>
+              );
+            }) : (
+              <p className="text-sm text-muted-foreground">Clear skies — pick a warm lead and start a conversation.</p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Pipeline Value Widget */}
       <PipelineValueWidget leads={scoredLeads.map(s => s.lead)} />
@@ -945,7 +973,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
       {/* Today's Activity Streak */}
       <ActivityStreakStrip userId={userId} />
 
-      {/* Priority Lead Action Card */}
+      {/* Priority Lead Action Card — hidden when no leads */}
       {priorityLead && (
         <PriorityLeadCard
           lead={priorityLead.lead}
@@ -1706,7 +1734,7 @@ function OverdueTasksCard({ tasks: overdueTasks, refreshData }: { tasks: Task[];
 
 export default function BetaHomeScreen() {
   const { user } = useAuth();
-  const { leads, deals, tasks, alerts, dealParticipants, hasData, loading, seedDemoData, refreshData } = useData();
+  const { leads, deals, tasks, alerts, dealParticipants, hasData, loading, refreshData } = useData();
   const { openWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const { isSyncing: syncing } = useSyncContext();
@@ -1940,7 +1968,6 @@ export default function BetaHomeScreen() {
         hasIncomeTarget={!!(ccData.strategicSettings as any)?.annualIncomeTarget}
         onConnectCrm={() => openWorkspace('sync')}
         onSetIncomeTarget={() => openWorkspace('settings')}
-        onLoadDemo={seedDemoData}
       />
 
       {/* Snoozed leads — all modes */}
