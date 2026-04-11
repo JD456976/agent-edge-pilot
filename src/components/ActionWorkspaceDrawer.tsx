@@ -500,6 +500,7 @@ export function ActionWorkspaceDrawer({
   const displayEmail = editedEmail ?? emailBody;
 
   return (
+    <>
     <Sheet open={open} onOpenChange={(v) => !v && handleClose()}>
       <SheetContent
         hideClose
