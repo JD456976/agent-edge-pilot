@@ -295,7 +295,7 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onR
           <button onClick={(e) => { e.stopPropagation(); onTap(); }} className="text-sm font-medium truncate block w-full text-primary hover:underline text-left">{lead.name}</button>
           <p className="text-[13px] text-muted-foreground truncate">{lead.source || 'Direct'}</p>
           <p className={cn('text-[11px] truncate mt-0.5', verdict.color)}>{verdict.text}</p>
-          <p className="text-xs text-slate-400 mt-1">{statusLine}</p>
+          <p className="text-xs text-muted-foreground mt-1">{statusLine}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end max-w-[45%]">
           {outsideTarget && (
