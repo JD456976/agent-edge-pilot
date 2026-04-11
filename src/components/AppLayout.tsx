@@ -41,15 +41,17 @@ type NavItem = { label: string; icon: React.ElementType } & (
   | { workspace: WorkspaceType; path?: undefined }
 );
 
+// FINAL NAV — DO NOT REMOVE OR REORDER ITEMS
+// All 8 pages exist: Home, OpenHouse, CRM/Work, Deals, Sequences, Appointments, Settings, ObjectionCoach
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
-  { workspace: 'openhousekiosk', label: 'Open House', icon: DoorOpen },
+  { workspace: 'open-house', label: 'Open House', icon: DoorOpen },
   { workspace: 'work', label: 'CRM', icon: RefreshCw },
   { workspace: 'deals', label: 'Deals', icon: ClipboardList },
   { workspace: 'sequences', label: 'Sequences', icon: GitBranch },
   { workspace: 'appointments', label: 'Appointments', icon: CalendarDays },
   { workspace: 'settings', label: 'Settings', icon: Settings },
-  { workspace: 'objectioncoach', label: 'Objection Coach', icon: Shield },
+  { workspace: 'objection-coach', label: 'Objection Coach', icon: Shield },
 ];
 
 const MOBILE_MAIN_TABS: NavItem[] = [
