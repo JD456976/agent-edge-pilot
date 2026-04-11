@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Lead, Deal, Task, Alert, DealParticipant } from '@/types';
-import { generateDemoData } from '@/data/demo';
-import { generateSeedPack, type SeedPackId } from '@/data/seedPacks';
 import { resolvePersonalCommission } from '@/lib/commissionResolver';
 
 interface DataContextType {
@@ -14,8 +12,6 @@ interface DataContextType {
   hasData: boolean;
   hasSeededData: boolean;
   loading: boolean;
-  seedDemoData: () => Promise<void>;
-  seedPacks: (packIds: SeedPackId[]) => Promise<void>;
   clearSeededData: () => Promise<void>;
   wipeData: () => Promise<void>;
   completeTask: (id: string) => Promise<void>;
