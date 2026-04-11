@@ -120,7 +120,12 @@ function LeadsTab() {
 
       <p className="text-xs text-muted-foreground">{filtered.length} lead{filtered.length !== 1 ? 's' : ''}</p>
 
-      {filtered.length === 0 ? (
+      {filtered.length === 0 && leads.length === 0 ? (
+        <div className="text-center py-12 space-y-3">
+          <p className="text-sm text-muted-foreground">Your pipeline is empty. Sync with Follow Up Boss to import your leads.</p>
+          <SyncButton />
+        </div>
+      ) : filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">No leads match your filters.</p>
       ) : (
         <div className="space-y-1">

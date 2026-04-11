@@ -26,6 +26,8 @@ import { useNavigate } from 'react-router-dom';
 import type { Lead, Deal, Task } from '@/types';
 import { computeRisk, RiskDot, RiskPanel } from '@/components/DealRiskRadar';
 import { getDailyBriefing } from '@/lib/dailyIntelligence';
+import { useSyncContext } from '@/contexts/SyncContext';
+import { RefreshCw } from 'lucide-react';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
