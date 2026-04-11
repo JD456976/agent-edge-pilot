@@ -1397,6 +1397,25 @@ export function ActionWorkspaceDrawer({
         </PanelErrorBoundary>
       </SheetContent>
     </Sheet>
+    <MessageTemplatesSheet
+      open={showTextTemplates}
+      onClose={() => setShowTextTemplates(false)}
+      leadFirstName={context?.entityName?.split(' ')[0] || ''}
+      onSelect={(body) => {
+        navigator.clipboard.writeText(body);
+        toast({ description: 'Template copied to clipboard' });
+      }}
+    />
+    <MessageTemplatesSheet
+      open={showEmailTemplates}
+      onClose={() => setShowEmailTemplates(false)}
+      leadFirstName={context?.entityName?.split(' ')[0] || ''}
+      onSelect={(body) => {
+        setEditedEmail(body);
+        toast({ description: 'Template inserted into email' });
+      }}
+    />
+  </>
   );
 }
 
