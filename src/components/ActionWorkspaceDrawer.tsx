@@ -169,6 +169,8 @@ export function ActionWorkspaceDrawer({
   const [quickSendModeText, setQuickSendModeText] = useState(false);
   const [quickSendModeEmail, setQuickSendModeEmail] = useState(false);
   const [textSent, setTextSent] = useState(false);
+  const [showTextTemplates, setShowTextTemplates] = useState(false);
+  const [showEmailTemplates, setShowEmailTemplates] = useState(false);
 
   // Email tab state
   const [emailTone, setEmailTone] = useState<EmailTone>('professional');
