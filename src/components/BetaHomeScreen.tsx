@@ -247,6 +247,7 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onR
 }) {
   const [expanded, setExpanded] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
+  const [ucOpen, setUcOpen] = useState(false);
   const [taskType, setTaskType] = useState<string>('call');
   const [taskDue, setTaskDue] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() + 1);
@@ -254,6 +255,7 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onR
   });
   const [taskNotes, setTaskNotes] = useState('');
   const [taskSaving, setTaskSaving] = useState(false);
+  const [ucRefresh, setUcRefresh] = useState(0);
   const risk = useMemo(() => computeRisk(lead, score), [lead, score]);
   const verdict = useMemo(() => getClientVerdict(lead, score, risk.level), [lead, score, risk.level]);
   const borderColor = score >= 80 ? 'border-l-opportunity' : score >= 60 ? 'border-l-warning' : 'border-l-muted-foreground/30';
