@@ -28,6 +28,7 @@ import AppStoreAssets from "@/pages/AppStoreAssets";
 import OpenHouse from "@/pages/OpenHouse";
 import ListingWriter from "@/pages/ListingWriter";
 import CommissionCoach from "@/pages/CommissionCoach";
+import Sequences from "@/pages/Sequences";
 import { ReviewPrompt } from "@/components/ReviewPrompt";
 import { PWAUpdatePrompt } from "@/components/PWAUpdatePrompt";
 
@@ -100,6 +101,7 @@ function WorkspaceOverlays() {
     listingwriter: { title: 'Listing Writer', subtitle: 'AI-powered listing descriptions', Component: ListingWriter },
     commissioncoach: { title: 'Commission Coach', subtitle: 'Defend your value and win listings', Component: CommissionCoach },
     sync: { title: 'Sync', subtitle: 'CRM integrations and imports', Component: Sync },
+    sequences: { title: 'Follow-Up Sequences', subtitle: 'Automated touchpoint plans for every lead stage', Component: Sequences },
     insights: { title: 'Insights', subtitle: 'Forecast, stability, and review', Component: Insights },
     settings: { title: 'Settings', subtitle: 'Preferences and account', Component: Settings },
   };
