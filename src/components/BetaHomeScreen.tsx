@@ -135,12 +135,31 @@ function getLeadHeatScore(lead: Lead): number {
 }
 
 function isOutsideTarget(lead: Lead, target: TargetMarket): boolean {
+  // If the agent hasn't configured any target criteria, never show the badge
   if (!target.zipCodes.length && !target.minPrice) return false;
+
+  // ZIP code check: only flag if lead text contains a 5-digit ZIP that doesn't match
   if (target.zipCodes.length > 0) {
     const text = `${lead.notes || ''} ${lead.source || ''}`.toLowerCase();
-    const hasMatch = target.zipCodes.some(z => text.includes(z));
-    if (!hasMatch && text.length > 0) return true;
+    // Extract any 5-digit ZIP codes from lead text
+    const foundZips = text.match(/\b\d{5}\b/g);
+    if (foundZips && foundZips.length > 0) {
+      const hasMatch = foundZips.some(z => target.zipCodes.includes(z));
+      if (!hasMatch) return true;
+    }
+    // If no ZIP codes found in lead data, we can't determine — don't flag
   }
+
+  // Price check: only flag if lead has price data that's below minimum
+  if (target.minPrice) {
+    const text = `${lead.notes || ''}`;
+    const priceMatch = text.match(/\$\s*([\d,]+)/);
+    if (priceMatch) {
+      const price = parseFloat(priceMatch[1].replace(/,/g, ''));
+      if (price > 0 && price < target.minPrice) return true;
+    }
+  }
+
   return false;
 }
 
