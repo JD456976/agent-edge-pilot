@@ -925,6 +925,9 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
       {/* Pipeline Value Widget */}
       <PipelineValueWidget leads={scoredLeads.map(s => s.lead)} />
 
+      {/* Today's Activity Streak */}
+      <ActivityStreakStrip userId={userId} />
+
       {/* Priority Lead Action Card */}
       {priorityLead && (
         <PriorityLeadCard
