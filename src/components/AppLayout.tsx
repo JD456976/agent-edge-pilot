@@ -47,6 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { workspace: 'sequences', label: 'Sequences', icon: GitBranch },
   { workspace: 'appointments', label: 'Appointments', icon: CalendarDays },
   { workspace: 'settings', label: 'Settings', icon: Settings },
+  { workspace: 'objectioncoach', label: 'Objection Coach', icon: Shield },
 ];
 
 const MOBILE_MAIN_TABS: NavItem[] = [

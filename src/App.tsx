@@ -30,6 +30,7 @@ import ListingWriter from "@/pages/ListingWriter";
 import CommissionCoach from "@/pages/CommissionCoach";
 import Sequences from "@/pages/Sequences";
 import Appointments from "@/pages/Appointments";
+import ObjectionCoach from "@/pages/ObjectionCoach";
 import { ReviewPrompt } from "@/components/ReviewPrompt";
 import { PWAUpdatePrompt } from "@/components/PWAUpdatePrompt";
 
@@ -106,6 +107,7 @@ function WorkspaceOverlays() {
     appointments: { title: 'Appointments', subtitle: 'Your upcoming meetings and prep', Component: Appointments },
     insights: { title: 'Insights', subtitle: 'Forecast, stability, and review', Component: Insights },
     settings: { title: 'Settings', subtitle: 'Preferences and account', Component: Settings },
+    objectioncoach: { title: 'Objection Coach', subtitle: 'AI-powered scripts for every tough conversation', Component: ObjectionCoach },
   };
 
   return (

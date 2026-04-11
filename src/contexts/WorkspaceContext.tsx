@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-export type WorkspaceType = 'work' | 'sync' | 'insights' | 'settings' | 'openhouse' | 'calendar' | 'listingwriter' | 'commissioncoach' | 'sequences' | 'appointments';
+export type WorkspaceType = 'work' | 'sync' | 'insights' | 'settings' | 'openhouse' | 'calendar' | 'listingwriter' | 'commissioncoach' | 'sequences' | 'appointments' | 'objectioncoach';
 
 const SESSION_STORAGE_KEY = 'dp-last-workspace';
 
@@ -25,7 +25,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     if (paramWorkspace) return paramWorkspace;
     try {
       const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
-    const valid: WorkspaceType[] = ['work', 'sync', 'insights', 'settings', 'openhouse', 'calendar', 'listingwriter', 'commissioncoach', 'sequences', 'appointments'];
+    const valid: WorkspaceType[] = ['work', 'sync', 'insights', 'settings', 'openhouse', 'calendar', 'listingwriter', 'commissioncoach', 'sequences', 'appointments', 'objectioncoach'];
     if (stored && valid.includes(stored as WorkspaceType)) return stored as WorkspaceType;
     } catch {}
     return null;
@@ -33,7 +33,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   // Sync from URL on mount / param change
   useEffect(() => {
-    const valid: WorkspaceType[] = ['work', 'sync', 'insights', 'settings', 'openhouse', 'calendar', 'listingwriter', 'commissioncoach', 'sequences', 'appointments'];
+    const valid: WorkspaceType[] = ['work', 'sync', 'insights', 'settings', 'openhouse', 'calendar', 'listingwriter', 'commissioncoach', 'sequences', 'appointments', 'objectioncoach'];
     const param = searchParams.get('workspace') as WorkspaceType | null;
     if (param && valid.includes(param)) {
       setActiveWorkspace(param);
