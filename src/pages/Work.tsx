@@ -365,11 +365,126 @@ function OpenHouseTab() {
   );
 }
 
+const SOURCES = ['Zillow', 'Sphere', 'Referral', 'Open House', 'Other'] as const;
+
+function QuickAddLeadFAB() {
+  const { user } = useAuth();
+  const { refreshData } = useData();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [contact, setContact] = useState('');
+  const [source, setSource] = useState<string>('Referral');
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!name.trim() || !user?.id) return;
+    setSaving(true);
+    const isEmail = contact.includes('@');
+    const insertData: Record<string, unknown> = {
+      name: name.trim(),
+      source,
+      lead_temperature: 'warm',
+      engagement_score: 50,
+      assigned_to_user_id: user.id,
+      last_contact_at: new Date().toISOString(),
+    };
+    if (contact.trim()) {
+      // Store in notes since leads table doesn't have phone/email columns directly
+      insertData.notes = isEmail ? `Email: ${contact.trim()}` : `Phone: ${contact.trim()}`;
+    }
+    const { error } = await supabase.from('leads').insert(insertData as any);
+    setSaving(false);
+    if (error) { toast.error('Failed to add lead'); return; }
+    toast.success(`${name.trim()} added to pipeline`);
+    setOpen(false);
+    setName(''); setContact(''); setSource('Referral');
+    refreshData();
+  };
+
+  return (
+    <>
+      {/* FAB */}
+      <div className="fixed bottom-6 right-6 z-40 group">
+        <button
+          onClick={() => setOpen(true)}
+          className="h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-all active:scale-95"
+          aria-label="Add Lead"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+        <span className="absolute right-16 top-1/2 -translate-y-1/2 bg-foreground text-background text-xs font-medium px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+          Add Lead
+        </span>
+      </div>
+
+      {/* Bottom Sheet */}
+      {open && (
+        <div className="fixed inset-0 z-50 bg-background/60 backdrop-blur-sm" onClick={() => setOpen(false)}>
+          <div
+            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border-t border-border bg-card p-5 space-y-5 animate-slide-up max-w-lg mx-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold">New Lead</h3>
+              <button onClick={() => setOpen(false)} className="h-8 w-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors">
+                <span className="text-muted-foreground text-lg leading-none">×</span>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <input
+                autoFocus
+                type="text"
+                placeholder="Full Name"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className="w-full bg-transparent border-b border-border text-lg font-medium placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary pb-2 transition-colors"
+              />
+              <input
+                type="text"
+                placeholder="Phone or Email"
+                value={contact}
+                onChange={e => setContact(e.target.value)}
+                className="w-full bg-transparent border-b border-border text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary pb-2 transition-colors"
+              />
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">Source</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {SOURCES.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setSource(s)}
+                      className={cn(
+                        'px-3 py-1.5 rounded-full text-xs font-medium transition-colors',
+                        source === s ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <Button
+              className="w-full h-12 text-sm font-semibold rounded-xl"
+              onClick={handleSubmit}
+              disabled={!name.trim() || saving}
+            >
+              {saving ? 'Adding…' : 'Add to Pipeline'}
+            </Button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function Work() {
   const [tab, setTab] = useState<typeof TABS[number]>('Leads');
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in relative">
       <div className="flex gap-1 mb-4 bg-muted rounded-lg p-1">
         {TABS.map(t => (
           <button
@@ -389,6 +504,8 @@ export default function Work() {
       {tab === 'Pipeline' && <Pipeline />}
       {tab === 'Tasks' && <Tasks />}
       {tab === 'Open House' && <OpenHouseTab />}
+
+      <QuickAddLeadFAB />
     </div>
   );
 }
