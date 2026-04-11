@@ -60,15 +60,6 @@ function formatTime(t: string) {
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
-function getSeedAppointments(): Appointment[] {
-  const week = getWeekDays();
-  return [
-    { id: 'seed-1', leadName: 'Elena Vasquez', type: 'Showing', date: week[1]?.date || '', time: '10:00', address: '4521 Magnolia Ave, Austin TX' },
-    { id: 'seed-2', leadName: 'Nina Patel', type: 'CMA', date: week[2]?.date || '', time: '14:00', address: '789 Cedar Ln, Austin TX', notes: 'Wants to list in 30 days' },
-    { id: 'seed-3', leadName: 'Priya Kapoor', type: 'Follow-Up Call', date: week[4]?.date || '', time: '09:30', notes: 'Discuss financing options' },
-  ];
-}
-
 /* ── Main Component ─────────────────────────────────── */
 export default function Appointments() {
   const { leads } = useData();
@@ -77,9 +68,7 @@ export default function Appointments() {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) { const p = JSON.parse(stored); if (Array.isArray(p) && p.length) return p; }
     } catch {}
-    const seeds = getSeedAppointments();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(seeds));
-    return seeds;
+    return [];
   });
 
   const save = useCallback((a: Appointment[]) => {

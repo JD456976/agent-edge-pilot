@@ -314,7 +314,7 @@ export default function Deals() {
             <div className="space-y-3">
               <div>
                 <Label className="text-xs">Client Name *</Label>
-                <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Elena Vasquez" className="mt-1" />
+                <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client name" className="mt-1" />
               </div>
               <div>
                 <Label className="text-xs">Property Address *</Label>
