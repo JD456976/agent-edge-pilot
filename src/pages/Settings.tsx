@@ -779,6 +779,9 @@ export default function Settings() {
       {/* Demo Mode */}
       <DemoModeSection />
 
+      {/* Data Management */}
+      <DataManagementSection />
+
       {/* Legal & Support Links */}
       <section className="rounded-lg border border-border bg-card p-4 mb-4">
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><FileText className="h-4 w-4" /> Legal & Support</h2>
