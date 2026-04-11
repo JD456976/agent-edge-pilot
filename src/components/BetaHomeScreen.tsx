@@ -25,6 +25,8 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import type { Lead, Deal, Task } from '@/types';
 import { computeRisk, RiskDot, RiskPanel } from '@/components/DealRiskRadar';
+import { WeeklyPerformanceDigest } from '@/components/WeeklyPerformanceDigest';
+import { UnderContractBadge, UnderContractSheet, isUnderContract } from '@/components/UnderContractAction';
 import { getDailyBriefing } from '@/lib/dailyIntelligence';
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -245,6 +247,7 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onR
 }) {
   const [expanded, setExpanded] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
+  const [ucOpen, setUcOpen] = useState(false);
   const [taskType, setTaskType] = useState<string>('call');
   const [taskDue, setTaskDue] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() + 1);
@@ -252,6 +255,7 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onR
   });
   const [taskNotes, setTaskNotes] = useState('');
   const [taskSaving, setTaskSaving] = useState(false);
+  const [ucRefresh, setUcRefresh] = useState(0);
   const risk = useMemo(() => computeRisk(lead, score), [lead, score]);
   const verdict = useMemo(() => getClientVerdict(lead, score, risk.level), [lead, score, risk.level]);
   const borderColor = score >= 80 ? 'border-l-opportunity' : score >= 60 ? 'border-l-warning' : 'border-l-muted-foreground/30';
@@ -298,6 +302,7 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onR
           <p className="text-xs text-muted-foreground mt-1">{statusLine}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end max-w-[45%]">
+          <UnderContractBadge leadId={lead.id} key={ucRefresh} />
           {outsideTarget && (
             <Badge variant="warning" className="text-[9px] px-1 py-0 whitespace-nowrap">
               <AlertTriangle className="h-2 w-2 mr-0.5" /> Outside
@@ -338,11 +343,15 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onR
         <button onClick={(e) => { e.stopPropagation(); onAction('email'); }} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Email">
           <Mail className="h-3.5 w-3.5" />
         </button>
+        <button onClick={(e) => { e.stopPropagation(); setUcOpen(true); }} className="text-muted-foreground hover:text-opportunity transition-colors" aria-label="Mark under contract" title="Under Contract">
+          <Home className="h-3.5 w-3.5" />
+        </button>
         <button onClick={(e) => { e.stopPropagation(); setTaskOpen(true); }} className="text-muted-foreground hover:text-foreground transition-colors ml-auto" aria-label="Add task">
           <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
       {expanded && <div className="px-3 pb-3"><RiskPanel lead={lead} risk={risk} /></div>}
+      <UnderContractSheet lead={lead} open={ucOpen} onClose={() => setUcOpen(false)} onComplete={() => { setUcRefresh(r => r + 1); onRefresh(); }} />
 
       {/* Quick Task Bottom Sheet */}
       {taskOpen && (
@@ -972,6 +981,9 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
 
       {/* Today's Activity Streak */}
       <ActivityStreakStrip userId={userId} />
+
+      {/* Weekly Performance Digest */}
+      <WeeklyPerformanceDigest userId={userId} />
 
       {/* Priority Lead Action Card — hidden when no leads */}
       {priorityLead && (

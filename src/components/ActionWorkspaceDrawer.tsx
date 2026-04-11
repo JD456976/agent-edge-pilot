@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap, Send, Clock, ArrowUpRight, ArrowDownLeft, Loader2, CalendarDays, Activity, Flame, StickyNote as NotesIcon, History, AlertTriangle, Sparkles } from 'lucide-react';
+import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap, Send, Clock, ArrowUpRight, ArrowDownLeft, Loader2, CalendarDays, Activity, Flame, StickyNote as NotesIcon, History, AlertTriangle, Sparkles, Eye } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { relativeTime } from '@/lib/relativeTime';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -39,10 +39,11 @@ import {
   type FollowUpSuggestion,
   type ConfidenceLevel,
 } from '@/lib/executionEngine';
+import { ShowingFeedbackTab } from '@/components/ShowingFeedbackTab';
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type WorkspaceTab = 'call' | 'text' | 'email' | 'task' | 'notes' | 'activity' | 'intel' | 'prefs';
+type WorkspaceTab = 'call' | 'text' | 'email' | 'task' | 'notes' | 'activity' | 'intel' | 'prefs' | 'showing';
 
 interface Props {
   open: boolean;
@@ -494,6 +495,7 @@ export function ActionWorkspaceDrawer({
     { key: 'email', label: 'Email', icon: Mail, subtitle: 'Draft & send' },
     { key: 'task', label: 'Task', icon: ListTodo, subtitle: 'Create follow-up' },
     { key: 'notes', label: 'Notes', icon: StickyNote, subtitle: 'Quick note' },
+    { key: 'showing', label: 'Showing', icon: Eye, subtitle: 'Showing feedback' },
     { key: 'activity', label: 'Activity', icon: History, subtitle: 'Timeline' },
   ];
 
@@ -1388,6 +1390,11 @@ export function ActionWorkspaceDrawer({
                   </div>
                 )}
               </div>
+            )}
+
+            {/* ── SHOWING TAB ──────────────────────────────────────── */}
+            {activeTab === 'showing' && entity && (
+              <ShowingFeedbackTab leadId={entity.id || ''} leadName={context.entityName} />
             )}
 
             {/* ── ACTIVITY TAB ──────────────────────────────────────── */}
