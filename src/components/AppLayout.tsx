@@ -1,5 +1,5 @@
 import { ReactNode, useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import { ChevronDown, Home, MoreHorizontal, Search, Wrench, Mic } from 'lucide-react';
+import { ChevronDown, Home, MoreHorizontal, Search, Wrench, Mic, GitBranch } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush, Bell, CalendarDays, PenLine, Shield } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -44,12 +44,14 @@ type NavItem = { label: string; icon: React.ElementType } & (
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
   { workspace: 'work', label: 'CRM', icon: RefreshCw },
+  { workspace: 'sequences', label: 'Sequences', icon: GitBranch },
   { workspace: 'settings', label: 'Settings', icon: Settings },
 ];
 
 const MOBILE_MAIN_TABS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
   { workspace: 'work', label: 'CRM', icon: RefreshCw },
+  { workspace: 'sequences', label: 'Sequences', icon: GitBranch },
   { workspace: 'settings', label: 'Settings', icon: Settings },
 ];
 
