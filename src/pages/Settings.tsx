@@ -29,7 +29,57 @@ import { supabase } from '@/integrations/supabase/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 import { SkinSelector } from '@/components/SkinSelector';
+import { useSyncContext } from '@/contexts/SyncContext';
 
+function FubSyncShortcut() {
+  const { isSyncing, lastSyncedAt, syncNow } = useSyncContext();
+  const [result, setResult] = useState<'success' | 'error' | null>(null);
+
+  const handleSync = async () => {
+    setResult(null);
+    try {
+      await syncNow(true);
+      setResult('success');
+      setTimeout(() => setResult(null), 4000);
+    } catch {
+      setResult('error');
+      setTimeout(() => setResult(null), 4000);
+    }
+  };
+
+  const timeAgo = (d: Date | string) => {
+    const diff = Date.now() - new Date(d).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-4 mb-4">
+      <Button className="w-full h-11 gap-2 font-semibold" onClick={handleSync} disabled={isSyncing}>
+        {isSyncing ? (
+          <><Loader2 className="h-4 w-4 animate-spin" /> Syncing…</>
+        ) : (
+          <><RefreshCw className="h-4 w-4" /> Sync with Follow Up Boss</>
+        )}
+      </Button>
+      {result === 'success' && (
+        <p className="text-xs text-center mt-2 flex items-center justify-center gap-1 text-emerald-400">
+          <CheckCircle2 className="h-3.5 w-3.5" /> Synced successfully
+        </p>
+      )}
+      {result === 'error' && (
+        <p className="text-xs text-center mt-2 text-destructive">Sync failed — check your API key</p>
+      )}
+      <p className="text-xs text-center mt-1.5 text-muted-foreground">
+        {lastSyncedAt ? `Last synced: ${timeAgo(lastSyncedAt)}` : 'Never synced'}
+      </p>
+    </section>
+  );
+}
 
 function ProfileSection() {
   const { user } = useAuth();
