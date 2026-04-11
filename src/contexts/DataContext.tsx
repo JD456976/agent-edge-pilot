@@ -198,57 +198,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, [loadData]);
 
-  const seedDemoData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    if (hasData) {
-      const confirmed = window.confirm('Seed demo scenarios alongside real data?');
-      if (!confirmed) return;
-    }
-
-    const demo = generateDemoData(user.id);
-
-    await supabase.from('leads').insert(demo.leads);
-    await supabase.from('deals').insert(demo.deals);
-    await supabase.from('deal_participants').insert(demo.dealParticipants);
-    await supabase.from('tasks').insert(demo.tasks);
-    await supabase.from('alerts').insert(demo.alerts);
-    if (demo.activityEvents && demo.activityEvents.length > 0) {
-      await supabase.from('activity_events').insert(demo.activityEvents);
-    }
-
-    await supabase.from('admin_audit_events' as any).insert({
-      admin_user_id: user.id,
-      action: 'seed_demo_data',
-      metadata: {},
-    });
-
-    await loadData();
-  };
-
-  const seedPacks = async (packIds: SeedPackId[]) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { batchId, data: packData } = generateSeedPack(packIds, user.id);
-
-    if (packData.leads.length > 0) await supabase.from('leads').insert(packData.leads);
-    if (packData.deals.length > 0) await supabase.from('deals').insert(packData.deals);
-    if (packData.dealParticipants.length > 0) await supabase.from('deal_participants').insert(packData.dealParticipants);
-    if (packData.tasks.length > 0) await supabase.from('tasks').insert(packData.tasks);
-    if (packData.alerts.length > 0) await supabase.from('alerts').insert(packData.alerts);
-    if (packData.activityEvents.length > 0) await supabase.from('activity_events').insert(packData.activityEvents);
-
-    await supabase.from('admin_audit_events' as any).insert({
-      admin_user_id: user.id,
-      action: 'seed_packs',
-      metadata: { packs: packIds, batchId },
-    });
-
-    await loadData();
-  };
-
   const clearSeededData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -494,7 +443,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   return (
     <DataContext.Provider value={{
       leads, deals, tasks, alerts, dealParticipants, hasData, hasSeededData, loading,
-      seedDemoData, seedPacks, clearSeededData, wipeData, completeTask, uncompleteTask, addTask,
+      clearSeededData, wipeData, completeTask, uncompleteTask, addTask,
       refreshData: loadData, updateDealParticipant, addDealParticipant, deleteDealParticipant,
     }}>
       {children}
