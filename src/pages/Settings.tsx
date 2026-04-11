@@ -322,6 +322,28 @@ function LeadSourcesInsight() {
   );
 }
 
+function DemoModeSection() {
+  const { isDemoMode, toggleDemoMode } = useDemo();
+  return (
+    <section className="rounded-lg border border-border bg-card p-4 mb-4">
+      <h2 className="text-sm font-semibold mb-1 flex items-center gap-2">
+        <Layers className="h-4 w-4" /> Demo Mode
+      </h2>
+      <p className="text-xs text-muted-foreground mb-3">Load sample data for presentations. Not persisted.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium">Demo Mode</p>
+          <p className="text-xs text-muted-foreground">Load sample leads for presentations</p>
+        </div>
+        <Switch checked={isDemoMode} onCheckedChange={toggleDemoMode} />
+      </div>
+      {isDemoMode && (
+        <p className="text-xs text-warning mt-2">5 sample leads are loaded in memory. Toggle off to return to real data.</p>
+      )}
+    </section>
+  );
+}
+
 const TABS = ['Preferences', 'Admin'] as const;
 
 export default function Settings() {
