@@ -43,13 +43,13 @@ type NavItem = { label: string; icon: React.ElementType } & (
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
-  { workspace: 'sync', label: 'CRM', icon: RefreshCw },
+  { workspace: 'work', label: 'CRM', icon: RefreshCw },
   { workspace: 'settings', label: 'Settings', icon: Settings },
 ];
 
 const MOBILE_MAIN_TABS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
-  { workspace: 'sync', label: 'CRM', icon: RefreshCw },
+  { workspace: 'work', label: 'CRM', icon: RefreshCw },
   { workspace: 'settings', label: 'Settings', icon: Settings },
 ];
 
