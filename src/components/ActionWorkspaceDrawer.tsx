@@ -912,12 +912,13 @@ export function ActionWorkspaceDrawer({
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Suggested Messages</p>
                   <div className="flex items-center gap-2">
                     <TemplatesButton onClick={() => setShowTextTemplates(true)} />
-                  {fubPersonId && (
-                    <div className="flex items-center gap-2">
-                      <Label className="text-[10px] text-muted-foreground">Quick Send</Label>
-                      <Switch checked={quickSendModeText} onCheckedChange={setQuickSendModeText} className="h-4 w-7" />
-                    </div>
-                  )}
+                    {fubPersonId && (
+                      <div className="flex items-center gap-2">
+                        <Label className="text-[10px] text-muted-foreground">Quick Send</Label>
+                        <Switch checked={quickSendModeText} onCheckedChange={setQuickSendModeText} className="h-4 w-7" />
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {smsVariants.map((variant, i) => (
