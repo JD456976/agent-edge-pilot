@@ -103,6 +103,7 @@ function WorkspaceOverlays() {
     deals: { title: 'Active Deals', subtitle: 'Track every deal from contract to close', Component: Deals },
     calendar: { title: 'Calendar', subtitle: 'Appointments, tasks & milestones', Component: CalendarPage },
     openhouse: { title: 'Open House Intelligence', subtitle: 'Capture visitors and follow up', Component: OpenHouse },
+    openhousekiosk: { title: 'Open House Sign-In', subtitle: 'Kiosk mode for visitor capture', Component: OpenHouseKiosk },
     listingwriter: { title: 'Listing Writer', subtitle: 'AI-powered listing descriptions', Component: ListingWriter },
     commissioncoach: { title: 'Commission Coach', subtitle: 'Defend your value and win listings', Component: CommissionCoach },
     sync: { title: 'Sync', subtitle: 'CRM integrations and imports', Component: Sync },
