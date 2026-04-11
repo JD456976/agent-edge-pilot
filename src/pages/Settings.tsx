@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { TargetMarketSettings } from '@/components/TargetMarketSettings';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar, Volume2, Trash2, AlertTriangle, Shield, FileText, HelpCircle, ExternalLink, Camera, Bell, BellOff, Layers, BarChart3 } from 'lucide-react';
+import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar, Volume2, Trash2, AlertTriangle, Shield, FileText, HelpCircle, ExternalLink, Camera, Bell, BellOff, Layers, BarChart3, RefreshCw, Loader2, CheckCircle2 } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -343,7 +343,9 @@ export default function Settings() {
       )}
 
       <h1 className="text-xl font-bold mb-1">Settings</h1>
-      <p className="text-sm text-muted-foreground mb-6">Preferences and account</p>
+      <p className="text-sm text-muted-foreground mb-4">Preferences and account</p>
+
+      <FubSyncShortcut />
 
 
       {/* Theme & Skin */}
