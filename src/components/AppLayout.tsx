@@ -43,11 +43,11 @@ type NavItem = { label: string; icon: React.ElementType } & (
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
+  { workspace: 'openhousekiosk', label: 'Open House', icon: DoorOpen },
   { workspace: 'work', label: 'CRM', icon: RefreshCw },
   { workspace: 'deals', label: 'Deals', icon: ClipboardList },
   { workspace: 'sequences', label: 'Sequences', icon: GitBranch },
   { workspace: 'appointments', label: 'Appointments', icon: CalendarDays },
-  { workspace: 'openhousekiosk', label: 'Open House', icon: DoorOpen },
   { workspace: 'settings', label: 'Settings', icon: Settings },
   { workspace: 'objectioncoach', label: 'Objection Coach', icon: Shield },
 ];
