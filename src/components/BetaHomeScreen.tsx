@@ -4,7 +4,7 @@ import {
   Home, DollarSign, AlertTriangle, Flame, ShieldAlert,
   Sun, CloudSun, Moon, TrendingUp, TrendingDown, Minus,
   CheckCircle2, Shield, Target, Zap, ArrowRight, X, User, Plus,
-  Sparkles, MapPin,
+  Sparkles, MapPin, RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,8 +26,6 @@ import { useNavigate } from 'react-router-dom';
 import type { Lead, Deal, Task } from '@/types';
 import { computeRisk, RiskDot, RiskPanel } from '@/components/DealRiskRadar';
 import { getDailyBriefing } from '@/lib/dailyIntelligence';
-import { useSyncContext } from '@/contexts/SyncContext';
-import { RefreshCw } from 'lucide-react';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
