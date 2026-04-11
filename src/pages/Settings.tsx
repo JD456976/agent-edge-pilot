@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useDemo } from '@/contexts/DemoContext';
 import { TargetMarketSettings } from '@/components/TargetMarketSettings';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Sun, Moon, User, LogOut, Info, Clock, Bot, Calendar, Volume2, Trash2, AlertTriangle, Shield, FileText, HelpCircle, ExternalLink, Camera, Bell, BellOff, Layers, BarChart3, RefreshCw, Loader2, CheckCircle2 } from 'lucide-react';
@@ -684,6 +685,9 @@ export default function Settings() {
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Shield className="h-4 w-4" /> Subscription</h2>
         <SubscriptionStatusSection />
       </section>
+
+      {/* Demo Mode */}
+      <DemoModeSection />
 
       {/* Legal & Support Links */}
       <section className="rounded-lg border border-border bg-card p-4 mb-4">
