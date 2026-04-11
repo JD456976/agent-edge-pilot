@@ -671,7 +671,7 @@ function PipelineValueWidget({ leads }: { leads: Lead[] }) {
   if (hotCount === 0 && warmCount === 0) return null;
 
   return (
-    <div className="rounded-lg border-l-[3px] border-l-indigo-500 bg-card border border-border p-3">
+    <div className="rounded-lg border-l-[3px] border-l-primary bg-card border border-border p-3">
       <div className="flex items-stretch gap-3">
         {/* Column 1 — Pipeline Value */}
         <div className="flex-1 min-w-0 flex flex-col justify-center">
@@ -687,8 +687,8 @@ function PipelineValueWidget({ leads }: { leads: Lead[] }) {
         {/* Column 2 — Hot Leads */}
         <div className="flex-1 min-w-0 flex flex-col justify-center">
           <div className="flex items-center gap-1.5">
-            <p className="text-lg font-bold text-indigo-400 leading-tight">{hotCount}</p>
-            {hotCount > 3 && <TrendingUp className="h-3.5 w-3.5 text-indigo-400" />}
+            <p className="text-lg font-bold text-primary leading-tight">{hotCount}</p>
+            {hotCount > 3 && <TrendingUp className="h-3.5 w-3.5 text-primary" />}
           </div>
           <p className="text-[11px] text-muted-foreground mt-0.5">Needs action now</p>
         </div>
@@ -698,7 +698,7 @@ function PipelineValueWidget({ leads }: { leads: Lead[] }) {
         
         {/* Column 3 — Proj. Commission */}
         <div className="flex-1 min-w-0 flex flex-col justify-center">
-          <p className="text-lg font-bold text-emerald-400 leading-tight">
+          <p className="text-lg font-bold text-opportunity leading-tight">
             {hotCount > 0 ? formatCurrencyCompact(projCommission) : '—'}
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">At 2.5% avg commission</p>
