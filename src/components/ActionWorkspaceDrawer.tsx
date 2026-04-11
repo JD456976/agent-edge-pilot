@@ -1075,6 +1075,10 @@ export function ActionWorkspaceDrawer({
                 </div>
 
                 {/* Body */}
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Body</span>
+                  <TemplatesButton onClick={() => setShowEmailTemplates(true)} />
+                </div>
                 <Textarea
                   value={displayEmail}
                   onChange={(e) => setEditedEmail(e.target.value)}
