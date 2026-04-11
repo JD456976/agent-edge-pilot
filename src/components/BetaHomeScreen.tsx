@@ -653,6 +653,117 @@ function useTimeIntelligence(leads: Lead[], deals: Deal[], tasks: Task[]) {
   }, [leads, deals, tasks]);
 }
 
+// ── Today's Activity Streak Strip ─────────────────────────────────
+
+function useStreakCounter() {
+  const [streak, setStreak] = useState(0);
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const lastActive = localStorage.getItem('dealPilot_lastActive');
+    let currentStreak = parseInt(localStorage.getItem('dealPilot_streak') || '0', 10);
+
+    if (lastActive === today) {
+      // Same day — keep streak
+    } else if (lastActive) {
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      if (lastActive === yesterday) {
+        currentStreak += 1;
+      } else {
+        currentStreak = 1;
+      }
+      localStorage.setItem('dealPilot_streak', String(currentStreak));
+      localStorage.setItem('dealPilot_lastActive', today);
+    } else {
+      currentStreak = 1;
+      localStorage.setItem('dealPilot_streak', '1');
+      localStorage.setItem('dealPilot_lastActive', today);
+    }
+    setStreak(currentStreak);
+  }, []);
+  return streak;
+}
+
+function ActivityStreakStrip({ userId }: { userId: string }) {
+  const [stats, setStats] = useState({ calls: 0, contacts: 0, weekContacts: 0 });
+  const streak = useStreakCounter();
+
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      // Monday of this week
+      const day = now.getDay();
+      const mondayOffset = day === 0 ? 6 : day - 1;
+      const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - mondayOffset).toISOString();
+
+      const [todayRes, weekRes] = await Promise.all([
+        supabase.from('activity_events').select('touch_type').eq('user_id', userId).gte('created_at', todayStart),
+        supabase.from('activity_events').select('id').eq('user_id', userId).gte('created_at', weekStart),
+      ]);
+
+      const todayEvents = todayRes.data || [];
+      const callTypes = ['call', 'phone'];
+      const contactTypes = ['call', 'phone', 'text', 'sms', 'email'];
+      const calls = todayEvents.filter(e => callTypes.includes(e.touch_type?.toLowerCase())).length;
+      const contacts = todayEvents.filter(e => contactTypes.includes(e.touch_type?.toLowerCase())).length;
+      const weekContacts = weekRes.data?.length || 0;
+
+      setStats({ calls, contacts, weekContacts });
+
+      // Update streak if we have contacts today
+      if (contacts > 0) {
+        const today = new Date().toISOString().split('T')[0];
+        localStorage.setItem('dealPilot_lastActive', today);
+      }
+    })();
+  }, [userId]);
+
+  const weekGoal = 20;
+  const weekPct = Math.min((stats.weekContacts / weekGoal) * 100, 100);
+  const allZero = stats.calls === 0 && stats.contacts === 0 && streak === 0;
+  const streakHot = streak >= 3;
+  const goalMet = stats.weekContacts >= weekGoal;
+
+  if (allZero) {
+    return (
+      <div className="rounded-md bg-muted/30 px-3 py-1.5 flex items-center justify-center h-9">
+        <p className="text-[11px] text-muted-foreground">Start strong — log your first contact</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md bg-muted/30 px-3 py-1.5 flex items-center justify-between h-9 gap-2">
+      <div className="flex items-center gap-3 text-[11px] text-muted-foreground min-w-0">
+        <span className="flex items-center gap-1 shrink-0">
+          <span>📞</span> <span className="font-medium text-foreground">{stats.calls}</span>
+        </span>
+        <span className="text-border">·</span>
+        <span className="flex items-center gap-1 shrink-0">
+          <span>✉️</span> <span className="font-medium text-foreground">{stats.contacts}</span>
+        </span>
+        <span className="text-border">·</span>
+        <span className={cn('flex items-center gap-1 shrink-0', streakHot && 'text-warning')}>
+          <span className={streakHot ? 'drop-shadow-[0_0_4px_hsl(var(--warning))]' : ''}>🔥</span>
+          <span className="font-medium text-foreground">{streak}d</span>
+        </span>
+        <span className="text-border">·</span>
+        <span className="flex items-center gap-1.5 shrink-0">
+          <span>⭐</span>
+          <span className="font-medium text-foreground">{stats.weekContacts}/{weekGoal}</span>
+          <div className="w-10 h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn('h-full rounded-full transition-all', goalMet ? 'bg-opportunity' : 'bg-primary')}
+              style={{ width: `${weekPct}%` }}
+            />
+          </div>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ── Pipeline Value Widget ─────────────────────────────────────────
 
 function PipelineValueWidget({ leads }: { leads: Lead[] }) {
@@ -813,6 +924,9 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
 
       {/* Pipeline Value Widget */}
       <PipelineValueWidget leads={scoredLeads.map(s => s.lead)} />
+
+      {/* Today's Activity Streak */}
+      <ActivityStreakStrip userId={userId} />
 
       {/* Priority Lead Action Card */}
       {priorityLead && (
