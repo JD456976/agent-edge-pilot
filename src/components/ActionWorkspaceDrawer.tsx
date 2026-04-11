@@ -16,6 +16,7 @@ import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
 import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
 import { ClientFitPanel } from '@/components/ClientFitPanel';
 import { ClientCommitmentPanel } from '@/components/ClientCommitmentPanel';
+import { MessageTemplatesSheet, TemplatesButton } from '@/components/MessageTemplatesSheet';
 import { FubContextStrip } from '@/components/FubContextStrip';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -168,6 +169,8 @@ export function ActionWorkspaceDrawer({
   const [quickSendModeText, setQuickSendModeText] = useState(false);
   const [quickSendModeEmail, setQuickSendModeEmail] = useState(false);
   const [textSent, setTextSent] = useState(false);
+  const [showTextTemplates, setShowTextTemplates] = useState(false);
+  const [showEmailTemplates, setShowEmailTemplates] = useState(false);
 
   // Email tab state
   const [emailTone, setEmailTone] = useState<EmailTone>('professional');
@@ -497,6 +500,7 @@ export function ActionWorkspaceDrawer({
   const displayEmail = editedEmail ?? emailBody;
 
   return (
+    <>
     <Sheet open={open} onOpenChange={(v) => !v && handleClose()}>
       <SheetContent
         hideClose
@@ -907,12 +911,15 @@ export function ActionWorkspaceDrawer({
                 })}
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Suggested Messages</p>
-                  {fubPersonId && (
-                    <div className="flex items-center gap-2">
-                      <Label className="text-[10px] text-muted-foreground">Quick Send</Label>
-                      <Switch checked={quickSendModeText} onCheckedChange={setQuickSendModeText} className="h-4 w-7" />
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <TemplatesButton onClick={() => setShowTextTemplates(true)} />
+                    {fubPersonId && (
+                      <div className="flex items-center gap-2">
+                        <Label className="text-[10px] text-muted-foreground">Quick Send</Label>
+                        <Switch checked={quickSendModeText} onCheckedChange={setQuickSendModeText} className="h-4 w-7" />
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {smsVariants.map((variant, i) => (
@@ -1069,6 +1076,10 @@ export function ActionWorkspaceDrawer({
                 </div>
 
                 {/* Body */}
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Body</span>
+                  <TemplatesButton onClick={() => setShowEmailTemplates(true)} />
+                </div>
                 <Textarea
                   value={displayEmail}
                   onChange={(e) => setEditedEmail(e.target.value)}
@@ -1387,6 +1398,25 @@ export function ActionWorkspaceDrawer({
         </PanelErrorBoundary>
       </SheetContent>
     </Sheet>
+    <MessageTemplatesSheet
+      open={showTextTemplates}
+      onClose={() => setShowTextTemplates(false)}
+      leadFirstName={context?.entityName?.split(' ')[0] || ''}
+      onSelect={(body) => {
+        navigator.clipboard.writeText(body);
+        toast({ description: 'Template copied to clipboard' });
+      }}
+    />
+    <MessageTemplatesSheet
+      open={showEmailTemplates}
+      onClose={() => setShowEmailTemplates(false)}
+      leadFirstName={context?.entityName?.split(' ')[0] || ''}
+      onSelect={(body) => {
+        setEditedEmail(body);
+        toast({ description: 'Template inserted into email' });
+      }}
+    />
+  </>
   );
 }
 
