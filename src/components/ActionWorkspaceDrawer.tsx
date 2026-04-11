@@ -39,6 +39,7 @@ import {
   type FollowUpSuggestion,
   type ConfidenceLevel,
 } from '@/lib/executionEngine';
+import { ShowingFeedbackTab } from '@/components/ShowingFeedbackTab';
 
 // ── Types ────────────────────────────────────────────────────────────
 
