@@ -343,11 +343,15 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onR
         <button onClick={(e) => { e.stopPropagation(); onAction('email'); }} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Email">
           <Mail className="h-3.5 w-3.5" />
         </button>
+        <button onClick={(e) => { e.stopPropagation(); setUcOpen(true); }} className="text-muted-foreground hover:text-opportunity transition-colors" aria-label="Mark under contract" title="Under Contract">
+          <Home className="h-3.5 w-3.5" />
+        </button>
         <button onClick={(e) => { e.stopPropagation(); setTaskOpen(true); }} className="text-muted-foreground hover:text-foreground transition-colors ml-auto" aria-label="Add task">
           <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
       {expanded && <div className="px-3 pb-3"><RiskPanel lead={lead} risk={risk} /></div>}
+      <UnderContractSheet lead={lead} open={ucOpen} onClose={() => setUcOpen(false)} onComplete={() => { setUcRefresh(r => r + 1); onRefresh(); }} />
 
       {/* Quick Task Bottom Sheet */}
       {taskOpen && (
