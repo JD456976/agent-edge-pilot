@@ -25,6 +25,8 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import type { Lead, Deal, Task } from '@/types';
 import { computeRisk, RiskDot, RiskPanel } from '@/components/DealRiskRadar';
+import { WeeklyPerformanceDigest } from '@/components/WeeklyPerformanceDigest';
+import { UnderContractBadge, UnderContractSheet, isUnderContract } from '@/components/UnderContractAction';
 import { getDailyBriefing } from '@/lib/dailyIntelligence';
 
 // ── Helpers ─────────────────────────────────────────────────────────
