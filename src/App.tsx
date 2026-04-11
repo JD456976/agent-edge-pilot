@@ -29,6 +29,7 @@ import OpenHouse from "@/pages/OpenHouse";
 import ListingWriter from "@/pages/ListingWriter";
 import CommissionCoach from "@/pages/CommissionCoach";
 import Sequences from "@/pages/Sequences";
+import Appointments from "@/pages/Appointments";
 import { ReviewPrompt } from "@/components/ReviewPrompt";
 import { PWAUpdatePrompt } from "@/components/PWAUpdatePrompt";
 
@@ -102,6 +103,7 @@ function WorkspaceOverlays() {
     commissioncoach: { title: 'Commission Coach', subtitle: 'Defend your value and win listings', Component: CommissionCoach },
     sync: { title: 'Sync', subtitle: 'CRM integrations and imports', Component: Sync },
     sequences: { title: 'Follow-Up Sequences', subtitle: 'Automated touchpoint plans for every lead stage', Component: Sequences },
+    appointments: { title: 'Appointments', subtitle: 'Your upcoming meetings and prep', Component: Appointments },
     insights: { title: 'Insights', subtitle: 'Forecast, stability, and review', Component: Insights },
     settings: { title: 'Settings', subtitle: 'Preferences and account', Component: Settings },
   };
