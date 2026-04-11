@@ -23,7 +23,7 @@ const typeLabel: Record<TaskType, string> = {
 };
 
 export default function Tasks() {
-  const { tasks, hasData, seedDemoData, completeTask, uncompleteTask, addTask } = useData();
+  const { tasks, hasData, completeTask, uncompleteTask, addTask } = useData();
   const { user } = useAuth();
   const [tab, setTab] = useState<typeof TABS[number]>('Today');
   const [filterType, setFilterType] = useState<TaskType | 'all'>('all');
@@ -100,9 +100,7 @@ export default function Tasks() {
         <p className="text-sm text-muted-foreground mb-6">Your action items</p>
         <EmptyState
           title="No tasks yet"
-          description="Connect Follow Up Boss to sync your tasks, or load demo data to explore."
-          actionLabel="Load Demo Data"
-          onAction={seedDemoData}
+          description="Connect Follow Up Boss to sync your tasks, or create one manually."
           icon={<ListChecks className="h-8 w-8 text-muted-foreground" />}
         />
       </div>
