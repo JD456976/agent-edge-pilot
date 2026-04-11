@@ -31,6 +31,7 @@ import CommissionCoach from "@/pages/CommissionCoach";
 import Sequences from "@/pages/Sequences";
 import Appointments from "@/pages/Appointments";
 import ObjectionCoach from "@/pages/ObjectionCoach";
+import Deals from "@/pages/Deals";
 import { ReviewPrompt } from "@/components/ReviewPrompt";
 import { PWAUpdatePrompt } from "@/components/PWAUpdatePrompt";
 
@@ -98,6 +99,7 @@ function WorkspaceOverlays() {
 
   const WORKSPACE_CONFIG: Record<string, { title: string; subtitle: string; Component: React.ComponentType }> = {
     work: { title: 'Work', subtitle: 'Pipeline and tasks', Component: Work },
+    deals: { title: 'Active Deals', subtitle: 'Track every deal from contract to close', Component: Deals },
     calendar: { title: 'Calendar', subtitle: 'Appointments, tasks & milestones', Component: CalendarPage },
     openhouse: { title: 'Open House Intelligence', subtitle: 'Capture visitors and follow up', Component: OpenHouse },
     listingwriter: { title: 'Listing Writer', subtitle: 'AI-powered listing descriptions', Component: ListingWriter },
