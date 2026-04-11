@@ -95,7 +95,7 @@ type DetailItem =
 
 export default function CommandCenter() {
   const { user } = useAuth();
-  const { leads, deals, tasks, alerts, dealParticipants, hasData, loading: dataLoading, seedDemoData, completeTask, uncompleteTask, addTask, refreshData } = useData();
+  const { leads, deals, tasks, alerts, dealParticipants, hasData, loading: dataLoading, completeTask, uncompleteTask, addTask, refreshData } = useData();
   const navigate = useNavigate();
   const { pendingNavigation, clearNavigation } = useEntityNavigation();
 
@@ -303,10 +303,10 @@ export default function CommandCenter() {
           hasCrmConnected={ccData.hasFubIntegration} hasDeals={false} hasLeads={false} hasTasks={false}
           hasIncomeTarget={!!(ccData.strategicSettings as any)?.annualIncomeTarget}
           onConnectCrm={() => navigate('/?workspace=sync')} onAddDeal={() => setShowQuickAdd(true)}
-          onSetIncomeTarget={() => navigate('/?workspace=settings')} onLoadDemo={seedDemoData}
+          onSetIncomeTarget={() => navigate('/?workspace=settings')} onLoadDemo={() => {}}
         />
         <EmptyState type="deals" title="Your command center is ready"
-          description="Connect your CRM to import deals and leads, add them manually, or load demo data to explore all features."
+          description="Connect your CRM to import deals and leads, or add them manually."
           actionLabel="Add Your First Deal" onAction={() => setShowQuickAdd(true)}
         />
         {showQuickAdd && <QuickAddModal defaultType="deal" onClose={() => setShowQuickAdd(false)} />}
@@ -396,7 +396,7 @@ export default function CommandCenter() {
         hasCrmConnected={hasFubIntegration} hasDeals={deals.length > 0} hasLeads={leads.length > 0}
         hasTasks={tasks.length > 0} hasIncomeTarget={!!(strategicSettings as any)?.annualIncomeTarget}
         onConnectCrm={() => navigate('/?workspace=sync')} onAddDeal={() => setShowQuickAdd(true)}
-        onSetIncomeTarget={() => navigate('/?workspace=settings')} onLoadDemo={seedDemoData}
+        onSetIncomeTarget={() => navigate('/?workspace=settings')} onLoadDemo={() => {}}
       />
 
       <FavoritesStrip favorites={favorites} onSelect={(id, type) => handlers.handleOpenExecution(id, type)} />
