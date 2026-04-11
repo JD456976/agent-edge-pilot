@@ -495,6 +495,7 @@ export function ActionWorkspaceDrawer({
     { key: 'email', label: 'Email', icon: Mail, subtitle: 'Draft & send' },
     { key: 'task', label: 'Task', icon: ListTodo, subtitle: 'Create follow-up' },
     { key: 'notes', label: 'Notes', icon: StickyNote, subtitle: 'Quick note' },
+    { key: 'showing', label: 'Showing', icon: Eye, subtitle: 'Showing feedback' },
     { key: 'activity', label: 'Activity', icon: History, subtitle: 'Timeline' },
   ];
 
