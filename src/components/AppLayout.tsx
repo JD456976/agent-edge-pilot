@@ -45,6 +45,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
   { workspace: 'work', label: 'CRM', icon: RefreshCw },
   { workspace: 'sequences', label: 'Sequences', icon: GitBranch },
+  { workspace: 'appointments', label: 'Appointments', icon: CalendarDays },
   { workspace: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -52,6 +53,7 @@ const MOBILE_MAIN_TABS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
   { workspace: 'work', label: 'CRM', icon: RefreshCw },
   { workspace: 'sequences', label: 'Sequences', icon: GitBranch },
+  { workspace: 'appointments', label: 'Appts', icon: CalendarDays },
   { workspace: 'settings', label: 'Settings', icon: Settings },
 ];
 
