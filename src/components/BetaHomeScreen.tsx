@@ -302,6 +302,7 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onR
           <p className="text-xs text-muted-foreground mt-1">{statusLine}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end max-w-[45%]">
+          <UnderContractBadge leadId={lead.id} key={ucRefresh} />
           {outsideTarget && (
             <Badge variant="warning" className="text-[9px] px-1 py-0 whitespace-nowrap">
               <AlertTriangle className="h-2 w-2 mr-0.5" /> Outside
