@@ -973,6 +973,9 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
       {/* Today's Activity Streak */}
       <ActivityStreakStrip userId={userId} />
 
+      {/* Weekly Performance Digest */}
+      <WeeklyPerformanceDigest userId={userId} />
+
       {/* Priority Lead Action Card — hidden when no leads */}
       {priorityLead && (
         <PriorityLeadCard
