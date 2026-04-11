@@ -1489,10 +1489,10 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
               : null;
             const channel = lead.statusTags?.some(t => t.toLowerCase().includes('text')) ? 'text' as const : 'call' as const;
             return (
-              <li key={lead.id} className="flex items-start gap-2 text-sm">
+              <li key={lead.id} className="flex items-start gap-2 text-sm cursor-pointer hover:bg-accent/30 rounded-lg p-1 -m-1 transition-colors" onClick={() => onOpenLead(lead)}>
                 <span className="text-xs font-bold text-primary mt-0.5 shrink-0">{i + 1}.</span>
                 <div className="min-w-0 flex-1">
-                  <button onClick={() => onOpenLead(lead)} className="font-medium text-primary hover:underline cursor-pointer text-left">{lead.name}</button>
+                  <span className="font-medium text-primary hover:underline cursor-pointer text-left">{lead.name}</span>
                   <span className="text-xs text-muted-foreground ml-1.5">
                     Score {lead.engagementScore || 0} · {lead.source || 'Direct'} · {daysSince !== null ? `${daysSince}d ago` : 'never contacted'}
                   </span>
