@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap, Send, Clock, ArrowUpRight, ArrowDownLeft, Loader2, CalendarDays, Activity, Flame, StickyNote as NotesIcon, History, AlertTriangle, Sparkles } from 'lucide-react';
+import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap, Send, Clock, ArrowUpRight, ArrowDownLeft, Loader2, CalendarDays, Activity, Flame, StickyNote as NotesIcon, History, AlertTriangle, Sparkles, Eye } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { relativeTime } from '@/lib/relativeTime';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -42,7 +42,7 @@ import {
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type WorkspaceTab = 'call' | 'text' | 'email' | 'task' | 'notes' | 'activity' | 'intel' | 'prefs';
+type WorkspaceTab = 'call' | 'text' | 'email' | 'task' | 'notes' | 'activity' | 'intel' | 'prefs' | 'showing';
 
 interface Props {
   open: boolean;
