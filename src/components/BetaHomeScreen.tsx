@@ -295,7 +295,7 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onR
           <button onClick={(e) => { e.stopPropagation(); onTap(); }} className="text-sm font-medium truncate block w-full text-primary hover:underline text-left">{lead.name}</button>
           <p className="text-[13px] text-muted-foreground truncate">{lead.source || 'Direct'}</p>
           <p className={cn('text-[11px] truncate mt-0.5', verdict.color)}>{verdict.text}</p>
-          <p className="text-xs text-slate-400 mt-1">{statusLine}</p>
+          <p className="text-xs text-muted-foreground mt-1">{statusLine}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end max-w-[45%]">
           {outsideTarget && (
@@ -653,6 +653,61 @@ function useTimeIntelligence(leads: Lead[], deals: Deal[], tasks: Task[]) {
   }, [leads, deals, tasks]);
 }
 
+// ── Pipeline Value Widget ─────────────────────────────────────────
+
+function PipelineValueWidget({ leads }: { leads: Lead[] }) {
+  const hotCount = leads.filter(l => l.leadTemperature === 'hot').length;
+  const warmCount = leads.filter(l => l.leadTemperature === 'warm').length;
+  
+  const pipelineValue = hotCount * 485000 + warmCount * 350000;
+  const projCommission = pipelineValue * 0.025 * 0.65;
+  
+  const formatCurrencyCompact = (n: number) => {
+    if (n >= 1000000) return `$${(n / 1000000).toFixed(1)}M`;
+    if (n >= 1000) return `$${Math.round(n / 1000)}K`;
+    return `$${Math.round(n)}`;
+  };
+
+  if (hotCount === 0 && warmCount === 0) return null;
+
+  return (
+    <div className="rounded-lg border-l-[3px] border-l-primary bg-card border border-border p-3">
+      <div className="flex items-stretch gap-3">
+        {/* Column 1 — Pipeline Value */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <p className="text-lg font-bold text-foreground leading-tight">
+            {pipelineValue > 0 ? formatCurrencyCompact(pipelineValue) : '—'}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Est. total deal value</p>
+        </div>
+        
+        {/* Divider */}
+        <div className="w-px bg-border self-stretch my-0.5" />
+        
+        {/* Column 2 — Hot Leads */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <div className="flex items-center gap-1.5">
+            <p className="text-lg font-bold text-primary leading-tight">{hotCount}</p>
+            {hotCount > 3 && <TrendingUp className="h-3.5 w-3.5 text-primary" />}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Needs action now</p>
+        </div>
+        
+        {/* Divider */}
+        <div className="w-px bg-border self-stretch my-0.5" />
+        
+        {/* Column 3 — Proj. Commission */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <p className="text-lg font-bold text-opportunity leading-tight">
+            {hotCount > 0 ? formatCurrencyCompact(projCommission) : '—'}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">At 2.5% avg commission</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Morning Mode ────────────────────────────────────────────────────
 
 function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket, onAddLead, onSeeAll, onTaskTap, refreshData, userId }: {
@@ -755,6 +810,9 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
           )}
         </div>
       </div>
+
+      {/* Pipeline Value Widget */}
+      <PipelineValueWidget leads={scoredLeads.map(s => s.lead)} />
 
       {/* Priority Lead Action Card */}
       {priorityLead && (
