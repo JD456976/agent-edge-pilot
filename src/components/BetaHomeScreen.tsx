@@ -781,6 +781,40 @@ function ActivityStreakStrip({ userId }: { userId: string }) {
   );
 }
 
+// ── Empty Moves Card (shown when no leads) ───────────────────────
+
+function EmptyMovesCard() {
+  const { syncNow, isSyncing } = useSyncContext();
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  const handleSync = async () => {
+    setStatus('idle');
+    try {
+      await syncNow();
+      setStatus('success');
+    } catch {
+      setStatus('error');
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 space-y-3 text-center">
+      <Target className="h-8 w-8 text-muted-foreground mx-auto" />
+      <h3 className="text-sm font-semibold">No leads yet</h3>
+      <p className="text-xs text-muted-foreground">Tap Sync to import from Follow Up Boss</p>
+      <Button
+        size="sm"
+        className="gap-1.5"
+        onClick={handleSync}
+        disabled={isSyncing}
+      >
+        <RefreshCw className={cn('h-3.5 w-3.5', isSyncing && 'animate-spin')} />
+        {isSyncing ? 'Syncing…' : status === 'success' ? 'Synced ✓' : 'Sync Now'}
+      </Button>
+    </div>
+  );
+}
+
 // ── Pipeline Value Widget ─────────────────────────────────────────
 
 function PipelineValueWidget({ leads }: { leads: Lead[] }) {
