@@ -28,6 +28,7 @@ import { computeRisk, RiskDot, RiskPanel } from '@/components/DealRiskRadar';
 import { WeeklyPerformanceDigest } from '@/components/WeeklyPerformanceDigest';
 import { UnderContractBadge, UnderContractSheet, isUnderContract } from '@/components/UnderContractAction';
 import { getDailyBriefing } from '@/lib/dailyIntelligence';
+import { useDemo } from '@/contexts/DemoContext';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -1746,7 +1747,9 @@ function OverdueTasksCard({ tasks: overdueTasks, refreshData }: { tasks: Task[];
 
 export default function BetaHomeScreen() {
   const { user } = useAuth();
-  const { leads, deals, tasks, alerts, dealParticipants, hasData, loading, refreshData } = useData();
+  const { leads: realLeads, deals, tasks, alerts, dealParticipants, hasData, loading, refreshData } = useData();
+  const { isDemoMode, demoLeads } = useDemo();
+  const leads = isDemoMode ? demoLeads : realLeads;
   const { openWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const { isSyncing: syncing } = useSyncContext();
