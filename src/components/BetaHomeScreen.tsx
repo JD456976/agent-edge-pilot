@@ -303,6 +303,23 @@ function PipelineCard({ lead, score, outsideTarget, onTap, onAction, userId, onR
               <AlertTriangle className="h-2 w-2 mr-0.5" /> Outside
             </Badge>
           )}
+          {(() => {
+            const lastContact = lead.lastContactAt || lead.lastTouchedAt;
+            if (!lastContact) {
+              return <span className="inline-flex items-center px-1.5 py-0 rounded-full text-[9px] font-medium bg-warning/15 text-warning">Never</span>;
+            }
+            const days = Math.floor((Date.now() - new Date(lastContact).getTime()) / 86400000);
+            if (days === 0) {
+              return <span className="inline-flex items-center px-1.5 py-0 rounded-full text-[9px] font-medium bg-opportunity/15 text-opportunity">Today</span>;
+            }
+            if (days > 14) {
+              return <span className="inline-flex items-center px-1.5 py-0 rounded-full text-[9px] font-medium bg-urgent/15 text-urgent">{days}d ago</span>;
+            }
+            if (days >= 7) {
+              return <span className="inline-flex items-center px-1.5 py-0 rounded-full text-[9px] font-medium bg-warning/15 text-warning">{days}d ago</span>;
+            }
+            return <span className="inline-flex items-center px-1.5 py-0 rounded-full text-[9px] font-medium bg-muted text-muted-foreground">{days}d ago</span>;
+          })()}
           <HeatBadge score={score} lead={lead} allLeads={allLeads} interactive />
           <ShieldAlert className={cn(
             'h-3.5 w-3.5 transition-transform shrink-0',
