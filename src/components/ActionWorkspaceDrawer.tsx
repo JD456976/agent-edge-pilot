@@ -910,6 +910,8 @@ export function ActionWorkspaceDrawer({
                 })}
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Suggested Messages</p>
+                  <div className="flex items-center gap-2">
+                    <TemplatesButton onClick={() => setShowTextTemplates(true)} />
                   {fubPersonId && (
                     <div className="flex items-center gap-2">
                       <Label className="text-[10px] text-muted-foreground">Quick Send</Label>
