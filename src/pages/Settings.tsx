@@ -322,6 +322,74 @@ function LeadSourcesInsight() {
   );
 }
 
+function clearLocalPipelineStorage() {
+  if (typeof window === 'undefined') return;
+
+  const keysToRemove: string[] = [];
+
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (!key) continue;
+
+    const normalizedKey = key.toLowerCase();
+    const isLeadRelatedDealPilotKey =
+      key.startsWith('dealPilot_') &&
+      (
+        normalizedKey.includes('lead') ||
+        normalizedKey.includes('pipeline') ||
+        key === 'dealPilot_underContract' ||
+        key === 'dealPilot_showingFeedback' ||
+        key === 'dealPilot_seeded_v2_cleaned'
+      );
+
+    if (isLeadRelatedDealPilotKey) {
+      keysToRemove.push(key);
+    }
+  }
+
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+}
+
+function DataManagementSection() {
+  const handleResetPipelineData = () => {
+    clearLocalPipelineStorage();
+    window.location.reload();
+  };
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-4 mb-4">
+      <h2 className="text-sm font-semibold mb-1 flex items-center gap-2">
+        <Trash2 className="h-4 w-4" /> Data Management
+      </h2>
+      <p className="text-xs text-muted-foreground mb-3">Clear locally stored pipeline data and reload a clean state.</p>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="outline" className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive">
+            Reset Pipeline Data
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Reset Pipeline Data?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will clear all locally stored lead data. Your FUB leads will reload on next sync. Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleResetPipelineData}>
+              Reset Data
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
+  );
+}
+
 function DemoModeSection() {
   const { isDemoMode, toggleDemoMode } = useDemo();
   return (

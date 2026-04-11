@@ -130,6 +130,83 @@ function resolveAndEnrich(dealRow: any, participants: DealParticipant[], userId:
   };
 }
 
+const LEGACY_SEED_NAMES = [
+  'Elena Vasquez',
+  'Nina Patel',
+  'Sarah Chen',
+  'Priya Kapoor',
+  'Robert Chang',
+  'Patricia Morrison',
+  'Harihar Sivanandh',
+  'Marcus Rivera',
+  'David Kim',
+  'James Thornton',
+  'Amanda Foster',
+].map(name => name.toLowerCase());
+
+function containsLegacySeedName(value: unknown): boolean {
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    return LEGACY_SEED_NAMES.some(name => normalized === name || normalized.includes(name));
+  }
+
+  if (Array.isArray(value)) {
+    return value.some(containsLegacySeedName);
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.values(value as Record<string, unknown>).some(containsLegacySeedName);
+  }
+
+  return false;
+}
+
+function cleanupLegacyLocalLeadData(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  try {
+    if (localStorage.getItem('dealPilot_seeded_v2_cleaned') === 'true') {
+      return false;
+    }
+
+    const keysToRemove: string[] = [];
+
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+
+      const normalizedKey = key.toLowerCase();
+      const looksLikeLeadStorage =
+        normalizedKey === 'leads' ||
+        normalizedKey === 'pipeline' ||
+        normalizedKey.includes('lead') ||
+        normalizedKey.includes('pipeline');
+
+      if (!looksLikeLeadStorage) continue;
+
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+
+      let parsed: unknown = raw;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        parsed = raw;
+      }
+
+      if (containsLegacySeedName(parsed)) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    localStorage.setItem('dealPilot_seeded_v2_cleaned', 'true');
+    return keysToRemove.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -191,6 +268,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const cleanedLegacyLocalData = cleanupLegacyLocalLeadData();
+    if (cleanedLegacyLocalData) {
+      setLeads([]);
+    }
+
     loadData();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       loadData();
