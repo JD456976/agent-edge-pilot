@@ -32,6 +32,7 @@ import Sequences from "@/pages/Sequences";
 import Appointments from "@/pages/Appointments";
 import ObjectionCoach from "@/pages/ObjectionCoach";
 import Deals from "@/pages/Deals";
+import OpenHouseKiosk from "@/pages/OpenHouseKiosk";
 import { ReviewPrompt } from "@/components/ReviewPrompt";
 import { PWAUpdatePrompt } from "@/components/PWAUpdatePrompt";
 
