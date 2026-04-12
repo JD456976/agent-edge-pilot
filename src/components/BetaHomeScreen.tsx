@@ -127,16 +127,48 @@ function HeatBadge({ score, lead, allLeads, interactive }: { score: number; lead
 }
 
 function getLeadHeatScore(lead: Lead): number {
-  let score = lead.engagementScore || 0;
-  if (lead.leadTemperature === 'hot') score = Math.max(score, 75);
-  else if (lead.leadTemperature === 'warm') score = Math.max(score, 50);
-  if (lead.lastTouchedAt) {
-    const daysSince = (Date.now() - new Date(lead.lastTouchedAt).getTime()) / 86400000;
-    if (daysSince < 1) score += 15;
-    else if (daysSince < 3) score += 8;
+  let score = 0;
+
+  // 1. Temperature base (most important signal)
+  if (lead.leadTemperature === 'hot') score += 40;
+  else if (lead.leadTemperature === 'warm') score += 25;
+  else score += 10; // cold still gets a base
+
+  // 2. Source quality signal
+  const src = (lead.source || '').toLowerCase();
+  if (src.includes('zillow preferred')) score += 15;
+  else if (src.includes('zillow')) score += 10;
+  else if (src.includes('sphere') || src.includes('referral')) score += 12;
+  else if (src.includes('realtor') || src.includes('redfin')) score += 8;
+  else if (src) score += 5;
+
+  // 3. Recency of contact — more recent = higher score
+  const contactDate = lead.lastTouchedAt || lead.lastContactAt;
+  if (contactDate) {
+    const daysSince = (Date.now() - new Date(contactDate).getTime()) / 86400000;
+    if (daysSince < 1) score += 20;
+    else if (daysSince < 3) score += 15;
+    else if (daysSince < 7) score += 10;
+    else if (daysSince < 14) score += 5;
+    // Older than 14 days = no recency bonus
   }
-  if (lead.statusTags?.some(t => ['pre-approved', 'pre_approved', 'showing', 'appointment set', 'cash_buyer'].includes(t.toLowerCase()))) score += 15;
-  return Math.min(score, 100);
+
+  // 4. High-intent tags
+  const tags = (lead.statusTags || []).map(t => t.toLowerCase());
+  if (tags.some(t => ['pre-approved', 'pre_approved', 'cash_buyer', 'cash buyer'].includes(t))) score += 15;
+  if (tags.some(t => ['showing', 'appointment set', 'appointment_set'].includes(t))) score += 12;
+  if (tags.some(t => ['motivated', 'serious', 'vip', 'market vip'].includes(t))) score += 10;
+  if (tags.some(t => ['buyer', 'seller', 'investor'].includes(t))) score += 5;
+
+  // 5. Has contact info (shows engagement with the lead)
+  if (lead.emailPrimary || lead.phonePrimary) score += 5;
+
+  // 6. Use stored engagement score as additive if non-zero
+  if ((lead.engagementScore || 0) > 0) {
+    score += Math.min(lead.engagementScore, 20);
+  }
+
+  return Math.min(Math.max(score, 0), 100);
 }
 
 function isOutsideTarget(lead: Lead, target: TargetMarket): boolean {
@@ -1378,7 +1410,7 @@ function GhostingRiskStrip({ leads, onLeadAction, onOpenLead }: {
 
   const atRisk = useMemo(() => {
     return leads
-      .filter(l => l.leadTemperature === 'hot' || l.leadTemperature === 'warm' || (l.engagementScore || 0) >= 50)
+      .filter(l => l.leadTemperature === 'hot' || l.leadTemperature === 'warm' || getLeadHeatScore(l) >= 50)
       .map(l => ({ lead: l, ...computeGhostScore(l) }))
       .filter(r => r.score >= 35)
       .sort((a, b) => b.score - a.score)
@@ -1508,7 +1540,7 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
   if (mode === 'morning') {
     const top3 = [...leads]
       .filter(l => !l.snoozeUntil || new Date(l.snoozeUntil) <= now)
-      .sort((a, b) => (b.engagementScore || 0) - (a.engagementScore || 0))
+      .sort((a, b) => getLeadHeatScore(b) - getLeadHeatScore(a))
       .slice(0, 3);
 
     const hasHighRisk = top3.some(l => {
@@ -1540,9 +1572,9 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
                 <span className="text-xs font-bold text-primary mt-0.5 shrink-0">{i + 1}.</span>
                 <div className="min-w-0 flex-1">
                    <span className="font-medium text-primary hover:underline cursor-pointer text-left">{lead.name}</span>
-                   <LeadScorePopover lead={lead} score={lead.engagementScore || 0} allLeads={leads}>
+                   <LeadScorePopover lead={lead} score={getLeadHeatScore(lead)} allLeads={leads}>
                      <span className="text-xs text-muted-foreground ml-1.5 border-b border-dotted border-muted-foreground/30 cursor-pointer">
-                       Score {lead.engagementScore || 0}
+                       Score {getLeadHeatScore(lead)}
                      </span>
                    </LeadScorePopover>
                    <span className="text-xs text-muted-foreground ml-1">
@@ -1587,7 +1619,7 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
       if (!l.lastTouchedAt) return true;
       return new Date(l.lastTouchedAt) < eightHoursAgo;
     });
-    const staleTop = [...quietLeads].sort((a, b) => (b.engagementScore || 0) - (a.engagementScore || 0))[0] || null;
+    const staleTop = [...quietLeads].sort((a, b) => getLeadHeatScore(b) - getLeadHeatScore(a))[0] || null;
 
     return (
       <div className="rounded-xl border-l-[3px] border-l-warning border border-border bg-card p-4 space-y-3">
@@ -1595,7 +1627,7 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
           <>
             <h2 className="text-sm font-bold"><button onClick={() => onOpenLead(staleTop)} className="text-primary hover:underline cursor-pointer">{staleTop.name}</button> hasn't heard from you</h2>
             <p className="text-xs text-muted-foreground">
-              Score {staleTop.engagementScore || 0} · Don't let that window close
+              Score {getLeadHeatScore(staleTop)} · Don't let that window close
             </p>
             <div className="flex gap-2">
               <Button size="sm" className="h-9 text-sm rounded-xl" onClick={() => onLeadAction(staleTop, 'call')}>
@@ -1618,7 +1650,7 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
 
   if (mode === 'evening') {
     const activeLeads = leads.filter(l => !l.snoozeUntil || new Date(l.snoozeUntil) <= now);
-    const hottest = [...activeLeads].sort((a, b) => (b.engagementScore || 0) - (a.engagementScore || 0))[0];
+    const hottest = [...activeLeads].sort((a, b) => getLeadHeatScore(b) - getLeadHeatScore(a))[0];
     const leastRecent = [...activeLeads].sort((a, b) => {
       const aT = a.lastTouchedAt ? new Date(a.lastTouchedAt).getTime() : 0;
       const bT = b.lastTouchedAt ? new Date(b.lastTouchedAt).getTime() : 0;
