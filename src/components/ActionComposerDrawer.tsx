@@ -494,8 +494,10 @@ export function ActionComposerDrawer({
   const handleCallOutcome = useCallback((outcome: typeof CALL_OUTCOMES[number]) => {
     if (!context) return;
     onLogTouch?.(context.entityType, context.entityId, context.entityName, outcome.touchType, outcome.note);
+    logActivityToLocalStorage(context.entityId, outcome.id);
     setCallOutcomeLogged(true);
     setShowPostAction(true);
+    toast({ title: `Call logged — ${outcome.note}`, duration: 2000 });
   }, [context, onLogTouch]);
 
   const handleCreateTask = useCallback(() => {
