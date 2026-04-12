@@ -142,6 +142,7 @@ const LEGACY_SEED_NAMES = [
   'David Kim',
   'James Thornton',
   'Amanda Foster',
+  'Chantal Rowat',
 ].map(name => name.toLowerCase());
 
 function containsLegacySeedName(value: unknown): boolean {
@@ -161,14 +162,11 @@ function containsLegacySeedName(value: unknown): boolean {
   return false;
 }
 
+// Nuclear cleanup — runs on EVERY startup, not just once
 function cleanupLegacyLocalLeadData(): boolean {
   if (typeof window === 'undefined') return false;
 
   try {
-    if (localStorage.getItem('dealPilot_seeded_v2_cleaned') === 'true') {
-      return false;
-    }
-
     const keysToRemove: string[] = [];
 
     for (let i = 0; i < localStorage.length; i += 1) {
@@ -180,7 +178,8 @@ function cleanupLegacyLocalLeadData(): boolean {
         normalizedKey === 'leads' ||
         normalizedKey === 'pipeline' ||
         normalizedKey.includes('lead') ||
-        normalizedKey.includes('pipeline');
+        normalizedKey.includes('pipeline') ||
+        normalizedKey.includes('dealpilot');
 
       if (!looksLikeLeadStorage) continue;
 
@@ -200,7 +199,6 @@ function cleanupLegacyLocalLeadData(): boolean {
     }
 
     keysToRemove.forEach(key => localStorage.removeItem(key));
-    localStorage.setItem('dealPilot_seeded_v2_cleaned', 'true');
     return keysToRemove.length > 0;
   } catch {
     return false;
