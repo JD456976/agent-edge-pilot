@@ -1,8 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Sun, RefreshCw, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { cn } from '@/lib/utils';
 import type { Lead } from '@/types';
 
 interface Props {
@@ -30,14 +29,14 @@ export function HomeMorningBrief({ agentName, leads, appointmentsToday, streak }
   const [brief, setBrief] = useState<string | null>(cached?.text || null);
   const [loading, setLoading] = useState(false);
 
+  const hour = new Date().getHours();
+  const isMorning = hour >= 6 && hour < 12;
 
-  if (hour < 6 || hour >= 12) return null;
-
-  const hotLeads = leads.filter(l => {
+  const hotCount = useMemo(() => leads.filter(l => {
     let score = l.engagementScore || 0;
     if (l.leadTemperature === 'hot') score = Math.max(score, 75);
     return score >= 75;
-  });
+  }).length, [leads]);
 
   const generate = useCallback(async () => {
     setLoading(true);
@@ -47,7 +46,7 @@ export function HomeMorningBrief({ agentName, leads, appointmentsToday, streak }
         body: {
           agent_name: agentName,
           leads_summary: leads.slice(0, 5).map(l => `${l.name} — score ${l.engagementScore || 0} — ${l.source || 'Direct'}`).join('\n'),
-          pipeline_value: `${leads.length} active leads, ${hotLeads.length} hot, ${appointmentsToday} appointments today, ${streak}-day streak. Today is ${dayOfWeek}.`,
+          pipeline_value: `${leads.length} active leads, ${hotCount} hot, ${appointmentsToday} appointments today, ${streak}-day streak. Today is ${dayOfWeek}.`,
         },
       });
       if (error) throw error;
@@ -60,12 +59,14 @@ export function HomeMorningBrief({ agentName, leads, appointmentsToday, streak }
     } finally {
       setLoading(false);
     }
-  }, [agentName, leads, hotLeads.length, appointmentsToday, streak]);
+  }, [agentName, leads, hotCount, appointmentsToday, streak]);
 
   const handleExpand = useCallback(() => {
     setExpanded(true);
     if (!brief) generate();
   }, [brief, generate]);
+
+  if (!isMorning) return null;
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(230 60% 20%), hsl(250 50% 25%))' }}>
@@ -75,14 +76,13 @@ export function HomeMorningBrief({ agentName, leads, appointmentsToday, streak }
           className="w-full flex items-center gap-2.5 p-3.5 text-left hover:bg-white/5 transition-colors"
         >
           <Sun className="h-4 w-4 text-amber-400 shrink-0" />
-          <span className="text-sm font-medium text-white/90 flex-1">Morning Brief — tap to generate</span>
+          <span className="text-sm font-medium text-white/90 flex-1">☀️ Morning Brief — tap to generate</span>
           <ChevronDown className="h-3.5 w-3.5 text-white/40" />
         </button>
       ) : (
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sun className="h-4 w-4 text-amber-400" />
               <span className="text-sm font-semibold text-white/90">☀️ Morning Brief</span>
             </div>
             <button onClick={() => setExpanded(false)} className="text-white/40 hover:text-white/70 transition-colors">
