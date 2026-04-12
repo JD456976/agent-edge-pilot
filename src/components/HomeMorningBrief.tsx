@@ -25,14 +25,12 @@ function getCached(): { text: string; date: string } | null {
 }
 
 export function HomeMorningBrief({ agentName, leads, appointmentsToday, streak }: Props) {
-  const hour = new Date().getHours();
-  if (hour < 6 || hour >= 12) return null;
-
   const cached = getCached();
   const [expanded, setExpanded] = useState(false);
   const [brief, setBrief] = useState<string | null>(cached?.text || null);
   const [loading, setLoading] = useState(false);
 
+  const hour = new Date().getHours();
   const hotLeads = leads.filter(l => {
     let score = l.engagementScore || 0;
     if (l.leadTemperature === 'hot') score = Math.max(score, 75);
