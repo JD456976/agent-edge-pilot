@@ -62,6 +62,13 @@ function formatCurrency(n: number) {
   return n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
 }
 
+/** Parse "Phone: xxx" or "Email: xxx" from notes string */
+function parseNotes(notes: string | undefined | null, key: 'Phone' | 'Email'): string | null {
+  if (!notes) return null;
+  const match = notes.match(new RegExp(`${key}:\\s*([^\\n,]+)`));
+  return match?.[1]?.trim() || null;
+}
+
 const CONFIDENCE_STYLE: Record<ConfidenceLevel, string> = {
   HIGH: 'bg-opportunity/10 text-opportunity border-opportunity/20',
   MEDIUM: 'bg-warning/10 text-warning border-warning/20',
