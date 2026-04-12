@@ -22,7 +22,9 @@ export function WeeklyPerformanceDigest({ userId }: WeeklyDigestProps) {
   const [appointmentsThisWeek, setAppointmentsThisWeek] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const isSunday = new Date().getDay() === 0;
+  // Force Sunday mode for April 12-13 2026 (demo window) or any real Sunday
+  const today = new Date();
+  const isSunday = today.getDay() === 0 || (today.getMonth() === 3 && (today.getDate() === 12 || today.getDate() === 13) && today.getFullYear() === 2026);
   const week = useMemo(() => getWeekRange(), []);
   const streak = useMemo(() => {
     try {
@@ -70,60 +72,99 @@ export function WeeklyPerformanceDigest({ userId }: WeeklyDigestProps) {
 
   const verdict = useMemo(() => {
     if (!isSunday) return null;
-    if (contactsThisWeek >= 15) return { text: 'Strong week 💪', color: 'text-opportunity' };
-    if (contactsThisWeek >= 8) return { text: 'Good progress 👍', color: 'text-primary' };
-    return { text: 'Pick it up next week 📈', color: 'text-warning' };
+    if (contactsThisWeek >= 15) return { text: 'Strong week 💪 — keep the momentum', color: 'text-opportunity' };
+    if (contactsThisWeek >= 8) return { text: 'Good progress 👍 — push harder next week', color: 'text-primary' };
+    return { text: 'Time to turn it up 📈 — set a goal for Monday', color: 'text-warning' };
   }, [contactsThisWeek, isSunday]);
 
   if (loading) return null;
 
   return (
     <div className={cn(
-      'rounded-xl border bg-card p-4 space-y-2',
-      isSunday ? 'border-[hsl(45,90%,55%)] shadow-[0_0_12px_-4px_hsl(45,90%,55%,0.3)]' : 'border-[hsl(45,80%,55%,0.4)]'
+      'rounded-xl border bg-card space-y-2',
+      isSunday
+        ? 'border-t-[3px] border-t-[hsl(45,90%,55%)] border-[hsl(45,90%,55%)] shadow-[0_0_16px_-4px_hsl(45,90%,55%,0.35)] p-5'
+        : 'border-[hsl(45,80%,55%,0.4)] p-4'
     )}>
-      {isSunday && (
-        <div className="space-y-1">
-          <h3 className="text-sm font-bold text-foreground">Week in Review — {week.label}</h3>
+      {isSunday ? (
+        <div className="space-y-3">
+          <h3 className="text-base font-bold text-foreground">📊 Week in Review — {week.label}</h3>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">📞</span>
+              <div>
+                <p className="text-xs text-muted-foreground">Contacts</p>
+                <p className="text-lg font-bold text-foreground">{contactsThisWeek}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">📅</span>
+              <div>
+                <p className="text-xs text-muted-foreground">Appointments</p>
+                <p className="text-lg font-bold text-foreground">{appointmentsThisWeek}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🔥</span>
+              <div>
+                <p className="text-xs text-muted-foreground">Streak</p>
+                <p className="text-lg font-bold text-foreground">{streak}d</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🏆</span>
+              <div>
+                <p className="text-xs text-muted-foreground">Goal</p>
+                <p className="text-lg font-bold text-foreground">{contactsThisWeek} / {weekGoal}</p>
+              </div>
+            </div>
+          </div>
+          {/* Goal progress bar */}
+          <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn('h-full rounded-full transition-all duration-500', goalPct >= 100 ? 'bg-opportunity' : 'bg-primary')}
+              style={{ width: `${goalPct}%` }}
+            />
+          </div>
           {verdict && (
-            <p className={cn('text-sm font-semibold', verdict.color)}>{verdict.text}</p>
+            <p className={cn('text-sm font-semibold pt-1', verdict.color)}>{verdict.text}</p>
           )}
         </div>
+      ) : (
+        <>
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+            <span>📊</span> This Week
+          </h3>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+            <div className="flex items-center gap-1.5">
+              <span>📞</span>
+              <span className="text-muted-foreground">Contacts</span>
+              <span className="font-semibold text-foreground ml-auto">{contactsThisWeek}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span>📅</span>
+              <span className="text-muted-foreground">Appointments</span>
+              <span className="font-semibold text-foreground ml-auto">{appointmentsThisWeek}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span>🔥</span>
+              <span className="text-muted-foreground">Streak</span>
+              <span className="font-semibold text-foreground ml-auto">{streak}d</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span>🏆</span>
+              <span className="text-muted-foreground">Goal</span>
+              <span className="font-semibold text-foreground ml-auto">{contactsThisWeek} / {weekGoal}</span>
+            </div>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn('h-full rounded-full transition-all duration-500', goalPct >= 100 ? 'bg-opportunity' : 'bg-primary')}
+              style={{ width: `${goalPct}%` }}
+            />
+          </div>
+        </>
       )}
-      {!isSunday && (
-        <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-          <span>📊</span> This Week
-        </h3>
-      )}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-        <div className="flex items-center gap-1.5">
-          <span>📞</span>
-          <span className="text-muted-foreground">Contacts</span>
-          <span className="font-semibold text-foreground ml-auto">{contactsThisWeek}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span>📅</span>
-          <span className="text-muted-foreground">Appointments</span>
-          <span className="font-semibold text-foreground ml-auto">{appointmentsThisWeek}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span>🔥</span>
-          <span className="text-muted-foreground">Streak</span>
-          <span className="font-semibold text-foreground ml-auto">{streak}d</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span>🏆</span>
-          <span className="text-muted-foreground">Goal</span>
-          <span className="font-semibold text-foreground ml-auto">{contactsThisWeek} / {weekGoal}</span>
-        </div>
-      </div>
-      {/* Goal progress bar */}
-      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-        <div
-          className={cn('h-full rounded-full transition-all duration-500', goalPct >= 100 ? 'bg-opportunity' : 'bg-primary')}
-          style={{ width: `${goalPct}%` }}
-        />
-      </div>
     </div>
   );
 }
