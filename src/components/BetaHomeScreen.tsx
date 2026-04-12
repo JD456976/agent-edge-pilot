@@ -842,9 +842,10 @@ function PipelineValueWidget({ leads }: { leads: Lead[] }) {
     return `$${Math.round(n)}`;
   };
 
-  // Always show widget, but with dashes when empty
+  const isEmpty = leads.length === 0;
+
   return (
-    <div className="rounded-lg border-l-[3px] border-l-primary bg-card border border-border p-3">
+    <div className="rounded-lg border-l-[3px] border-l-primary bg-card border border-border p-3 space-y-2">
       <div className="flex items-stretch gap-3">
         <div className="flex-1 min-w-0 flex flex-col justify-center">
           <p className="text-lg font-bold text-foreground leading-tight">
@@ -855,8 +856,8 @@ function PipelineValueWidget({ leads }: { leads: Lead[] }) {
         <div className="w-px bg-border self-stretch my-0.5" />
         <div className="flex-1 min-w-0 flex flex-col justify-center">
           <div className="flex items-center gap-1.5">
-            <p className="text-lg font-bold text-primary leading-tight">{hotCount > 0 ? hotCount : '—'}</p>
-            {hotCount > 3 && <TrendingUp className="h-3.5 w-3.5 text-primary" />}
+            <p className="text-lg font-bold text-primary leading-tight">{isEmpty ? '0' : (hotCount > 0 ? hotCount : '—')}</p>
+            {!isEmpty && hotCount > 3 && <TrendingUp className="h-3.5 w-3.5 text-primary" />}
           </div>
           <p className="text-[11px] text-muted-foreground mt-0.5">Needs action now</p>
         </div>
@@ -868,6 +869,9 @@ function PipelineValueWidget({ leads }: { leads: Lead[] }) {
           <p className="text-[11px] text-muted-foreground mt-0.5">At 2.5% avg commission</p>
         </div>
       </div>
+      {isEmpty && (
+        <p className="text-[11px] text-muted-foreground text-center">Sync with FUB to see your pipeline</p>
+      )}
     </div>
   );
 }
@@ -1546,10 +1550,10 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
                    </span>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  <button onClick={() => onLeadAction(lead, 'call')} className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label={`Call ${lead.name}`}>
+                  <button onClick={(e) => { e.stopPropagation(); onLeadAction(lead, 'call'); }} className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label={`Call ${lead.name}`}>
                     <Phone className="h-3.5 w-3.5" />
                   </button>
-                  <button onClick={() => onLeadAction(lead, 'text')} className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label={`Text ${lead.name}`}>
+                  <button onClick={(e) => { e.stopPropagation(); onLeadAction(lead, 'text'); }} className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label={`Text ${lead.name}`}>
                     <MessageSquare className="h-3.5 w-3.5" />
                   </button>
                 </div>
