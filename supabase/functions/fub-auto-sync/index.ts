@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
 
     // Load existing local data
     const [{ data: existingLeads }, { data: existingDeals }, { data: existingTasks }] = await Promise.all([
-      svc.from("leads").select("id, name, source, imported_from, last_modified_at, lead_temperature, notes, removed_from_fub").eq("assigned_to_user_id", userId),
+      svc.from("leads").select("id, name, source, imported_from, last_modified_at, lead_temperature, notes, removed_from_fub, phone_primary, phone_mobile, email_primary").eq("assigned_to_user_id", userId),
       svc.from("deals").select("id, title, price, stage, close_date, imported_from, last_modified_at").eq("assigned_to_user_id", userId),
       svc.from("tasks").select("id, title, completed_at, due_at, imported_from, type").eq("assigned_to_user_id", userId),
     ]);
@@ -121,6 +121,23 @@ Deno.serve(async (req) => {
       const existing = leadsByFubId.get(fubId);
 
       if (existing) {
+        // Always refresh contact fields from FUB (they may have been missing before)
+        const contactUpdate: Record<string, string | null> = {};
+        const fubPhone = p.phones?.[0]?.value || null;
+        const fubMobile = p.phones?.find((ph: any) => ph.type === 'mobile')?.value || null;
+        const fubEmail = p.emails?.[0]?.value || null;
+        if (fubPhone && !existing.phone_primary) contactUpdate.phone_primary = fubPhone;
+        if (fubMobile && !existing.phone_mobile) contactUpdate.phone_mobile = fubMobile;
+        if (fubEmail && !existing.email_primary) contactUpdate.email_primary = fubEmail;
+        // Always overwrite if FUB has data (FUB is source of truth for contact info)
+        if (fubPhone) contactUpdate.phone_primary = fubPhone;
+        if (fubMobile) contactUpdate.phone_mobile = fubMobile;
+        if (fubEmail) contactUpdate.email_primary = fubEmail;
+
+        if (Object.keys(contactUpdate).length > 0) {
+          await svc.from("leads").update(contactUpdate).eq("id", existing.id);
+        }
+
         // Exists in both — compare key fields
         const diffs: any[] = [];
         const fubSource = p.source || "";
