@@ -29,6 +29,8 @@ import { WeeklyPerformanceDigest } from '@/components/WeeklyPerformanceDigest';
 import { UnderContractBadge, UnderContractSheet, isUnderContract } from '@/components/UnderContractAction';
 import { getDailyBriefing } from '@/lib/dailyIntelligence';
 import { useDemo } from '@/contexts/DemoContext';
+import { HomeMorningBrief } from '@/components/HomeMorningBrief';
+import { LeadScorePopover } from '@/components/LeadScorePopover';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
