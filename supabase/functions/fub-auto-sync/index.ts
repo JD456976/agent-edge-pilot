@@ -121,6 +121,23 @@ Deno.serve(async (req) => {
       const existing = leadsByFubId.get(fubId);
 
       if (existing) {
+        // Always refresh contact fields from FUB (they may have been missing before)
+        const contactUpdate: Record<string, string | null> = {};
+        const fubPhone = p.phones?.[0]?.value || null;
+        const fubMobile = p.phones?.find((ph: any) => ph.type === 'mobile')?.value || null;
+        const fubEmail = p.emails?.[0]?.value || null;
+        if (fubPhone && !existing.phone_primary) contactUpdate.phone_primary = fubPhone;
+        if (fubMobile && !existing.phone_mobile) contactUpdate.phone_mobile = fubMobile;
+        if (fubEmail && !existing.email_primary) contactUpdate.email_primary = fubEmail;
+        // Always overwrite if FUB has data (FUB is source of truth for contact info)
+        if (fubPhone) contactUpdate.phone_primary = fubPhone;
+        if (fubMobile) contactUpdate.phone_mobile = fubMobile;
+        if (fubEmail) contactUpdate.email_primary = fubEmail;
+
+        if (Object.keys(contactUpdate).length > 0) {
+          await svc.from("leads").update(contactUpdate).eq("id", existing.id);
+        }
+
         // Exists in both — compare key fields
         const diffs: any[] = [];
         const fubSource = p.source || "";
