@@ -30,7 +30,9 @@ export function HomeMorningBrief({ agentName, leads, appointmentsToday, streak }
   const [brief, setBrief] = useState<string | null>(cached?.text || null);
   const [loading, setLoading] = useState(false);
 
-  const hour = new Date().getHours();
+
+  if (hour < 6 || hour >= 12) return null;
+
   const hotLeads = leads.filter(l => {
     let score = l.engagementScore || 0;
     if (l.leadTemperature === 'hot') score = Math.max(score, 75);
