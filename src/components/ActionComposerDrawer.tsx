@@ -79,11 +79,20 @@ const CONFIDENCE_STYLE: Record<ConfidenceLevel, string> = {
 };
 
 const CALL_OUTCOMES = [
-  { id: 'no_answer', label: 'No Answer', touchType: 'call', note: 'Called — no answer' },
-  { id: 'spoke_briefly', label: 'Spoke Briefly', touchType: 'call', note: 'Had a brief conversation' },
-  { id: 'scheduled_meeting', label: 'Scheduled', touchType: 'call', note: 'Scheduled a meeting' },
-  { id: 'needs_followup', label: 'Follow-Up', touchType: 'call', note: 'Needs follow-up' },
+  { id: 'spoke_briefly', label: '✅ Spoke Briefly', touchType: 'call', note: 'Spoke briefly' },
+  { id: 'scheduled_meeting', label: '📅 Scheduled', touchType: 'call', note: 'Scheduled a meeting' },
+  { id: 'no_answer', label: '📵 No Answer', touchType: 'call', note: 'Called — no answer' },
+  { id: 'removed', label: '🔴 Removed', touchType: 'call', note: 'Lead removed / not interested' },
 ] as const;
+
+function logActivityToLocalStorage(leadId: string, outcome: string) {
+  try {
+    const key = 'dealPilot_activities';
+    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+    existing.push({ leadId, type: 'call', outcome, timestamp: new Date().toISOString() });
+    localStorage.setItem(key, JSON.stringify(existing));
+  } catch { /* ignore */ }
+}
 
 type EmailTone = 'direct' | 'friendly' | 'professional';
 
