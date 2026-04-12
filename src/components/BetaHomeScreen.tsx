@@ -1841,8 +1841,8 @@ export default function BetaHomeScreen() {
       setSnoozeLeadId(lead.id);
       return;
     }
-    const phone = (lead as any).phone as string | undefined;
-    const email = (lead as any).email as string | undefined;
+    const phone = lead.phonePrimary || lead.phoneMobile || ((lead.notes || '').match(/Phone:\s*([^\n,]+)/i)?.[1]?.trim()) || undefined;
+    const email = lead.emailPrimary || lead.emailSecondary || ((lead.notes || '').match(/Email:\s*([^\n,]+)/i)?.[1]?.trim()) || undefined;
     let acted = false;
     if (type === 'call') {
       if (phone) { window.location.href = `tel:${phone}`; acted = true; }
@@ -2122,8 +2122,8 @@ export default function BetaHomeScreen() {
       {/* Lead Quick Action Bottom Sheet */}
       {quickActionLead && (() => {
         const { lead, score } = quickActionLead;
-        const phone = (lead as any).phone as string | undefined;
-        const email = (lead as any).email as string | undefined;
+        const phone = lead.phonePrimary || lead.phoneMobile || ((lead.notes || '').match(/Phone:\s*([^\n,]+)/i)?.[1]?.trim()) || undefined;
+        const email = lead.emailPrimary || lead.emailSecondary || ((lead.notes || '').match(/Email:\s*([^\n,]+)/i)?.[1]?.trim()) || undefined;
         const daysSince = lead.lastTouchedAt
           ? Math.floor((Date.now() - new Date(lead.lastTouchedAt).getTime()) / 86400000)
           : null;
