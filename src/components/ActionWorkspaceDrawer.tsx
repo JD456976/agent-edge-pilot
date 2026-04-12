@@ -288,6 +288,12 @@ export function ActionWorkspaceDrawer({
     }
   }, [entity, open, context, loadNotes]);
 
+/** Parse "Phone: xxx" or "Email: xxx" from notes string */
+function parseNotes(notes: string | undefined | null, key: 'Phone' | 'Email'): string | null {
+  if (!notes) return null;
+  const match = notes.match(new RegExp(`${key}:\\s*([^\\n,]+)`));
+  return match?.[1]?.trim() || null;
+}
 
   const draft = useMemo((): CommunicationDraft | null => {
     if (!context) return null;
