@@ -1535,10 +1535,15 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
               <li key={lead.id} className="flex items-start gap-2 text-sm cursor-pointer hover:bg-accent/30 rounded-lg p-1 -m-1 transition-colors" onClick={() => onOpenLead(lead)}>
                 <span className="text-xs font-bold text-primary mt-0.5 shrink-0">{i + 1}.</span>
                 <div className="min-w-0 flex-1">
-                  <span className="font-medium text-primary hover:underline cursor-pointer text-left">{lead.name}</span>
-                  <span className="text-xs text-muted-foreground ml-1.5">
-                    Score {lead.engagementScore || 0} · {lead.source || 'Direct'} · {daysSince !== null ? `${daysSince}d ago` : 'never contacted'}
-                  </span>
+                   <span className="font-medium text-primary hover:underline cursor-pointer text-left">{lead.name}</span>
+                   <LeadScorePopover lead={lead} score={lead.engagementScore || 0} allLeads={leads}>
+                     <span className="text-xs text-muted-foreground ml-1.5 border-b border-dotted border-muted-foreground/30 cursor-pointer">
+                       Score {lead.engagementScore || 0}
+                     </span>
+                   </LeadScorePopover>
+                   <span className="text-xs text-muted-foreground ml-1">
+                     · {lead.source || 'Direct'} · {daysSince !== null ? `${daysSince}d ago` : 'never contacted'}
+                   </span>
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => onLeadAction(lead, 'call')} className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label={`Call ${lead.name}`}>
