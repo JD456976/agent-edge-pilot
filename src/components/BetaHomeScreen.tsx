@@ -1410,7 +1410,7 @@ function GhostingRiskStrip({ leads, onLeadAction, onOpenLead }: {
 
   const atRisk = useMemo(() => {
     return leads
-      .filter(l => l.leadTemperature === 'hot' || l.leadTemperature === 'warm' || (l.engagementScore || 0) >= 50)
+      .filter(l => l.leadTemperature === 'hot' || l.leadTemperature === 'warm' || getLeadHeatScore(l) >= 50)
       .map(l => ({ lead: l, ...computeGhostScore(l) }))
       .filter(r => r.score >= 35)
       .sort((a, b) => b.score - a.score)
@@ -1572,9 +1572,9 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
                 <span className="text-xs font-bold text-primary mt-0.5 shrink-0">{i + 1}.</span>
                 <div className="min-w-0 flex-1">
                    <span className="font-medium text-primary hover:underline cursor-pointer text-left">{lead.name}</span>
-                   <LeadScorePopover lead={lead} score={lead.engagementScore || 0} allLeads={leads}>
+                   <LeadScorePopover lead={lead} score={getLeadHeatScore(lead)} allLeads={leads}>
                      <span className="text-xs text-muted-foreground ml-1.5 border-b border-dotted border-muted-foreground/30 cursor-pointer">
-                       Score {lead.engagementScore || 0}
+                       Score {getLeadHeatScore(lead)}
                      </span>
                    </LeadScorePopover>
                    <span className="text-xs text-muted-foreground ml-1">
@@ -1619,7 +1619,7 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
       if (!l.lastTouchedAt) return true;
       return new Date(l.lastTouchedAt) < eightHoursAgo;
     });
-    const staleTop = [...quietLeads].sort((a, b) => (b.engagementScore || 0) - (a.engagementScore || 0))[0] || null;
+    const staleTop = [...quietLeads].sort((a, b) => getLeadHeatScore(b) - getLeadHeatScore(a))[0] || null;
 
     return (
       <div className="rounded-xl border-l-[3px] border-l-warning border border-border bg-card p-4 space-y-3">
@@ -1627,7 +1627,7 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
           <>
             <h2 className="text-sm font-bold"><button onClick={() => onOpenLead(staleTop)} className="text-primary hover:underline cursor-pointer">{staleTop.name}</button> hasn't heard from you</h2>
             <p className="text-xs text-muted-foreground">
-              Score {staleTop.engagementScore || 0} · Don't let that window close
+              Score {getLeadHeatScore(staleTop)} · Don't let that window close
             </p>
             <div className="flex gap-2">
               <Button size="sm" className="h-9 text-sm rounded-xl" onClick={() => onLeadAction(staleTop, 'call')}>
@@ -1650,7 +1650,7 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
 
   if (mode === 'evening') {
     const activeLeads = leads.filter(l => !l.snoozeUntil || new Date(l.snoozeUntil) <= now);
-    const hottest = [...activeLeads].sort((a, b) => (b.engagementScore || 0) - (a.engagementScore || 0))[0];
+    const hottest = [...activeLeads].sort((a, b) => getLeadHeatScore(b) - getLeadHeatScore(a))[0];
     const leastRecent = [...activeLeads].sort((a, b) => {
       const aT = a.lastTouchedAt ? new Date(a.lastTouchedAt).getTime() : 0;
       const bT = b.lastTouchedAt ? new Date(b.lastTouchedAt).getTime() : 0;
