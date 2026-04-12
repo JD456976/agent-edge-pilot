@@ -1540,7 +1540,7 @@ function DirectiveBriefCard({ mode, leads, ccData, onLeadAction, onOpenLead }: {
   if (mode === 'morning') {
     const top3 = [...leads]
       .filter(l => !l.snoozeUntil || new Date(l.snoozeUntil) <= now)
-      .sort((a, b) => (b.engagementScore || 0) - (a.engagementScore || 0))
+      .sort((a, b) => getLeadHeatScore(b) - getLeadHeatScore(a))
       .slice(0, 3);
 
     const hasHighRisk = top3.some(l => {
