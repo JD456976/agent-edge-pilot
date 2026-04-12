@@ -62,6 +62,13 @@ function formatCurrency(n: number) {
   return n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
 }
 
+/** Parse "Phone: xxx" or "Email: xxx" from notes string */
+function parseNotes(notes: string | undefined | null, key: 'Phone' | 'Email'): string | null {
+  if (!notes) return null;
+  const match = notes.match(new RegExp(`${key}:\\s*([^\\n,]+)`));
+  return match?.[1]?.trim() || null;
+}
+
 const CONFIDENCE_STYLE: Record<ConfidenceLevel, string> = {
   HIGH: 'bg-opportunity/10 text-opportunity border-opportunity/20',
   MEDIUM: 'bg-warning/10 text-warning border-warning/20',
@@ -522,20 +529,26 @@ export function ActionWorkspaceDrawer({
             <div className="flex items-center justify-between mb-2">
               <div className="min-w-0 flex-1">
                 <SheetTitle className="text-base leading-tight">{context.entityName}</SheetTitle>
-                {(fubProfile?.phones?.[0] || fubProfile?.emails?.[0]) && (
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
-                    {fubProfile.phones?.[0] && (
-                      <a href={`tel:${fubProfile.phones[0]}`} className="text-sm text-primary hover:underline flex items-center gap-1">
-                        <Phone className="h-3 w-3" />{fubProfile.phones[0]}
-                      </a>
-                    )}
-                    {fubProfile.emails?.[0] && (
-                      <a href={`mailto:${fubProfile.emails[0]}`} className="text-sm text-primary hover:underline flex items-center gap-1">
-                        <Mail className="h-3 w-3" />{fubProfile.emails[0]}
-                      </a>
-                    )}
-                  </div>
-                )}
+                {(() => {
+                  const lead = entityType === 'lead' ? entity as Lead : null;
+                  const phoneNum = fubProfile?.phones?.[0] || lead?.phonePrimary || lead?.phoneMobile || parseNotes(lead?.notes, 'Phone');
+                  const emailAddr = fubProfile?.emails?.[0] || lead?.emailPrimary || parseNotes(lead?.notes, 'Email');
+                  if (!phoneNum && !emailAddr) return null;
+                  return (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
+                      {phoneNum && (
+                        <a href={`tel:${phoneNum}`} className="text-sm text-primary hover:underline flex items-center gap-1">
+                          <Phone className="h-3 w-3" />{phoneNum}
+                        </a>
+                      )}
+                      {emailAddr && (
+                        <a href={`mailto:${emailAddr}`} className="text-sm text-primary hover:underline flex items-center gap-1">
+                          <Mail className="h-3 w-3" />{emailAddr}
+                        </a>
+                      )}
+                    </div>
+                  );
+                })()}
                 <SheetDescription className="text-xs mt-0.5">{entityContextLabel}</SheetDescription>
               </div>
               <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">

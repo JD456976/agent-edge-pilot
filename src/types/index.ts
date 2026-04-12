@@ -42,6 +42,10 @@ export interface Lead {
   lastTouchedAt?: string;
   snoozeUntil?: string | null;
   manualPreferences?: Record<string, unknown> | null;
+  phonePrimary?: string | null;
+  phoneMobile?: string | null;
+  emailPrimary?: string | null;
+  emailSecondary?: string | null;
 }
 
 export interface Deal {

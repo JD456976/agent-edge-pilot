@@ -175,6 +175,10 @@ Deno.serve(async (req) => {
           last_contact_at: p.lastActivity || p.created || new Date().toISOString(),
           engagement_score: 0,
           notes: p.emails?.[0]?.value ? `Email: ${p.emails[0].value}` : "",
+          phone_primary: p.phones?.[0]?.value || null,
+          phone_mobile: p.phones?.find((ph: any) => ph.type === 'mobile')?.value || null,
+          email_primary: p.emails?.[0]?.value || null,
+          email_secondary: p.emails?.[1]?.value || null,
         });
         if (!insertErr) autoImported.leads++;
       }

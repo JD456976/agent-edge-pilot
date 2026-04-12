@@ -1198,6 +1198,8 @@ export type Database = {
           assigned_to_user_id: string | null
           converted_at: string | null
           created_at: string
+          email_primary: string | null
+          email_secondary: string | null
           engagement_score: number
           id: string
           import_run_id: string | null
@@ -1217,6 +1219,8 @@ export type Database = {
           notes: string | null
           organization_id: string | null
           outcome_note: string | null
+          phone_mobile: string | null
+          phone_primary: string | null
           removed_from_fub: boolean
           removed_from_fub_at: string | null
           seed_batch_id: string | null
@@ -1229,6 +1233,8 @@ export type Database = {
           assigned_to_user_id?: string | null
           converted_at?: string | null
           created_at?: string
+          email_primary?: string | null
+          email_secondary?: string | null
           engagement_score?: number
           id?: string
           import_run_id?: string | null
@@ -1248,6 +1254,8 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           outcome_note?: string | null
+          phone_mobile?: string | null
+          phone_primary?: string | null
           removed_from_fub?: boolean
           removed_from_fub_at?: string | null
           seed_batch_id?: string | null
@@ -1260,6 +1268,8 @@ export type Database = {
           assigned_to_user_id?: string | null
           converted_at?: string | null
           created_at?: string
+          email_primary?: string | null
+          email_secondary?: string | null
           engagement_score?: number
           id?: string
           import_run_id?: string | null
@@ -1279,6 +1289,8 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           outcome_note?: string | null
+          phone_mobile?: string | null
+          phone_primary?: string | null
           removed_from_fub?: boolean
           removed_from_fub_at?: string | null
           seed_batch_id?: string | null

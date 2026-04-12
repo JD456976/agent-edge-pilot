@@ -39,6 +39,10 @@ function mapLead(row: any): Lead {
     lastTouchedAt: row.last_touched_at || undefined,
     snoozeUntil: row.snooze_until || null,
     manualPreferences: row.manual_preferences || null,
+    phonePrimary: row.phone_primary || null,
+    phoneMobile: row.phone_mobile || null,
+    emailPrimary: row.email_primary || null,
+    emailSecondary: row.email_secondary || null,
   };
 }
 
@@ -224,7 +228,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const [leadsRes, dealsRes, tasksRes, alertsRes, participantsRes, profilesRes] = await Promise.all([
-        supabase.from('leads').select('id, name, source, last_contact_at, engagement_score, notes, status_tags, assigned_to_user_id, created_at, last_activity_at, lead_temperature, imported_from, import_run_id, imported_at, last_touched_at, snooze_until, manual_preferences').eq('removed_from_fub', false),
+        supabase.from('leads').select('id, name, source, last_contact_at, engagement_score, notes, status_tags, assigned_to_user_id, created_at, last_activity_at, lead_temperature, imported_from, import_run_id, imported_at, last_touched_at, snooze_until, manual_preferences, phone_primary, phone_mobile, email_primary, email_secondary').eq('removed_from_fub', false),
         supabase.from('deals').select('id, title, stage, price, commission_amount, commission_rate, referral_fee_percent, close_date, risk_level, assigned_to_user_id, created_at, last_touched_at, risk_flags, side, milestone_inspection, milestone_financing, milestone_appraisal, organization_id, imported_from, import_run_id, imported_at'),
         supabase.from('tasks').select('id, title, type, due_at, related_lead_id, related_deal_id, completed_at, assigned_to_user_id, imported_from, import_run_id, imported_at'),
         supabase.from('alerts').select('id, type, title, detail, expires_at, related_lead_id, related_deal_id'),
