@@ -127,16 +127,48 @@ function HeatBadge({ score, lead, allLeads, interactive }: { score: number; lead
 }
 
 function getLeadHeatScore(lead: Lead): number {
-  let score = lead.engagementScore || 0;
-  if (lead.leadTemperature === 'hot') score = Math.max(score, 75);
-  else if (lead.leadTemperature === 'warm') score = Math.max(score, 50);
-  if (lead.lastTouchedAt) {
-    const daysSince = (Date.now() - new Date(lead.lastTouchedAt).getTime()) / 86400000;
-    if (daysSince < 1) score += 15;
-    else if (daysSince < 3) score += 8;
+  let score = 0;
+
+  // 1. Temperature base (most important signal)
+  if (lead.leadTemperature === 'hot') score += 40;
+  else if (lead.leadTemperature === 'warm') score += 25;
+  else score += 10; // cold still gets a base
+
+  // 2. Source quality signal
+  const src = (lead.source || '').toLowerCase();
+  if (src.includes('zillow preferred')) score += 15;
+  else if (src.includes('zillow')) score += 10;
+  else if (src.includes('sphere') || src.includes('referral')) score += 12;
+  else if (src.includes('realtor') || src.includes('redfin')) score += 8;
+  else if (src) score += 5;
+
+  // 3. Recency of contact — more recent = higher score
+  const contactDate = lead.lastTouchedAt || lead.lastContactAt;
+  if (contactDate) {
+    const daysSince = (Date.now() - new Date(contactDate).getTime()) / 86400000;
+    if (daysSince < 1) score += 20;
+    else if (daysSince < 3) score += 15;
+    else if (daysSince < 7) score += 10;
+    else if (daysSince < 14) score += 5;
+    // Older than 14 days = no recency bonus
   }
-  if (lead.statusTags?.some(t => ['pre-approved', 'pre_approved', 'showing', 'appointment set', 'cash_buyer'].includes(t.toLowerCase()))) score += 15;
-  return Math.min(score, 100);
+
+  // 4. High-intent tags
+  const tags = (lead.statusTags || []).map(t => t.toLowerCase());
+  if (tags.some(t => ['pre-approved', 'pre_approved', 'cash_buyer', 'cash buyer'].includes(t))) score += 15;
+  if (tags.some(t => ['showing', 'appointment set', 'appointment_set'].includes(t))) score += 12;
+  if (tags.some(t => ['motivated', 'serious', 'vip', 'market vip'].includes(t))) score += 10;
+  if (tags.some(t => ['buyer', 'seller', 'investor'].includes(t))) score += 5;
+
+  // 5. Has contact info (shows engagement with the lead)
+  if (lead.emailPrimary || lead.phonePrimary) score += 5;
+
+  // 6. Use stored engagement score as additive if non-zero
+  if ((lead.engagementScore || 0) > 0) {
+    score += Math.min(lead.engagementScore, 20);
+  }
+
+  return Math.min(Math.max(score, 0), 100);
 }
 
 function isOutsideTarget(lead: Lead, target: TargetMarket): boolean {
