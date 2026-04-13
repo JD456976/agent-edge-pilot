@@ -158,13 +158,25 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const items = NAV_ITEMS;
 
   const isActive = (item: NavItem) => {
-    if (item.workspace) return activeWorkspace === item.workspace;
+    // Handle imported NAV_ITEMS which use 'home' workspace instead of path
+    if ('workspace' in item && item.workspace) {
+      if (item.workspace === 'home') {
+        return activeWorkspace === null;
+      }
+      return activeWorkspace === item.workspace;
+    }
     return location.pathname === '/' && !activeWorkspace;
   };
 
   const handleNavClick = (item: NavItem) => {
-    if (item.workspace) {
-      openWorkspace(item.workspace);
+    // Handle imported NAV_ITEMS which use 'home' workspace instead of path
+    if ('workspace' in item && item.workspace) {
+      if (item.workspace === 'home') {
+        closeWorkspace();
+        if (location.pathname !== '/') navigate('/');
+      } else {
+        openWorkspace(item.workspace as WorkspaceType);
+      }
     } else {
       closeWorkspace();
       if (location.pathname !== '/') navigate('/');
