@@ -34,16 +34,22 @@ import { NotificationPermissionPrompt } from '@/components/NotificationPermissio
 import { DemoBanner } from '@/components/DemoBanner';
 import { MobileSearchOverlay } from '@/components/MobileSearchOverlay';
 
-import { NAV_ITEMS } from '@/config/navigation';
+import { NAV_ITEMS as NAV_ITEMS_CONFIG } from '@/config/navigation';
 
 // Paywall removed
 
 type NavItem = { label: string; icon: React.ElementType } & (
   | { path: string; workspace?: undefined }
-  | { workspace: WorkspaceType; path?: undefined }
+  | { workspace: WorkspaceType | 'home'; path?: undefined }
 );
 
-// MOBILE_MAIN_TABS uses local definition since config has all workspace-based items
+// FINAL NAV — DO NOT REMOVE OR REORDER ITEMS
+// All 8 pages exist: Home, OpenHouse, CRM/Work, Deals, Sequences, Appointments, Settings, ObjectionCoach
+const NAV_ITEMS: NavItem[] = NAV_ITEMS_CONFIG.map(item => ({
+  ...item,
+  workspace: item.workspace as WorkspaceType | 'home'
+}));
+
 const MOBILE_MAIN_TABS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
   { workspace: 'work', label: 'CRM', icon: RefreshCw },
