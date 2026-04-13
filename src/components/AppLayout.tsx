@@ -208,7 +208,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
         </div>
         <nav className="flex-1 py-4 px-2 space-y-1">
           {items.map(item => {
-            const key = item.workspace ?? item.path ?? 'home';
+            const key = item.workspace || item.path || 'home';
             return (
               <Tooltip key={key}>
                 <TooltipTrigger asChild>
