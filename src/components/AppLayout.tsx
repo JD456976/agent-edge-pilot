@@ -1,5 +1,5 @@
 import { ReactNode, useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import { ChevronDown, Home, MoreHorizontal, Search, Wrench, Mic, GitBranch, ClipboardList, DoorOpen } from 'lucide-react';
+import { ChevronDown, MoreHorizontal, Search, Wrench, Mic, LayoutDashboard } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush, Bell, CalendarDays, PenLine, Shield } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
