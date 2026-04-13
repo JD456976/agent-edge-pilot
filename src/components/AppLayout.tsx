@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import { ChevronDown, MoreHorizontal, Search, Wrench, Mic, LayoutDashboard } from 'lucide-react';
+import { ChevronDown, MoreHorizontal, Search, Wrench, Mic, LayoutDashboard, DoorOpen, ClipboardList, GitBranch, RefreshCw, CalendarDays } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush, Bell, CalendarDays, PenLine, Shield } from 'lucide-react';
+import { Briefcase, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush, Bell, PenLine, Shield } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { NotificationBell } from '@/components/NotificationBell';
