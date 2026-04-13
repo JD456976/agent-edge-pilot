@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import { ChevronDown, Home, MoreHorizontal, Search, Wrench, Mic, GitBranch, ClipboardList, DoorOpen } from 'lucide-react';
+import { ChevronDown, MoreHorizontal, Search, Wrench, Mic, LayoutDashboard, DoorOpen, ClipboardList, GitBranch, RefreshCw, CalendarDays } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, RefreshCw, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush, Bell, CalendarDays, PenLine, Shield } from 'lucide-react';
+import { Briefcase, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush, Bell, PenLine, Shield } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -34,25 +34,21 @@ import { NotificationPermissionPrompt } from '@/components/NotificationPermissio
 import { DemoBanner } from '@/components/DemoBanner';
 import { MobileSearchOverlay } from '@/components/MobileSearchOverlay';
 
+import { NAV_ITEMS as NAV_ITEMS_CONFIG } from '@/config/navigation';
+
 // Paywall removed
 
 type NavItem = { label: string; icon: React.ElementType } & (
   | { path: string; workspace?: undefined }
-  | { workspace: WorkspaceType; path?: undefined }
+  | { workspace: WorkspaceType | 'home'; path?: undefined }
 );
 
 // FINAL NAV — DO NOT REMOVE OR REORDER ITEMS
 // All 8 pages exist: Home, OpenHouse, CRM/Work, Deals, Sequences, Appointments, Settings, ObjectionCoach
-const NAV_ITEMS: NavItem[] = [
-  { path: '/', label: 'Home', icon: LayoutDashboard },
-  { workspace: 'open-house', label: 'Open House', icon: DoorOpen },
-  { workspace: 'work', label: 'CRM', icon: RefreshCw },
-  { workspace: 'deals', label: 'Deals', icon: ClipboardList },
-  { workspace: 'sequences', label: 'Sequences', icon: GitBranch },
-  { workspace: 'appointments', label: 'Appointments', icon: CalendarDays },
-  { workspace: 'settings', label: 'Settings', icon: Settings },
-  { workspace: 'objection-coach', label: 'Objection Coach', icon: Shield },
-];
+const NAV_ITEMS: NavItem[] = NAV_ITEMS_CONFIG.map(item => ({
+  ...item,
+  workspace: item.workspace as WorkspaceType | 'home'
+}));
 
 const MOBILE_MAIN_TABS: NavItem[] = [
   { path: '/', label: 'Home', icon: LayoutDashboard },
@@ -168,13 +164,25 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const items = NAV_ITEMS;
 
   const isActive = (item: NavItem) => {
-    if (item.workspace) return activeWorkspace === item.workspace;
+    // Handle imported NAV_ITEMS which use 'home' workspace instead of path
+    if ('workspace' in item && item.workspace) {
+      if (item.workspace === 'home') {
+        return activeWorkspace === null;
+      }
+      return activeWorkspace === item.workspace;
+    }
     return location.pathname === '/' && !activeWorkspace;
   };
 
   const handleNavClick = (item: NavItem) => {
-    if (item.workspace) {
-      openWorkspace(item.workspace);
+    // Handle imported NAV_ITEMS which use 'home' workspace instead of path
+    if ('workspace' in item && item.workspace) {
+      if (item.workspace === 'home') {
+        closeWorkspace();
+        if (location.pathname !== '/') navigate('/');
+      } else {
+        openWorkspace(item.workspace as WorkspaceType);
+      }
     } else {
       closeWorkspace();
       if (location.pathname !== '/') navigate('/');
@@ -200,7 +208,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
         </div>
         <nav className="flex-1 py-4 px-2 space-y-1">
           {items.map(item => {
-            const key = item.workspace ?? item.path ?? 'home';
+            const key = item.workspace || item.path || 'home';
             return (
               <Tooltip key={key}>
                 <TooltipTrigger asChild>
