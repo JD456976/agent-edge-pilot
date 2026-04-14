@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Sun, RefreshCw, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,11 +11,17 @@ interface Props {
   streak: number;
 }
 
-const CACHE_KEY = 'dealPilot_morningBrief';
+function getTodayKey(): string {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `dealPilot_morningBrief_${yyyy}-${mm}-${dd}`;
+}
 
 function getCached(): { text: string; date: string } | null {
   try {
-    const raw = sessionStorage.getItem(CACHE_KEY);
+    const raw = localStorage.getItem(getTodayKey());
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed.date === new Date().toDateString()) return parsed;
@@ -25,9 +31,9 @@ function getCached(): { text: string; date: string } | null {
 
 export function HomeMorningBrief({ agentName, leads, appointmentsToday, streak }: Props) {
   const cached = getCached();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(() => !cached); // auto-expand if no cache
   const [brief, setBrief] = useState<string | null>(cached?.text || null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !cached); // auto-load if no cache
 
   const hour = new Date().getHours();
   const isMorning = hour >= 6 && hour < 12;
@@ -52,7 +58,7 @@ export function HomeMorningBrief({ agentName, leads, appointmentsToday, streak }
       if (error) throw error;
       const text = data?.brief || 'Unable to generate brief.';
       setBrief(text);
-      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ text, date: new Date().toDateString() }));
+      localStorage.setItem(getTodayKey(), JSON.stringify({ text, date: new Date().toDateString() }));
     } catch (e) {
       console.error('Morning brief error:', e);
       setBrief('Focus on your highest-scoring lead first, follow up on any pending appointments, and block 30 minutes for outreach before lunch.');
@@ -60,6 +66,13 @@ export function HomeMorningBrief({ agentName, leads, appointmentsToday, streak }
       setLoading(false);
     }
   }, [agentName, leads, hotCount, appointmentsToday, streak]);
+
+  // Auto-generate on mount if no cached brief exists
+  useEffect(() => {
+    if (!cached && !brief && isMorning) {
+      generate();
+    }
+  }, []);
 
   const handleExpand = useCallback(() => {
     setExpanded(true);
