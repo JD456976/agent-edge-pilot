@@ -1940,7 +1940,7 @@ export default function BetaHomeScreen() {
           .sort((a, b) => b.score - a.score)
           .slice(0, 3);
         return (
-          <div className="rounded-xl border border-indigo-500/30 bg-card p-3 space-y-2">
+          <div className="rounded-xl border border-primary/30 bg-card p-3 space-y-2">
             <h3 className="text-sm font-bold text-foreground">🎯 Your 3 Moves Today</h3>
             {top3.length === 0 && <p className="text-xs text-muted-foreground">No leads yet — sync your CRM to get started.</p>}
             {top3.map(({ lead, score }) => {
