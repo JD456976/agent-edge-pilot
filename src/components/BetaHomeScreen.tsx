@@ -1861,7 +1861,6 @@ export default function BetaHomeScreen() {
 
       {/* 1. Your 3 Moves Today */}
       {(() => {
-        const [loggedIds, setLoggedIds] = useState<Record<string, boolean>>({});
         const top3 = [...leads]
           .map(l => ({ lead: l, score: getLeadHeatScore(l) }))
           .sort((a, b) => b.score - a.score)
