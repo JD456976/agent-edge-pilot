@@ -1,4 +1,4 @@
-import { Home, DoorOpen, RefreshCw, ClipboardList, GitBranch, Calendar, Settings, Shield } from 'lucide-react';
+import { Home, DoorOpen, RefreshCw, ClipboardList, GitBranch, Calendar, Settings, Shield, BarChart2 } from 'lucide-react';
 
 export const NAV_ITEMS = [
   { label: 'Home', workspace: 'home', icon: Home },
@@ -7,6 +7,7 @@ export const NAV_ITEMS = [
   { label: 'Deals', workspace: 'deals', icon: ClipboardList },
   { label: 'Sequences', workspace: 'sequences', icon: GitBranch },
   { label: 'Appointments', workspace: 'appointments', icon: Calendar },
+  { label: 'Insights', workspace: 'insights', icon: BarChart2 },
   { label: 'Settings', workspace: 'settings', icon: Settings },
   { label: 'Objection Coach', workspace: 'objection-coach', icon: Shield },
 ] as const;

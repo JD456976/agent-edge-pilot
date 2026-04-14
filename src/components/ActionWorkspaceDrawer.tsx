@@ -1225,21 +1225,23 @@ export function ActionWorkspaceDrawer({
                           setListingLoading(true);
                           setListingResult('');
                           try {
-                            const { data, error } = await supabase.functions.invoke('listing-writer', {
-                              body: {
-                                bedrooms: listingBeds || '3',
-                                bathrooms: listingBaths || '2',
-                                sqft: 'N/A',
-                                price: 'N/A',
-                                propertyType: 'Residential',
-                                neighborhood: listingAddress,
-                                features: listingFeatures,
-                                style: 'Professional',
+                            const resp = await fetch('https://api.anthropic.com/v1/messages', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'anthropic-version': '2023-06-01',
+                                'anthropic-dangerous-direct-browser-access': 'true',
                               },
+                              body: JSON.stringify({
+                                model: 'claude-sonnet-4-20250514',
+                                max_tokens: 400,
+                                system: 'You are a real estate copywriter. Write compelling MLS listing descriptions. Reply with the description text only, no labels or JSON.',
+                                messages: [{ role: 'user', content: `Write a professional MLS listing description for:\n${listingBeds || '3'}bd/${listingBaths || '2'}ba at ${listingAddress}\nKey features: ${listingFeatures || 'not specified'}\n\nKeep it 120-160 words, professional tone, highlight the best features.` }],
+                              }),
                             });
-                            if (error) throw error;
-                            const mls = data?.mls || data?.social || JSON.stringify(data);
-                            setListingResult(mls);
+                            if (!resp.ok) throw new Error(`API ${resp.status}`);
+                            const result = await resp.json();
+                            setListingResult(result?.content?.[0]?.text?.trim() || 'Could not generate listing.');
                           } catch (err: any) {
                             toast({ title: 'Could not generate listing', description: err?.message || 'Try again', variant: 'destructive' });
                           } finally {
