@@ -50,13 +50,12 @@ const NAV_ITEMS: NavItem[] = NAV_ITEMS_CONFIG.map(item => ({
   workspace: item.workspace as WorkspaceType | 'home'
 }));
 
-const MOBILE_MAIN_TABS: NavItem[] = [
-  { path: '/', label: 'Home', icon: LayoutDashboard },
-  { workspace: 'work', label: 'CRM', icon: RefreshCw },
-  { workspace: 'deals', label: 'Deals', icon: ClipboardList },
-  { workspace: 'sequences', label: 'Sequences', icon: GitBranch },
-  { workspace: 'settings', label: 'Settings', icon: Settings },
-];
+// MOBILE_MAIN_TABS — derived from NAV_ITEMS_CONFIG so desktop and mobile always stay in sync
+// DO NOT hardcode this array — add/remove items in src/config/navigation.ts only
+const MOBILE_MAIN_TABS: NavItem[] = NAV_ITEMS_CONFIG.map(item => ({
+  ...item,
+  workspace: item.workspace as WorkspaceType | 'home',
+}));
 
 const TOOLS_ITEMS: { label: string; icon: React.ElementType; workspace: WorkspaceType }[] = [];
 
