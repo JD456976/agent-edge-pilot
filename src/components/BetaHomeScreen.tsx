@@ -1931,6 +1931,96 @@ export default function BetaHomeScreen() {
         </div>
       </div>
 
+      {/* ═══ TOP 3 FIXED SECTIONS ═══ */}
+
+      {/* 1. Your 3 Moves Today */}
+      {(() => {
+        const top3 = [...leads]
+          .map(l => ({ lead: l, score: getLeadHeatScore(l) }))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 3);
+        return (
+          <div className="rounded-xl border border-indigo-500/30 bg-card p-3 space-y-2">
+            <h3 className="text-sm font-bold text-foreground">🎯 Your 3 Moves Today</h3>
+            {top3.length === 0 && <p className="text-xs text-muted-foreground">No leads yet — sync your CRM to get started.</p>}
+            {top3.map(({ lead, score }) => {
+              const contactDate = lead.lastTouchedAt || lead.lastContactAt;
+              const daysSince = contactDate ? Math.floor((Date.now() - new Date(contactDate).getTime()) / 86400000) : null;
+              return (
+                <div key={lead.id} className="flex items-center gap-2 text-sm">
+                  <button onClick={() => handleOpenLeadDetail(lead)} className="font-medium text-primary hover:underline truncate min-w-0 flex-1 text-left">{lead.name}</button>
+                  <span className="text-[11px] text-muted-foreground shrink-0">{lead.source || '—'}</span>
+                  <span className="text-[11px] text-muted-foreground shrink-0">{daysSince !== null ? `${daysSince}d` : '—'}</span>
+                  <HeatBadge score={score} />
+                  <button
+                    className="p-1 rounded hover:bg-muted shrink-0"
+                    onClick={() => handleLeadAction(lead, 'call')}
+                  ><Phone className="h-3.5 w-3.5 text-muted-foreground" /></button>
+                  <button
+                    className="p-1 rounded hover:bg-muted shrink-0"
+                    onClick={() => handleLeadAction(lead, 'text')}
+                  ><MessageSquare className="h-3.5 w-3.5 text-muted-foreground" /></button>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
+      {/* 2. Pipeline Value Widget */}
+      {(() => {
+        const activeDeals = deals.filter(d => d.stage !== 'closed' && d.stage !== 'cancelled');
+        const totalValue = activeDeals.reduce((s, d) => s + (d.price || 0), 0);
+        const hotCount = leads.filter(l => getLeadHeatScore(l) >= 80).length;
+        const commission = totalValue * 0.025;
+        const fmt = (n: number) => n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `$${Math.round(n / 1000)}K` : `$${Math.round(n)}`;
+        return (
+          <div className="flex items-center justify-between rounded-lg bg-muted/40 px-4 py-2">
+            <div className="text-center">
+              <p className="text-[10px] text-muted-foreground">Pipeline</p>
+              <p className="text-sm font-bold text-foreground">{fmt(totalValue)}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] text-muted-foreground">Hot Leads</p>
+              <p className="text-sm font-bold text-foreground">{hotCount}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] text-muted-foreground">Est. Commission</p>
+              <p className="text-sm font-bold text-foreground">{fmt(commission)}</p>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 3. Activity Streak Strip */}
+      {(() => {
+        let calls = 0, texts = 0, streak = 0, goalProgress = 0;
+        try {
+          const log = JSON.parse(localStorage.getItem('dealPilot_activityLog') || '[]') as Array<{ type?: string; date?: string }>;
+          const todayStr = new Date().toDateString();
+          const todayEntries = log.filter(e => e.date && new Date(e.date).toDateString() === todayStr);
+          calls = todayEntries.filter(e => e.type === 'call').length;
+          texts = todayEntries.filter(e => e.type === 'text' || e.type === 'sms').length;
+        } catch {}
+        try { streak = parseInt(localStorage.getItem('dealPilot_streak') || '0', 10); } catch {}
+        try {
+          const log = JSON.parse(localStorage.getItem('dealPilot_activityLog') || '[]');
+          const now = new Date();
+          const day = now.getDay();
+          const mondayOffset = day === 0 ? 6 : day - 1;
+          const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - mondayOffset);
+          goalProgress = (log as Array<{ date?: string }>).filter((e: any) => e.date && new Date(e.date) >= weekStart).length;
+        } catch {}
+        return (
+          <div className="flex items-center justify-between rounded-lg bg-muted/40 px-4 py-2 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1">📞 <span className="font-semibold text-foreground">{calls}</span></span>
+            <span className="flex items-center gap-1">💬 <span className="font-semibold text-foreground">{texts}</span></span>
+            <span className="flex items-center gap-1">🔥 <span className="font-semibold text-foreground">{streak}d</span></span>
+            <span className="flex items-center gap-1">⭐ <span className="font-semibold text-foreground">{goalProgress}/20</span></span>
+          </div>
+        );
+      })()}
+
       {/* AI Morning Brief — 6am-12pm only */}
       <HomeMorningBrief
         agentName={user?.name?.split(' ')[0] || 'Agent'}
