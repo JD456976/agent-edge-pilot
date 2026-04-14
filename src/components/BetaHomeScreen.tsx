@@ -1015,11 +1015,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
         </div>
       )}
 
-      {/* Pipeline Value Widget */}
-      <PipelineValueWidget leads={scoredLeads.map(s => s.lead)} />
-
-      {/* Today's Activity Streak */}
-      <ActivityStreakStrip userId={userId} />
+      {/* Pipeline Value Widget & Activity Streak rendered in top fixed sections */}
 
       {/* Weekly Performance Digest */}
       <WeeklyPerformanceDigest userId={userId} />
@@ -1966,23 +1962,8 @@ export default function BetaHomeScreen() {
         );
       })()}
 
-      {/* AI Morning Brief — 6am-12pm only */}
-      <HomeMorningBrief
-        agentName={user?.name?.split(' ')[0] || 'Agent'}
-        leads={leads}
-        appointmentsToday={(() => {
-          const stored = localStorage.getItem('dealPilot_appointments');
-          if (!stored) return 0;
-          try {
-            const appts = JSON.parse(stored);
-            const todayStr = new Date().toDateString();
-            return Array.isArray(appts) ? appts.filter((a: any) => new Date(a.date).toDateString() === todayStr).length : 0;
-          } catch { return 0; }
-        })()}
-        streak={(() => {
-          try { return parseInt(localStorage.getItem('dealPilot_streak') || '0', 10); } catch { return 0; }
-        })()}
-      />
+      {/* AI Morning Brief — inline, direct Anthropic call */}
+      {currentMode === 'morning' && <InlineMorningBrief leads={leads} agentName={user?.name?.split(' ')[0] || 'Agent'} />}
 
       {/* Directive Brief Card — only when leads exist */}
       {leads.length > 0 && (
