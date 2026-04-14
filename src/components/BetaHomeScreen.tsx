@@ -1896,12 +1896,12 @@ export default function BetaHomeScreen() {
                     onClick={() => handleLeadAction(lead, 'text')}
                   ><MessageSquare className="h-3.5 w-3.5 text-muted-foreground" /></button>
                   <button
-                    className={cn("p-1 rounded shrink-0 transition-colors", loggedIds[lead.id] ? "bg-green-500/20" : "hover:bg-muted")}
+                    className={cn("p-1 rounded shrink-0 transition-colors", loggedIds[lead.id] ? "bg-opportunity/20" : "hover:bg-muted")}
                     onClick={() => handleLogTouch(lead)}
                     title="Log contact"
                   >
                     {loggedIds[lead.id]
-                      ? <span className="text-[10px] font-medium text-green-600">✓</span>
+                      ? <span className="text-[10px] font-medium text-opportunity">✓</span>
                       : <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />}
                   </button>
                 </div>
