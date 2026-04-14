@@ -1735,6 +1735,7 @@ export default function BetaHomeScreen() {
   const [qaSource, setQaSource] = useState('Referral');
   const [qaTemp, setQaTemp] = useState<'hot' | 'warm' | 'cool'>('warm');
   const [qaSaving, setQaSaving] = useState(false);
+  const [loggedIds, setLoggedIds] = useState<Record<string, boolean>>({});
 
   // Load sync state + target market
   useEffect(() => {
