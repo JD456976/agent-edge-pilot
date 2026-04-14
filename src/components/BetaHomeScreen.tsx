@@ -1969,7 +1969,7 @@ export default function BetaHomeScreen() {
 
       {/* 2. Pipeline Value Widget */}
       {(() => {
-        const activeDeals = deals.filter(d => d.stage !== 'closed' && d.stage !== 'cancelled');
+        const activeDeals = deals.filter(d => d.stage !== 'closed' && (d.stage as string) !== 'cancelled');
         const totalValue = activeDeals.reduce((s, d) => s + (d.price || 0), 0);
         const hotCount = leads.filter(l => getLeadHeatScore(l) >= 80).length;
         const commission = totalValue * 0.025;
