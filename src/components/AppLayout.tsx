@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect, useRef, useMemo, lazy, Suspense } from 
 import { ChevronDown, MoreHorizontal, Search, Wrench, Mic, LayoutDashboard, DoorOpen, ClipboardList, GitBranch, RefreshCw, CalendarDays } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Briefcase, BarChart3, Settings, Sun, Moon, LogOut, User, Paintbrush, Bell, PenLine, Shield } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { NotificationBell } from '@/components/NotificationBell';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -50,12 +50,24 @@ const NAV_ITEMS: NavItem[] = NAV_ITEMS_CONFIG.map(item => ({
   workspace: item.workspace as WorkspaceType | 'home'
 }));
 
-// MOBILE_MAIN_TABS — derived from NAV_ITEMS_CONFIG so desktop and mobile always stay in sync
-// DO NOT hardcode this array — add/remove items in src/config/navigation.ts only
-const MOBILE_MAIN_TABS: NavItem[] = NAV_ITEMS_CONFIG.map(item => ({
-  ...item,
-  workspace: item.workspace as WorkspaceType | 'home',
-}));
+// MOBILE_MAIN_TABS — 5 primary tabs shown in the bottom bar on mobile.
+// Remaining nav items are accessible via the "More" sheet.
+const MOBILE_PRIMARY_WORKSPACES = ['home', 'work', 'deals', 'open-house', 'appointments'];
+const MOBILE_MAIN_TABS: NavItem[] = NAV_ITEMS_CONFIG
+  .filter(item => MOBILE_PRIMARY_WORKSPACES.includes(item.workspace))
+  .sort((a, b) => MOBILE_PRIMARY_WORKSPACES.indexOf(a.workspace) - MOBILE_PRIMARY_WORKSPACES.indexOf(b.workspace))
+  .map(item => ({
+    ...item,
+    workspace: item.workspace as WorkspaceType | 'home',
+  }));
+
+// Items shown in the "More" sheet (everything not in the primary 5)
+const MOBILE_MORE_ITEMS: NavItem[] = NAV_ITEMS_CONFIG
+  .filter(item => !MOBILE_PRIMARY_WORKSPACES.includes(item.workspace))
+  .map(item => ({
+    ...item,
+    workspace: item.workspace as WorkspaceType | 'home',
+  }));
 
 const TOOLS_ITEMS: { label: string; icon: React.ElementType; workspace: WorkspaceType }[] = [];
 
@@ -305,11 +317,12 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      {/* Mobile bottom tabs — 4 main + Tools drawer */}
+      {/* Mobile bottom tabs — 5 primary + More sheet */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 border-t border-border bg-card z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-center h-14 px-1">
           {MOBILE_MAIN_TABS.map(item => {
             const key = item.workspace ?? item.path ?? 'home';
+            const shortLabel = item.label === 'Open House' ? 'Open House' : item.label.split(' ')[0];
             return (
               <button
                 key={key}
@@ -317,51 +330,46 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
                 aria-label={item.label}
                 className={cn(
                   'flex flex-col items-center gap-0.5 py-1 rounded-lg transition-colors min-h-[44px] justify-center flex-1',
-                  isActive(item) && 'text-primary',
-                  !isActive(item) && 'text-muted-foreground'
+                  isActive(item) ? 'text-primary' : 'text-muted-foreground'
                 )}
               >
                 <item.icon className="h-5 w-5" />
-                <span className="text-[10px] font-medium truncate max-w-[60px]">{item.label.length > 8 ? item.label.split(' ')[0] : item.label}</span>
+                <span className="text-[10px] font-medium truncate max-w-[60px]">{shortLabel}</span>
               </button>
             );
           })}
-          {/* Tools drawer trigger */}
+          {/* More sheet — sequences, insights, settings, objection coach */}
           <Sheet>
             <SheetTrigger asChild>
               <button
-                aria-label="Tools"
+                aria-label="More"
                 className={cn(
                   'flex flex-col items-center gap-0.5 py-1 rounded-lg transition-colors min-h-[44px] justify-center flex-1',
-                  TOOLS_ITEMS.some(t => activeWorkspace === t.workspace) ? 'text-primary' : 'text-muted-foreground'
+                  MOBILE_MORE_ITEMS.some(i => activeWorkspace === i.workspace) ? 'text-primary' : 'text-muted-foreground'
                 )}
               >
-                <Wrench className="h-5 w-5" />
-                <span className="text-[10px] font-medium">Tools</span>
+                <MoreHorizontal className="h-5 w-5" />
+                <span className="text-[10px] font-medium">More</span>
               </button>
             </SheetTrigger>
             <SheetContent side="bottom" className="rounded-t-2xl">
               <SheetHeader>
-                <SheetTitle>Tools</SheetTitle>
+                <SheetTitle>More</SheetTitle>
               </SheetHeader>
               <div className="grid gap-2 py-4">
-                {TOOLS_ITEMS.map(tool => (
-                  <button
-                    key={tool.workspace}
-                    onClick={() => {
-                      openWorkspace(tool.workspace);
-                      // Close sheet by clicking away — Sheet auto-closes on interaction
-                    }}
-                    className={cn(
-                      'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors min-h-[48px]',
-                      activeWorkspace === tool.workspace
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-foreground hover:bg-accent'
-                    )}
-                  >
-                    <tool.icon className="h-5 w-5" />
-                    {tool.label}
-                  </button>
+                {MOBILE_MORE_ITEMS.map(item => (
+                  <SheetClose asChild key={item.workspace ?? item.label}>
+                    <button
+                      onClick={() => handleNavClick(item)}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors min-h-[48px]',
+                        isActive(item) ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-accent'
+                      )}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {item.label}
+                    </button>
+                  </SheetClose>
                 ))}
               </div>
             </SheetContent>

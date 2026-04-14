@@ -3,20 +3,36 @@ import { useState, useEffect, useMemo } from 'react';
 export type SessionMode = 'morning' | 'midday' | 'evening' | 'night';
 
 const MODE_OVERRIDE_KEY = 'dp-session-mode-override';
+const MODE_OVERRIDE_TS_KEY = 'dp-session-mode-override-ts';
+const OVERRIDE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours — overrides expire automatically
 
 function getTimeBasedMode(): SessionMode {
   const hour = new Date().getHours();
-  if (hour >= 5 && hour < 11) return 'morning';
-  if (hour >= 11 && hour < 16) return 'midday';
-  if (hour >= 16 && hour < 22) return 'evening';
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 17) return 'midday';
+  if (hour >= 17 && hour < 22) return 'evening';
   return 'night';
 }
 
-export function useSessionMode() {
-  const [override, setOverride] = useState<SessionMode | null>(() => {
+function readStoredOverride(): SessionMode | null {
+  try {
     const stored = localStorage.getItem(MODE_OVERRIDE_KEY);
-    return stored as SessionMode | null;
-  });
+    const ts = localStorage.getItem(MODE_OVERRIDE_TS_KEY);
+    if (!stored) return null;
+    // Expire stale overrides
+    if (ts && Date.now() - Number(ts) > OVERRIDE_TTL_MS) {
+      localStorage.removeItem(MODE_OVERRIDE_KEY);
+      localStorage.removeItem(MODE_OVERRIDE_TS_KEY);
+      return null;
+    }
+    return stored as SessionMode;
+  } catch {
+    return null;
+  }
+}
+
+export function useSessionMode() {
+  const [override, setOverride] = useState<SessionMode | null>(() => readStoredOverride());
 
   const autoMode = useMemo(() => getTimeBasedMode(), []);
   const currentMode = override ?? autoMode;
@@ -25,8 +41,10 @@ export function useSessionMode() {
     setOverride(mode);
     if (mode) {
       localStorage.setItem(MODE_OVERRIDE_KEY, mode);
+      localStorage.setItem(MODE_OVERRIDE_TS_KEY, String(Date.now()));
     } else {
       localStorage.removeItem(MODE_OVERRIDE_KEY);
+      localStorage.removeItem(MODE_OVERRIDE_TS_KEY);
     }
   };
 

@@ -53,10 +53,10 @@ export function DealMilestonesPanel() {
       {/* Greeting */}
       <div className="mb-5">
         <h2 className="text-lg font-semibold tracking-[-0.02em]" style={{ color: '#E2E8F0' }}>
-          Hey Sarah,
+          Active Deal Tracker
         </h2>
         <p className="text-[13px] mt-1" style={{ color: '#94A3B8' }}>
-          Here's the latest on your home purchase. Everything is moving on schedule.
+          Contract-to-close progress. Everything is moving on schedule.
         </p>
       </div>
 
