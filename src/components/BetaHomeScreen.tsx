@@ -171,6 +171,44 @@ function getLeadHeatScore(lead: Lead): number {
   return Math.min(Math.max(score, 0), 100);
 }
 
+/** Returns 2-3 sentence plain-English explanation of why a lead has their score */
+function explainLeadScore(lead: Lead): string {
+  const score = getLeadHeatScore(lead);
+  const reasons: string[] = [];
+
+  // Temperature
+  if (lead.leadTemperature === 'hot') reasons.push('marked Hot in FUB (+40)');
+  else if (lead.leadTemperature === 'warm') reasons.push('marked Warm in FUB (+25)');
+  else reasons.push('marked Cool/Cold in FUB (+10)');
+
+  // Source
+  const src = (lead.source || '').toLowerCase();
+  if (src.includes('zillow preferred')) reasons.push('Zillow Preferred source (+15)');
+  else if (src.includes('sphere') || src.includes('referral')) reasons.push('Sphere/Referral source (+12)');
+  else if (src.includes('zillow')) reasons.push('Zillow source (+10)');
+
+  // Recency
+  const contactDate = lead.lastTouchedAt || lead.lastContactAt;
+  if (contactDate) {
+    const d = Math.floor((Date.now() - new Date(contactDate).getTime()) / 86400000);
+    if (d < 1) reasons.push('contacted today (+20)');
+    else if (d < 3) reasons.push(`contacted ${d}d ago (+15)`);
+    else if (d < 7) reasons.push(`contacted ${d}d ago (+10)`);
+    else if (d < 14) reasons.push(`contacted ${d}d ago (+5)`);
+    else reasons.push(`no contact in ${d} days (−no recency bonus)`);
+  } else {
+    reasons.push('never contacted (−no recency bonus)');
+  }
+
+  // Tags
+  const tags = (lead.statusTags || []).map(t => t.toLowerCase());
+  if (tags.some(t => ['pre-approved', 'pre_approved', 'cash_buyer'].includes(t))) reasons.push('pre-approved or cash buyer (+15)');
+  if (tags.some(t => ['showing', 'appointment set'].includes(t))) reasons.push('appointment/showing tag (+12)');
+
+  const label = score >= 80 ? 'Hot 🔥' : score >= 60 ? 'Warm ☀️' : score >= 40 ? 'Warming Up' : 'Cool ❄️';
+  return `Score ${score}/100 — ${label}. Factors: ${reasons.slice(0, 3).join(', ')}.`;
+}
+
 function isOutsideTarget(lead: Lead, target: TargetMarket): boolean {
   // If the agent hasn't configured any target criteria, never show the badge
   if (!target.zipCodes.length && !target.minPrice) return false;
@@ -1988,7 +2026,7 @@ export default function BetaHomeScreen() {
                   <button onClick={() => handleOpenLeadDetail(lead)} className="font-medium text-primary hover:underline truncate min-w-0 flex-1 text-left">{lead.name}</button>
                   <span className="text-[11px] text-muted-foreground shrink-0">{lead.source || '—'}</span>
                   <span className="text-[11px] text-muted-foreground shrink-0">{daysSince !== null ? `${daysSince}d` : '—'}</span>
-                  <HeatBadge score={score} />
+                  <span title={explainLeadScore(lead)} className="cursor-help"><HeatBadge score={score} /></span>
                   <button
                     className="p-1 rounded hover:bg-muted shrink-0"
                     onClick={() => handleLeadAction(lead, 'call')}
