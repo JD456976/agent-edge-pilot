@@ -424,19 +424,35 @@ export function ActionWorkspaceDrawer({
     if (!context) return;
     setOpenerLoading(channel);
     try {
-      const { data, error } = await supabase.functions.invoke('ai-follow-up', {
-        body: {
-          entity_type: context.entityType,
-          entity_id: context.entityId,
-          draft_type: 'opener',
-          channel,
+      const stage = context.stage || 'prospect';
+      const riskNotes = context.riskSignals?.length > 0 ? context.riskSignals.join(', ') : 'none';
+      const channelInstruction = channel === 'call'
+        ? 'Write a natural, confident phone call opener (2-3 sentences). Should feel warm and reference their situation.'
+        : channel === 'text'
+        ? 'Write a short, friendly SMS opener (1-2 sentences max, no emojis overdone, conversational).'
+        : 'Write a concise email subject line and opening paragraph (3-4 sentences, professional but warm).';
+
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
         },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 200,
+          system: 'You are a real estate sales coach. Write natural, non-pushy follow-up openers. Never sound like a template. Reply with ONLY the opener text, no labels or quotes.',
+          messages: [{ role: 'user', content: `Lead: ${context.entityName}\nStage: ${stage}\nRisk signals: ${riskNotes}\nIntent: ${context.intent || 'general follow-up'}\nChannel: ${channel}\n\n${channelInstruction}` }],
+        }),
       });
-      if (error) throw error;
-      if (data?.error) {
-        toast({ description: data.message || data.error, variant: 'destructive' });
-      } else if (data?.opener) {
-        setOpenerResult(prev => ({ ...prev, [channel]: data.opener }));
+      if (!resp.ok) throw new Error(`API ${resp.status}`);
+      const result = await resp.json();
+      const opener = result?.content?.[0]?.text?.trim() || '';
+      if (opener) {
+        setOpenerResult(prev => ({ ...prev, [channel]: opener }));
+      } else {
+        toast({ description: 'Could not generate suggestion', variant: 'destructive' });
       }
     } catch (err) {
       console.error('Opener fetch error:', err);

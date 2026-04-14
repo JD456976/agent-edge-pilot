@@ -56,14 +56,23 @@ export default function ObjectionCoach() {
     setLoading(true);
     setResult(null);
     try {
-      const { data, error } = await supabase.functions.invoke('objection-coach', {
-        body: {
-          scenario: selected.title,
-          situation: situation.trim() || 'Not specified',
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
         },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 600,
+          system: 'You are a real estate coach. Be direct and tactical. Give concise, actionable coaching.',
+          messages: [{ role: 'user', content: `Scenario: ${selected.title}\nAgent situation: ${situation.trim() || 'Not specified'}\n\nProvide coaching in this exact format:\nMINDSET: [1-2 sentences on the right mindset]\nSAY_1: [exact word-for-word thing to say]\nSAY_2: [exact word-for-word thing to say]\nSAY_3: [exact word-for-word thing to say]\nMISTAKE: [the #1 mistake to avoid]` }],
+        }),
       });
-      if (error) throw error;
-      const text = data?.result || data?.content || '';
+      if (!resp.ok) throw new Error(`API ${resp.status}`);
+      const result = await resp.json();
+      const text = result?.content?.[0]?.text || '';
       setResult(parseResponse(text));
     } catch (e: any) {
       console.error(e);

@@ -64,20 +64,25 @@ function PreListingPrep() {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('commission-coach-roleplay', {
-        body: {
-          action: 'build_case',
-          agentName,
-          propertyAddress,
-          listingPrice,
-          neighborhood,
-          yearsAgent,
-          homesSold,
-          marketing,
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
         },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 800,
+          system: 'You are a real estate commission negotiation coach. Help agents confidently justify their commission. Always respond with valid JSON only, no markdown.',
+          messages: [{ role: 'user', content: `Build a commission justification script for:\nAgent: ${agentName}${yearsAgent ? `, ${yearsAgent} years experience` : ''}${homesSold ? `, ${homesSold} homes sold` : ''}\nProperty: ${propertyAddress || 'not specified'} at ${listingPrice || 'list price TBD'}\nNeighborhood: ${neighborhood || 'not specified'}\nMarketing: ${marketing || 'standard marketing'}\n\nReturn ONLY this JSON:\n{"justification":"2-3 sentence compelling justification script for the agent to say out loud","objection_responses":["response to price objection","response to 'I found a cheaper agent'","response to 'what do I get for that?'"],"closing_line":"One powerful closing line"}` }],
+        }),
       });
-      if (error) throw error;
-      setResult(data.result);
+      if (!resp.ok) throw new Error(`API ${resp.status}`);
+      const result = await resp.json();
+      const text = result?.content?.[0]?.text || '{}';
+      const clean = text.replace(/```json|```/g, '').trim();
+      setResult(JSON.parse(clean));
     } catch {
       toast({ title: 'Error building your case', variant: 'destructive' });
     } finally {
@@ -209,15 +214,25 @@ function ObjectionSimulator() {
     setLoading(true);
     setCritique(null);
     try {
-      const { data, error } = await supabase.functions.invoke('commission-coach-roleplay', {
-        body: {
-          action: 'critique',
-          sellerObjection: currentPrompt,
-          agentResponse: response.trim(),
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
         },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 500,
+          system: 'You are a real estate sales coach evaluating agent responses to seller objections. Be direct and constructive. Always respond with valid JSON only, no markdown.',
+          messages: [{ role: 'user', content: `Seller objection: "${currentPrompt}"\nAgent response: "${response.trim()}"\n\nScore and critique this response. Return ONLY this JSON:\n{"score":7,"what_worked":"what was effective","what_to_improve":"specific improvement","better_response":"a stronger version of their response in 1-2 sentences"}` }],
+        }),
       });
-      if (error) throw error;
-      setCritique(data.result);
+      if (!resp.ok) throw new Error(`API ${resp.status}`);
+      const result = await resp.json();
+      const text = result?.content?.[0]?.text || '{}';
+      const clean = text.replace(/```json|```/g, '').trim();
+      setCritique(JSON.parse(clean));
     } catch {
       toast({ title: 'Error getting critique', variant: 'destructive' });
     } finally {

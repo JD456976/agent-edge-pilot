@@ -304,17 +304,23 @@ function PrepDrawer({ appt, onClose, leads, onUpdate }: {
     setPrepNotes(null);
     try {
       const lead = leads.find(l => l.name === a.leadName);
-      const { data, error } = await supabase.functions.invoke('appointment-prep', {
-        body: {
-          appointmentType: a.type,
-          leadName: a.leadName,
-          leadSource: lead?.source || 'Unknown',
-          leadScore: lead?.engagementScore ?? lead?.score ?? 50,
-          leadNotes: a.notes || lead?.notes || '',
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
         },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 400,
+          system: 'You are a real estate coach. Give concise, tactical appointment prep in plain text.',
+          messages: [{ role: 'user', content: `Prep notes for a ${a.type} appointment with ${a.leadName} (source: ${lead?.source || 'Unknown'}, score: ${lead?.engagementScore ?? lead?.score ?? 50}/100).\nNotes: ${a.notes || lead?.notes || 'none'}\n\nProvide: (1) Key talking points (2-3 bullets), (2) Questions to ask (2 bullets), (3) One thing to watch for. Keep it under 150 words.` }],
+        }),
       });
-      if (error) throw error;
-      setPrepNotes(data?.prep || 'Could not generate prep notes.');
+      if (!resp.ok) throw new Error(`API ${resp.status}`);
+      const result = await resp.json();
+      setPrepNotes(result?.content?.[0]?.text || 'Could not generate prep notes.');
     } catch (e) {
       console.error('Prep generation failed:', e);
       setPrepNotes('Could not generate prep notes. Please try again.');

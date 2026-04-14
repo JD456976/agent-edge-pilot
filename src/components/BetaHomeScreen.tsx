@@ -458,17 +458,25 @@ function ShowingTodayCard({ userId, leads, refreshData }: { userId: string; lead
     if (!leadId) { toast.error('No lead linked to this showing'); return; }
     setPrepLoading(p => ({ ...p, [task.id]: true }));
     try {
-      const { data, error } = await supabase.functions.invoke('ai-follow-up', {
-        body: {
-          entity_type: 'lead',
-          entity_id: leadId,
-          draft_type: 'showing_prep',
-          context: `Showing scheduled: ${task.title}. Notes: ${task.notes || 'None'}`,
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
         },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 300,
+          system: 'You are a real estate coach. Give concise showing prep as 3-4 bullet points. Each bullet starts with •',
+          messages: [{ role: 'user', content: `Showing prep for: ${task.title}\nNotes: ${task.notes || 'None'}\nGive 3-4 tactical talking points the agent should use at this showing.` }],
+        }),
       });
-      if (error) throw error;
-      const points = data?.talking_points || data?.body?.split('\n').filter(Boolean) || ['No suggestions available'];
-      setPrepResults(p => ({ ...p, [task.id]: Array.isArray(points) ? points : [points] }));
+      if (!resp.ok) throw new Error(`API ${resp.status}`);
+      const result = await resp.json();
+      const text = result?.content?.[0]?.text || '';
+      const points = text.split('\n').map((l: string) => l.replace(/^[•\-\*]\s*/, '').trim()).filter(Boolean);
+      setPrepResults(p => ({ ...p, [task.id]: points.length > 0 ? points : [text] }));
     } catch {
       toast.error('Failed to generate prep');
     } finally {
@@ -2062,6 +2070,44 @@ export default function BetaHomeScreen() {
 
       {/* AI Morning Brief — inline, direct Anthropic call */}
       {currentMode === 'morning' && <InlineMorningBrief leads={leads} agentName={user?.name?.split(' ')[0] || 'Agent'} />}
+
+      {/* Ghosting Risk Alert — leads not contacted in 7+ days */}
+      {(() => {
+        const now = Date.now();
+        const ghosted = leads.filter(l => {
+          const last = l.lastTouchedAt || l.lastContactAt;
+          if (!last) return true; // never contacted
+          const daysSince = Math.floor((now - new Date(last).getTime()) / 86400000);
+          return daysSince >= 7;
+        });
+        if (ghosted.length === 0) return null;
+        const top = ghosted.slice(0, 3);
+        return (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-destructive text-sm">👻</span>
+              <span className="text-xs font-semibold text-destructive">
+                {ghosted.length} lead{ghosted.length !== 1 ? 's' : ''} going cold — no contact in 7+ days
+              </span>
+            </div>
+            <div className="space-y-1">
+              {top.map(l => {
+                const last = l.lastTouchedAt || l.lastContactAt;
+                const days = last ? Math.floor((now - new Date(last).getTime()) / 86400000) : null;
+                return (
+                  <div key={l.id} className="flex items-center justify-between text-[11px]">
+                    <span className="text-foreground font-medium">{l.name}</span>
+                    <span className="text-muted-foreground">{days !== null ? `${days}d ago` : 'never contacted'}</span>
+                  </div>
+                );
+              })}
+              {ghosted.length > 3 && (
+                <p className="text-[10px] text-muted-foreground">+{ghosted.length - 3} more</p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Directive Brief Card — only when leads exist */}
       {leads.length > 0 && (

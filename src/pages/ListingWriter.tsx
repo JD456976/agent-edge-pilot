@@ -61,24 +61,26 @@ export default function ListingWriter() {
     setResults(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('listing-writer', {
-        body: {
-          bedrooms: Number(bedrooms),
-          bathrooms: Number(bathrooms),
-          sqft: Number(sqft),
-          price,
-          propertyType,
-          neighborhood,
-          yearBuilt: yearBuilt ? Number(yearBuilt) : null,
-          features,
-          angle,
-          style,
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
         },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1200,
+          system: 'You are a real estate listing copywriter. Always respond with valid JSON only, no markdown fences.',
+          messages: [{ role: 'user', content: `Write 3 real estate listing descriptions for:\n${bedrooms}bd/${bathrooms}ba, ${sqft} sqft, ${propertyType}\nPrice: ${price} | Location: ${neighborhood}${yearBuilt ? ` | Built: ${yearBuilt}` : ''}\nFeatures: ${features || 'none specified'}\nSelling angle: ${angle || 'none'}\nStyle: ${style}\n\nReturn ONLY this JSON:\n{"mls":"150-200 word professional MLS description","social":"80-110 word social post with hashtags","email":"120-160 word warm email with call to action"}` }],
+        }),
       });
-
-      if (error) throw error;
+      if (!resp.ok) throw new Error(`API ${resp.status}`);
+      const result = await resp.json();
+      const text = result?.content?.[0]?.text || '{}';
+      const clean = text.replace(/```json|```/g, '').trim();
+      const data = JSON.parse(clean);
       if (data?.error) throw new Error(data.error);
-
       setResults(data as ListingResults);
     } catch (err: any) {
       console.error('Listing generation error:', err);
