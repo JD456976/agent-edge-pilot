@@ -970,6 +970,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
   refreshData: () => Promise<void> | void;
   userId: string;
 }) {
+  const { isDemoMode } = useDemo();
   const { hotLeads, riskDeals, overdueTasks, closingSoonDeals, totalPipelineValue, atRiskValue, scoredLeads } = intel;
 
   // Build the 3 directive moves
@@ -1096,7 +1097,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
         </div>
       )}
 
-      <DealMilestonesPanel />
+      {isDemoMode && <DealMilestonesPanel />}
 
       {/* Ghosting Risk Strip */}
       <GhostingRiskStrip leads={intel.scoredLeads.map(s => s.lead)} onLeadAction={onLeadAction} onOpenLead={onOpenLead} />
@@ -1130,6 +1131,7 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
   totalMoneyAtRisk: number;
   onTaskTap: () => void;
 }) {
+  const { isDemoMode } = useDemo();
   const { hotLeads, riskDeals, overdueTasks, completedToday, todayTasks, scoredLeads, totalPipelineValue, atRiskValue } = intel;
   const sessionStart = useSessionStartRisk(totalMoneyAtRisk, true);
 
@@ -1270,7 +1272,7 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
         </div>
       )}
 
-      <DealMilestonesPanel />
+      {isDemoMode && <DealMilestonesPanel />}
     </div>
   );
 }
