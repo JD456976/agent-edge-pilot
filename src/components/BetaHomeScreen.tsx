@@ -1735,6 +1735,7 @@ export default function BetaHomeScreen() {
   const [qaSource, setQaSource] = useState('Referral');
   const [qaTemp, setQaTemp] = useState<'hot' | 'warm' | 'cool'>('warm');
   const [qaSaving, setQaSaving] = useState(false);
+  const [loggedIds, setLoggedIds] = useState<Record<string, boolean>>({});
 
   // Load sync state + target market
   useEffect(() => {
@@ -1864,6 +1865,15 @@ export default function BetaHomeScreen() {
           .map(l => ({ lead: l, score: getLeadHeatScore(l) }))
           .sort((a, b) => b.score - a.score)
           .slice(0, 3);
+        const handleLogTouch = (lead: Lead) => {
+          try {
+            const existing = JSON.parse(localStorage.getItem('dealPilot_activityLog') || '[]');
+            existing.push({ leadId: lead.id, leadName: lead.name, type: 'logged', timestamp: Date.now(), date: new Date().toISOString() });
+            localStorage.setItem('dealPilot_activityLog', JSON.stringify(existing));
+          } catch {}
+          setLoggedIds(prev => ({ ...prev, [lead.id]: true }));
+          setTimeout(() => setLoggedIds(prev => { const next = { ...prev }; delete next[lead.id]; return next; }), 1500);
+        };
         return (
           <div className="rounded-xl border border-primary/30 bg-card p-3 space-y-2">
             <h3 className="text-sm font-bold text-foreground">🎯 Your 3 Moves Today</h3>
@@ -1885,6 +1895,15 @@ export default function BetaHomeScreen() {
                     className="p-1 rounded hover:bg-muted shrink-0"
                     onClick={() => handleLeadAction(lead, 'text')}
                   ><MessageSquare className="h-3.5 w-3.5 text-muted-foreground" /></button>
+                  <button
+                    className={cn("p-1 rounded shrink-0 transition-colors", loggedIds[lead.id] ? "bg-opportunity/20" : "hover:bg-muted")}
+                    onClick={() => handleLogTouch(lead)}
+                    title="Log contact"
+                  >
+                    {loggedIds[lead.id]
+                      ? <span className="text-[10px] font-medium text-opportunity">✓</span>
+                      : <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />}
+                  </button>
                 </div>
               );
             })}
@@ -1894,8 +1913,9 @@ export default function BetaHomeScreen() {
 
       {/* 2. Pipeline Value Widget */}
       {(() => {
-        const activeDeals = deals.filter(d => d.stage !== 'closed' && (d.stage as string) !== 'cancelled');
-        const totalValue = activeDeals.reduce((s, d) => s + (d.price || 0), 0);
+        const leadValues = leads.map(l => (l as any).price || (l as any).listingPrice || (l as any).dealValue || 0);
+        const sumFromFields = leadValues.reduce((s: number, v: number) => s + v, 0);
+        const totalValue = sumFromFields > 0 ? sumFromFields : leads.length * 350000;
         const hotCount = leads.filter(l => getLeadHeatScore(l) >= 80).length;
         const commission = totalValue * 0.025;
         const fmt = (n: number) => n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `$${Math.round(n / 1000)}K` : `$${Math.round(n)}`;
