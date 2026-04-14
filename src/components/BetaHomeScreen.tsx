@@ -29,7 +29,7 @@ import { WeeklyPerformanceDigest } from '@/components/WeeklyPerformanceDigest';
 import { UnderContractBadge, UnderContractSheet, isUnderContract } from '@/components/UnderContractAction';
 import { getDailyBriefing } from '@/lib/dailyIntelligence';
 import { useDemo } from '@/contexts/DemoContext';
-import { HomeMorningBrief } from '@/components/HomeMorningBrief';
+
 import { LeadScorePopover } from '@/components/LeadScorePopover';
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -1015,11 +1015,7 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
         </div>
       )}
 
-      {/* Pipeline Value Widget */}
-      <PipelineValueWidget leads={scoredLeads.map(s => s.lead)} />
-
-      {/* Today's Activity Streak */}
-      <ActivityStreakStrip userId={userId} />
+      {/* Pipeline Value Widget & Activity Streak rendered in top fixed sections */}
 
       {/* Weekly Performance Digest */}
       <WeeklyPerformanceDigest userId={userId} />
@@ -1711,6 +1707,104 @@ function OverdueTasksCard({ tasks: overdueTasks, refreshData }: { tasks: Task[];
   );
 }
 
+// ── Inline Morning Brief (direct Anthropic) ─────────────────────────
+
+function getMorningBriefKey(): string {
+  const d = new Date();
+  return `dealPilot_morningBrief_${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function InlineMorningBrief({ leads, agentName }: { leads: Lead[]; agentName: string }) {
+  const cached = useMemo(() => {
+    try {
+      const raw = localStorage.getItem(getMorningBriefKey());
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed.date === new Date().toDateString()) return parsed.text as string;
+      return null;
+    } catch { return null; }
+  }, []);
+
+  const [brief, setBrief] = useState<string | null>(cached);
+  const [loading, setLoading] = useState(!cached);
+
+  const generate = useCallback(async () => {
+    setLoading(true);
+    try {
+      const top = [...leads]
+        .map(l => ({ l, s: getLeadHeatScore(l) }))
+        .sort((a, b) => b.s - a.s)[0];
+      const daysSince = top?.l.lastTouchedAt
+        ? Math.floor((Date.now() - new Date(top.l.lastTouchedAt).getTime()) / 86400000)
+        : top?.l.lastContactAt
+          ? Math.floor((Date.now() - new Date(top.l.lastContactAt).getTime()) / 86400000)
+          : null;
+      const neverContacted = leads.filter(l => !l.lastTouchedAt && !l.lastContactAt).length;
+      const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+
+      const userMsg = `Today is ${weekday}. Pipeline has ${leads.length} leads. ${top ? `Top lead: ${top.l.name}, score ${top.s}, ${daysSince !== null ? daysSince + ' days since contact' : 'never contacted'}.` : ''} ${neverContacted} leads have never been contacted. Give the agent their #1 focus and first action for today.`;
+
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 300,
+          system: 'You are a real estate coach. Give a sharp daily briefing in 3 sentences max.',
+          messages: [{ role: 'user', content: userMsg }],
+        }),
+      });
+      if (!resp.ok) throw new Error(`API ${resp.status}`);
+      const result = await resp.json();
+      const text = result?.content?.[0]?.text || 'Unable to generate brief.';
+      setBrief(text);
+      localStorage.setItem(getMorningBriefKey(), JSON.stringify({ text, date: new Date().toDateString() }));
+    } catch (e) {
+      console.error('Morning brief error:', e);
+      setBrief('Focus on your highest-scoring lead first, follow up on pending appointments, and block 30 minutes for outreach before lunch.');
+    } finally {
+      setLoading(false);
+    }
+  }, [leads, agentName]);
+
+  // Auto-generate on mount if no cache
+  useEffect(() => {
+    if (!cached) generate();
+  }, []);
+
+  return (
+    <div className="rounded-xl p-[2px] bg-gradient-to-r from-[hsl(var(--primary))] via-[hsl(250,60%,50%)] to-[hsl(var(--primary))]">
+      <div className="rounded-[10px] bg-card p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm font-semibold flex items-center gap-1.5">☀️ Morning Brief</span>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-[12px] h-7 gap-1 text-warning hover:text-warning"
+            onClick={generate}
+            disabled={loading}
+          >
+            {loading ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+            {loading ? '' : 'Generate'}
+          </Button>
+        </div>
+        {loading && !brief ? (
+          <div className="flex items-center gap-2 py-2">
+            <RefreshCw className="h-4 w-4 text-muted-foreground animate-spin" />
+            <span className="text-sm text-muted-foreground">Generating your brief…</span>
+          </div>
+        ) : brief ? (
+          <p className="text-sm text-foreground leading-relaxed">{brief}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ──────────────────────────────────────────────────
 
 export default function BetaHomeScreen() {
@@ -1966,23 +2060,8 @@ export default function BetaHomeScreen() {
         );
       })()}
 
-      {/* AI Morning Brief — 6am-12pm only */}
-      <HomeMorningBrief
-        agentName={user?.name?.split(' ')[0] || 'Agent'}
-        leads={leads}
-        appointmentsToday={(() => {
-          const stored = localStorage.getItem('dealPilot_appointments');
-          if (!stored) return 0;
-          try {
-            const appts = JSON.parse(stored);
-            const todayStr = new Date().toDateString();
-            return Array.isArray(appts) ? appts.filter((a: any) => new Date(a.date).toDateString() === todayStr).length : 0;
-          } catch { return 0; }
-        })()}
-        streak={(() => {
-          try { return parseInt(localStorage.getItem('dealPilot_streak') || '0', 10); } catch { return 0; }
-        })()}
-      />
+      {/* AI Morning Brief — inline, direct Anthropic call */}
+      {currentMode === 'morning' && <InlineMorningBrief leads={leads} agentName={user?.name?.split(' ')[0] || 'Agent'} />}
 
       {/* Directive Brief Card — only when leads exist */}
       {leads.length > 0 && (
