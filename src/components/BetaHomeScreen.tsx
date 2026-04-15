@@ -509,7 +509,7 @@ function ShowingTodayCard({ userId, leads, refreshData }: { userId: string; lead
     if (!leadId) { toast.error('No lead linked to this showing'); return; }
     setPrepLoading(p => ({ ...p, [task.id]: true }));
     try {
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      const resp = await fetch('/api/claude', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1805,7 +1805,7 @@ function InlineMorningBrief({ leads, agentName }: { leads: Lead[]; agentName: st
 
       const userMsg = `Today is ${weekday}. Pipeline has ${leads.length} leads. ${top ? `Top lead: ${top.l.name}, score ${top.s}, ${daysSince !== null ? daysSince + ' days since contact' : 'never contacted'}.` : ''} ${neverContacted} leads have never been contacted. Give the agent their #1 focus and first action for today.`;
 
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      const resp = await fetch('/api/claude', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

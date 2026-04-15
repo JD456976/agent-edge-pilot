@@ -304,7 +304,7 @@ function PrepDrawer({ appt, onClose, leads, onUpdate }: {
     setPrepNotes(null);
     try {
       const lead = leads.find(l => l.name === a.leadName);
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      const resp = await fetch('/api/claude', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

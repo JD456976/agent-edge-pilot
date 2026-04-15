@@ -34,7 +34,7 @@ export function AIMorningBrief({ agentName, leads, getHeatScore, pipelineValue }
 
       const userMessage = `Today is ${todayStr}. Agent: ${agentName}. Pipeline: ${leads.length} active leads. Top 3 by engagement: ${topLeads || 'none yet'}. Give exactly 3 bullet points: (1) who to call first and why, (2) biggest risk in the pipeline right now, (3) one thing to do before noon.`;
 
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      const resp = await fetch('/api/claude', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({

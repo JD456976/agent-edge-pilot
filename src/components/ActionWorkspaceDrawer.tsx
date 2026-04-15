@@ -432,7 +432,7 @@ export function ActionWorkspaceDrawer({
         ? 'Write a short, friendly SMS opener (1-2 sentences max, no emojis overdone, conversational).'
         : 'Write a concise email subject line and opening paragraph (3-4 sentences, professional but warm).';
 
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      const resp = await fetch('/api/claude', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1225,7 +1225,7 @@ export function ActionWorkspaceDrawer({
                           setListingLoading(true);
                           setListingResult('');
                           try {
-                            const resp = await fetch('https://api.anthropic.com/v1/messages', {
+                            const resp = await fetch('/api/claude', {
                               method: 'POST',
                               headers: {
                                 'Content-Type': 'application/json',
