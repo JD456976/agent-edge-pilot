@@ -2026,6 +2026,20 @@ export default function BetaHomeScreen() {
           .map(l => ({ lead: l, score: getLeadHeatScore(l) }))
           .sort((a, b) => b.score - a.score)
           .slice(0, 3);
+
+        const getVerb = (lead: Lead, score: number): { verb: string; color: string } => {
+          const daysSince = (lead.lastTouchedAt || lead.lastContactAt)
+            ? Math.floor((Date.now() - new Date((lead.lastTouchedAt || lead.lastContactAt)!).getTime()) / 86400000)
+            : null;
+          if (daysSince === null) return { verb: 'Make first contact', color: 'text-warning' };
+          if (daysSince === 0) return { verb: 'Follow up today', color: 'text-opportunity' };
+          if (score >= 80 && daysSince <= 2) return { verb: 'Keep momentum', color: 'text-opportunity' };
+          if (score >= 75) return { verb: 'Call — hot lead', color: 'text-opportunity' };
+          if (daysSince > 7) return { verb: `Re-engage — ${daysSince}d silent`, color: 'text-urgent' };
+          if (daysSince > 3) return { verb: `Check in — ${daysSince}d ago`, color: 'text-warning' };
+          return { verb: 'Nurture — stay warm', color: 'text-muted-foreground' };
+        };
+
         const handleLogTouch = (lead: Lead) => {
           try {
             const existing = JSON.parse(localStorage.getItem('dealPilot_activityLog') || '[]');
@@ -2035,36 +2049,46 @@ export default function BetaHomeScreen() {
           setLoggedIds(prev => ({ ...prev, [lead.id]: true }));
           setTimeout(() => setLoggedIds(prev => { const next = { ...prev }; delete next[lead.id]; return next; }), 1500);
         };
+
         return (
-          <div className="rounded-xl border border-primary/30 bg-card p-3 space-y-2">
+          <div className="rounded-xl border border-primary/30 bg-card p-4 space-y-3">
             <h3 className="text-sm font-bold text-foreground">🎯 Your 3 Moves Today</h3>
             {top3.length === 0 && <p className="text-xs text-muted-foreground">No leads yet — sync your CRM to get started.</p>}
             {top3.map(({ lead, score }) => {
-              const contactDate = lead.lastTouchedAt || lead.lastContactAt;
-              const daysSince = contactDate ? Math.floor((Date.now() - new Date(contactDate).getTime()) / 86400000) : null;
+              const { verb, color } = getVerb(lead, score);
               return (
-                <div key={lead.id} className="flex items-center gap-2 text-sm">
-                  <button onClick={() => handleOpenLeadDetail(lead)} className="font-medium text-primary hover:underline truncate min-w-0 flex-1 text-left">{lead.name}</button>
-                  <span className="text-[11px] text-muted-foreground shrink-0">{lead.source || '—'}</span>
-                  <span className="text-[11px] text-muted-foreground shrink-0">{daysSince !== null ? `${daysSince}d` : '—'}</span>
-                  <span title={explainLeadScore(lead)} className="cursor-help"><HeatBadge score={score} /></span>
+                <div key={lead.id} className="flex items-start gap-3">
+                  {/* Tap name → full workspace */}
                   <button
-                    className="p-1 rounded hover:bg-muted shrink-0"
-                    onClick={() => handleLeadAction(lead, 'call')}
-                  ><Phone className="h-3.5 w-3.5 text-muted-foreground" /></button>
-                  <button
-                    className="p-1 rounded hover:bg-muted shrink-0"
-                    onClick={() => handleLeadAction(lead, 'text')}
-                  ><MessageSquare className="h-3.5 w-3.5 text-muted-foreground" /></button>
-                  <button
-                    className={cn("p-1 rounded shrink-0 transition-colors", loggedIds[lead.id] ? "bg-opportunity/20" : "hover:bg-muted")}
-                    onClick={() => handleLogTouch(lead)}
-                    title="Log contact"
+                    onClick={() => handleOpenLeadDetail(lead)}
+                    className="flex-1 min-w-0 text-left space-y-0.5 active:opacity-70"
                   >
-                    {loggedIds[lead.id]
-                      ? <span className="text-[10px] font-medium text-opportunity">✓</span>
-                      : <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />}
+                    <p className="text-sm font-semibold text-foreground truncate">{lead.name}</p>
+                    <p className={cn('text-[11px] font-medium', color)}>{verb}</p>
                   </button>
+                  {/* Quick action buttons */}
+                  <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                    <button
+                      className="h-8 w-8 rounded-lg bg-opportunity/15 flex items-center justify-center hover:bg-opportunity/25 transition-colors"
+                      onClick={() => handleLeadAction(lead, 'call')}
+                      title="Call"
+                    ><Phone className="h-3.5 w-3.5 text-opportunity" /></button>
+                    <button
+                      className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center hover:bg-primary/25 transition-colors"
+                      onClick={() => handleLeadAction(lead, 'text')}
+                      title="Text"
+                    ><MessageSquare className="h-3.5 w-3.5 text-primary" /></button>
+                    <button
+                      className={cn("h-8 w-8 rounded-lg flex items-center justify-center transition-colors",
+                        loggedIds[lead.id] ? "bg-opportunity/20" : "bg-muted/60 hover:bg-muted")}
+                      onClick={() => handleLogTouch(lead)}
+                      title="Mark done"
+                    >
+                      {loggedIds[lead.id]
+                        ? <CheckCircle2 className="h-3.5 w-3.5 text-opportunity" />
+                        : <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />}
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -2127,9 +2151,6 @@ export default function BetaHomeScreen() {
         );
       })()}
 
-      {/* AI Morning Brief — inline, direct Anthropic call */}
-      {currentMode === 'morning' && <InlineMorningBrief leads={leads} agentName={user?.name?.split(' ')[0] || 'Agent'} />}
-
       {/* Ghosting Risk Alert — leads not contacted in 7+ days */}
       {(() => {
         const now = Date.now();
@@ -2154,10 +2175,14 @@ export default function BetaHomeScreen() {
                 const last = l.lastTouchedAt || l.lastContactAt;
                 const days = last ? Math.floor((now - new Date(last).getTime()) / 86400000) : null;
                 return (
-                  <div key={l.id} className="flex items-center justify-between text-[11px]">
-                    <span className="text-foreground font-medium">{l.name}</span>
-                    <span className="text-muted-foreground">{days !== null ? `${days}d ago` : 'never contacted'}</span>
-                  </div>
+                  <button
+                    key={l.id}
+                    onClick={() => handleOpenLeadDetail(l)}
+                    className="flex items-center justify-between text-[11px] w-full hover:bg-destructive/10 rounded px-1 -mx-1 py-0.5 transition-colors"
+                  >
+                    <span className="text-foreground font-medium text-left">{l.name}</span>
+                    <span className="text-muted-foreground">{days !== null ? `${days}d ago` : 'never contacted'} →</span>
+                  </button>
                 );
               })}
               {ghosted.length > 3 && (
@@ -2172,6 +2197,9 @@ export default function BetaHomeScreen() {
       {leads.length > 0 && (
         <DirectiveBriefCard mode={currentMode} leads={leads} ccData={ccData} onLeadAction={handleLeadAction} onOpenLead={handleOpenLeadDetail} />
       )}
+
+      {/* AI Morning Brief — inline, direct Anthropic call */}
+      {currentMode === 'morning' && <InlineMorningBrief leads={leads} agentName={user?.name?.split(' ')[0] || 'Agent'} />}
 
       {/* Empty state when no leads */}
       {leads.length === 0 && (
