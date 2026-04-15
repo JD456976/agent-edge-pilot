@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Phone, MessageSquare, Mail, Clock, ChevronDown, ChevronUp,
+  Phone, MessageSquare, Mail, Clock, ChevronDown, ChevronUp, ChevronRight,
   Home, DollarSign, AlertTriangle, Flame, ShieldAlert,
   Sun, CloudSun, Moon, TrendingUp, TrendingDown, Minus,
   CheckCircle2, Shield, Target, Zap, ArrowRight, X, User, Plus,
@@ -256,10 +256,23 @@ function PriorityLeadCard({ lead, score, onAction, onTapName }: {
       <div className="rounded-[10px] bg-card p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1 overflow-hidden">
+            {/* Name taps straight to full profile */}
             <button onClick={onTapName} className="text-base font-semibold truncate block w-full text-primary hover:underline text-left">{lead.name}</button>
-            <p className="text-[13px] text-muted-foreground truncate">{lead.notes || lead.source || 'No recent activity'}</p>
+            <p className="text-[13px] text-muted-foreground truncate">{lead.source || 'No recent activity'}</p>
           </div>
-          <HeatBadge score={score} />
+          <div className="flex items-center gap-2 shrink-0">
+            <HeatBadge score={score} />
+            {/* Explicit profile link so it's obviously tappable */}
+            <button
+              onClick={onTapName}
+              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Open full profile"
+            >
+              <User className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Profile</span>
+              <ChevronRight className="h-3 w-3" />
+            </button>
+          </div>
         </div>
         {returning && (
           <Badge variant="outline" className="text-[11px]">
@@ -1937,6 +1950,12 @@ export default function BetaHomeScreen() {
   }, [snoozeLeadId, snoozeDate, refreshData]);
 
   const handleOpenLeadDetail = useCallback((lead: Lead) => {
+    // Go straight to the full workspace — one tap, no intermediate sheet
+    setExecutionEntity({ entity: lead, entityType: 'lead' });
+  }, []);
+
+  // Long-press / explicit quick-action sheet for when user wants just Call/Text/Email
+  const handleQuickActionSheet = useCallback((lead: Lead) => {
     const score = getLeadHeatScore(lead);
     setQuickActionLead({ lead, score });
   }, []);
