@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Copy, Check, Loader2, PenLine } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 
 const STYLES = ['Professional', 'Warm', 'Luxury', 'High Energy'] as const;
 type WritingStyle = typeof STYLES[number];

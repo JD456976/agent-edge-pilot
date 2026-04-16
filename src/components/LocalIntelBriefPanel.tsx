@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow, differenceInDays, format } from 'date-fns';

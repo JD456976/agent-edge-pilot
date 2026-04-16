@@ -3,7 +3,6 @@ import { ArrowLeft, Shield, Wrench, TrendingUp, HeartCrack, BarChart, DollarSign
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const SCENARIOS = [

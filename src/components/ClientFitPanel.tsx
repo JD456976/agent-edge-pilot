@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { SkeletonCard } from '@/components/SkeletonCard';
 import { callEdgeFunction } from '@/lib/edgeClient';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { relativeTime } from '@/lib/relativeTime';

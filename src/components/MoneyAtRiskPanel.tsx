@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { CommissionDefaultsModal } from '@/components/CommissionDefaultsModal';
 import { MoneyModelDebugDrawer } from '@/components/MoneyModelDebugDrawer';
 import { BulkBackfillModal } from '@/components/BulkBackfillModal';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Deal, DealParticipant } from '@/types';
 import { computeMoneyModelBatch, type MoneyModelResult, type RiskScoringWeights } from '@/lib/moneyModel';

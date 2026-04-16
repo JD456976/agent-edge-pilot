@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Phone, MessageSquare, Mail, Home, StickyNote, Loader2, RefreshCw, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { callEdgeFunction } from '@/lib/edgeClient';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';

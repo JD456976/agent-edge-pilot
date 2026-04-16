@@ -8,7 +8,6 @@ import { Calendar, Plus, X, Clock, MapPin, Search, Loader2, FileText } from 'luc
 import { useData } from '@/contexts/DataContext';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 /* ── Types ─────────────────────────────────────────── */
 type ApptType = 'CMA' | 'Showing' | 'Listing Presentation' | 'Closing' | 'Follow-Up Call';

@@ -10,7 +10,6 @@ import { LogTouchModal } from '@/components/LogTouchModal';
 import { ActivityTrail } from '@/components/ActivityTrail';
 import { relativeTime } from '@/lib/relativeTime';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { Lead, Task } from '@/types';
 import {
