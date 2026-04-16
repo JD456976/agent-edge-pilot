@@ -801,40 +801,32 @@ function useStreakCounter() {
   return streak;
 }
 
+function readActivityStats() {
+  try {
+    const log = JSON.parse(localStorage.getItem('dealPilot_activityLog') || '[]') as Array<{ type?: string; date?: string; timestamp?: number }>;
+    const now = new Date();
+    const todayStr = now.toDateString();
+    const day = now.getDay();
+    const mondayOffset = day === 0 ? 6 : day - 1;
+    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - mondayOffset).getTime();
+
+    const todayEntries = log.filter(e => e.date && new Date(e.date).toDateString() === todayStr);
+    const weekEntries = log.filter(e => e.timestamp && e.timestamp >= weekStart);
+    const calls = todayEntries.filter(e => ['call', 'phone'].includes(e.type || '')).length;
+    const contacts = todayEntries.filter(e => ['call', 'phone', 'text', 'sms', 'email', 'logged'].includes(e.type || '')).length;
+    return { calls, contacts, weekContacts: weekEntries.length };
+  } catch { return { calls: 0, contacts: 0, weekContacts: 0 }; }
+}
+
 function ActivityStreakStrip({ userId }: { userId: string }) {
-  const [stats, setStats] = useState({ calls: 0, contacts: 0, weekContacts: 0 });
+  const [stats, setStats] = useState(() => readActivityStats());
   const streak = useStreakCounter();
 
+  // Refresh stats when localStorage changes (e.g. after a contact is logged)
   useEffect(() => {
-    if (!userId) return;
-    (async () => {
-      const now = new Date();
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      // Monday of this week
-      const day = now.getDay();
-      const mondayOffset = day === 0 ? 6 : day - 1;
-      const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - mondayOffset).toISOString();
-
-      const [todayRes, weekRes] = await Promise.all([
-        supabase.from('activity_events').select('touch_type').eq('user_id', userId).gte('created_at', todayStart),
-        supabase.from('activity_events').select('id').eq('user_id', userId).gte('created_at', weekStart),
-      ]);
-
-      const todayEvents = todayRes.data || [];
-      const callTypes = ['call', 'phone'];
-      const contactTypes = ['call', 'phone', 'text', 'sms', 'email'];
-      const calls = todayEvents.filter(e => callTypes.includes(e.touch_type?.toLowerCase())).length;
-      const contacts = todayEvents.filter(e => contactTypes.includes(e.touch_type?.toLowerCase())).length;
-      const weekContacts = weekRes.data?.length || 0;
-
-      setStats({ calls, contacts, weekContacts });
-
-      // Update streak if we have contacts today
-      if (contacts > 0) {
-        const today = new Date().toISOString().split('T')[0];
-        localStorage.setItem('dealPilot_lastActive', today);
-      }
-    })();
+    setStats(readActivityStats());
+    const interval = setInterval(() => setStats(readActivityStats()), 5000);
+    return () => clearInterval(interval);
   }, [userId]);
 
   const weekGoal = 20;
@@ -1932,7 +1924,26 @@ export default function BetaHomeScreen() {
       else toast.error('No email on file');
     }
     if (acted) {
-      supabase.from('leads').update({ last_touched_at: new Date().toISOString() } as any).eq('id', lead.id).then(() => refreshData());
+      // Write to localStorage immediately so ActivityStreakStrip updates even when Supabase is paused
+      try {
+        const log = JSON.parse(localStorage.getItem('dealPilot_activityLog') || '[]');
+        log.push({ leadId: lead.id, leadName: lead.name, type, timestamp: Date.now(), date: new Date().toISOString() });
+        localStorage.setItem('dealPilot_activityLog', JSON.stringify(log));
+        // Update streak
+        const today = new Date().toISOString().split('T')[0];
+        const lastActive = localStorage.getItem('dealPilot_lastActive');
+        if (lastActive !== today) {
+          const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+          const streak = lastActive === yesterday
+            ? parseInt(localStorage.getItem('dealPilot_streak') || '0', 10) + 1
+            : 1;
+          localStorage.setItem('dealPilot_streak', String(streak));
+          localStorage.setItem('dealPilot_lastActive', today);
+        }
+      } catch { /* ignore */ }
+      // Also update Supabase if available
+      supabase.from('leads').update({ last_touched_at: new Date().toISOString() } as any).eq('id', lead.id)
+        .then(() => refreshData()).catch(() => refreshData());
     }
   }, [refreshData]);
 
