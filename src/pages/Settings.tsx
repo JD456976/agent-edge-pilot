@@ -1,4 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
+
+const OWNER_EMAILS = ['craig219@comcast.net', 'jason.craig@chinattirealty.com', 'jdog45@gmail.com'];
+const isAdminEmail = (email?: string | null) => !!email && OWNER_EMAILS.some(e => e.toLowerCase() === email.toLowerCase());
 import { useDemo } from '@/contexts/DemoContext';
 import { TargetMarketSettings } from '@/components/TargetMarketSettings';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -432,7 +435,7 @@ export default function Settings() {
     setNoisePrefsState(next);
   };
 
-  const isAdmin = user?.role === 'admin' && isProtected;
+  const isAdmin = user?.role === 'admin' || isAdminEmail(user?.email);
 
   const handleLogout = async () => {
     await logout();

@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { checkSubscription, redirectToCheckout, openCustomerPortal, type SubscriptionStatus } from '@/lib/stripe/stripeService';
+
+// ── Owner/admin emails — always have full access ──────────────────────────────
+const OWNER_EMAILS = [
+  'craig219@comcast.net',
+  'jason.craig@chinattirealty.com',
+  'jdog45@gmail.com',
+];
 
 interface EntitlementState {
   isPro: boolean;
@@ -20,10 +26,10 @@ interface EntitlementContextType {
 }
 
 const DEFAULT_STATE: EntitlementState = {
-  isPro: false,
+  isPro: true,
   isTrial: false,
   trialEndsAt: null,
-  isActive: false,
+  isActive: true,
   expiresAt: null,
 };
 
@@ -31,84 +37,44 @@ const EntitlementContext = createContext<EntitlementContextType | undefined>(und
 
 export function EntitlementProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [state, setState] = useState<EntitlementState>(DEFAULT_STATE);
-  const [loading, setLoading] = useState(true);
-  const mountedRef = useRef(true);
+  const [loading, setLoading] = useState(false);
+
+  const isOwner = !!user?.email && OWNER_EMAILS.some(e => e.toLowerCase() === user.email!.toLowerCase());
+  const isAdmin = user?.role === 'admin';
+
+  // All logged-in users can write for now.
+  // When Stripe is ready, gate non-admin users here.
+  const canWrite = !!user;
+
+  const state: EntitlementState = {
+    isPro: isOwner || isAdmin,
+    isTrial: false,
+    trialEndsAt: null,
+    isActive: !!user,
+    expiresAt: null,
+  };
 
   const refresh = useCallback(async () => {
-    try {
-      const result: SubscriptionStatus = await checkSubscription();
-      if (!mountedRef.current) return;
-
-      const isPro = result.subscribed && !result.isTrial;
-      const isTrial = result.isTrial;
-
-      setState({
-        isPro,
-        isTrial,
-        trialEndsAt: result.trialEnd,
-        isActive: result.subscribed,
-        expiresAt: result.subscriptionEnd,
-      });
-    } catch (err) {
-      console.warn('[Entitlement] refresh failed:', err);
-      // Keep existing state
-    }
+    // Stripe integration placeholder — no-op until billing is live
   }, []);
 
-  // Initial load
-  useEffect(() => {
-    mountedRef.current = true;
-    if (user) {
-      (async () => {
-        await refresh();
-        if (mountedRef.current) setLoading(false);
-      })();
-    } else {
-      setLoading(false);
-    }
-    return () => { mountedRef.current = false; };
-  }, [refresh, user]);
-
-  // Refresh when app returns to foreground
-  useEffect(() => {
-    if (!user) return;
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') refresh();
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [refresh, user]);
-
-  // Periodic refresh every 60s
-  useEffect(() => {
-    if (!user) return;
-    const interval = setInterval(refresh, 60_000);
-    return () => clearInterval(interval);
-  }, [refresh, user]);
-
   const startCheckout = useCallback(async () => {
-    setLoading(true);
-    try {
-      await redirectToCheckout();
-    } catch (err) {
-      console.error('[Entitlement] checkout failed:', err);
-      if (mountedRef.current) setLoading(false);
-    }
+    console.log('[Entitlement] Stripe checkout not configured yet');
   }, []);
 
   const manageSubscription = useCallback(async () => {
-    try {
-      await openCustomerPortal();
-    } catch (err) {
-      console.error('[Entitlement] portal failed:', err);
-    }
+    console.log('[Entitlement] Stripe portal not configured yet');
   }, []);
 
-  const canWrite = state.isPro || state.isTrial;
-
   return (
-    <EntitlementContext.Provider value={{ entitlementState: state, loading, canWrite, startCheckout, manageSubscription, refresh }}>
+    <EntitlementContext.Provider value={{
+      entitlementState: state,
+      loading,
+      canWrite,
+      startCheckout,
+      manageSubscription,
+      refresh,
+    }}>
       {children}
     </EntitlementContext.Provider>
   );

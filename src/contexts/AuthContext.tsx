@@ -37,6 +37,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const role = (roleData?.role as UserRole) || 'agent';
         const profileStatus = (profile as any).status || 'active';
         const isDeleted = (profile as any).is_deleted || false;
+        // Track last active silently — used for admin dashboard metrics
+        supabase.from('profiles').update({ last_active_at: new Date().toISOString() } as any)
+          .eq('user_id', authUserId).then(() => {}).catch(() => {});
         setUser({
           id: authUserId,
           name: profile.name,

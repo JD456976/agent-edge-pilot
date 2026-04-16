@@ -22,10 +22,10 @@ import Work from "@/pages/Work";
 import Sync from "@/pages/Sync";
 import Insights from "@/pages/Insights";
 import Settings from "@/pages/Settings";
+import Admin from "@/pages/Admin";
 import CalendarPage from "@/pages/CalendarPage";
 import NotFound from "@/pages/NotFound";
 import Install from "@/pages/Install";
-import AppStoreAssets from "@/pages/AppStoreAssets";
 import OpenHouse from "@/pages/OpenHouse";
 import ListingWriter from "@/pages/ListingWriter";
 import CommissionCoach from "@/pages/CommissionCoach";
@@ -114,6 +114,7 @@ function WorkspaceOverlays() {
     appointments: { title: 'Appointments', subtitle: 'Your upcoming meetings and prep', Component: Appointments },
     insights: { title: 'Insights', subtitle: 'Forecast, stability, and review', Component: Insights },
     settings: { title: 'Settings', subtitle: 'Preferences and account', Component: Settings },
+    admin: { title: 'Admin', subtitle: 'User management and platform settings', Component: Admin },
     objectioncoach: { title: 'Objection Coach', subtitle: 'AI-powered scripts for every tough conversation', Component: ObjectionCoach },
     'objection-coach': { title: 'Objection Coach', subtitle: 'AI-powered scripts for every tough conversation', Component: ObjectionCoach },
     'message-templates': { title: 'Message Templates', subtitle: 'Ready-to-use scripts for every situation', Component: MessageTemplates },

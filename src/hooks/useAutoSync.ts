@@ -78,6 +78,12 @@ export function useAutoSync(onSyncComplete?: () => void) {
         setConflicts(syncResult.conflicts);
       }
 
+      // Auto-wipe demo data on successful FUB sync so real data takes over
+      if (localStorage.getItem('dealPilot_demoSeeded')) {
+        ['dealPilot_appointments','dealPilot_activityLog','dealPilot_deals',
+         'dealPilot_enrollments','dealPilot_demoSeeded'].forEach(k => localStorage.removeItem(k));
+      }
+
       onSyncCompleteRef.current?.();
     } catch (err: any) {
       if (!silent) {

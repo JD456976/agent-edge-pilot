@@ -7,6 +7,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { NotificationBell } from '@/components/NotificationBell';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
+
+const OWNER_EMAILS = ['craig219@comcast.net', 'jason.craig@chinattirealty.com', 'jdog45@gmail.com'];
+const isAdminEmail = (e?: string | null) => !!e && OWNER_EMAILS.some(a => a.toLowerCase() === e.toLowerCase());
 import { useTheme } from '@/contexts/ThemeContext';
 import { useWorkspace, type WorkspaceType } from '@/contexts/WorkspaceContext';
 import { useEntityNavigation } from '@/contexts/EntityNavigationContext';
