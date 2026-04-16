@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import {
   computeSelfOptAnalysis,
   computeOptimizedDefaults,
@@ -29,36 +30,39 @@ export function useSelfOptimizing(userId?: string) {
     let cancelled = false;
 
     async function load() {
-      // Load preferences
-      const { data: prefData } = await supabase
-        .from('self_opt_preferences' as any)
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle() as any;
+      try {
+        // Load preferences
+        const { data: prefData } = await supabase
+          .from('self_opt_preferences' as any)
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle() as any;
 
-      if (!cancelled && prefData) {
-        setPrefs({
-          enabled: prefData.enabled ?? false,
-          nudge_level: prefData.nudge_level ?? 'balanced',
-          coaching_tone: prefData.coaching_tone ?? 'professional',
-          allow_time_of_day_optimization: prefData.allow_time_of_day_optimization ?? true,
-          allow_channel_optimization: prefData.allow_channel_optimization ?? true,
-          allow_priority_reweighting: prefData.allow_priority_reweighting ?? true,
-        });
+        if (!cancelled && prefData) {
+          setPrefs({
+            enabled: prefData.enabled ?? false,
+            nudge_level: prefData.nudge_level ?? 'balanced',
+            coaching_tone: prefData.coaching_tone ?? 'professional',
+            allow_time_of_day_optimization: prefData.allow_time_of_day_optimization ?? true,
+            allow_channel_optimization: prefData.allow_channel_optimization ?? true,
+            allow_priority_reweighting: prefData.allow_priority_reweighting ?? true,
+          });
+        }
+
+        // Load recent outcomes (last 500)
+        const { data: outcomeData } = await supabase
+          .from('self_opt_action_outcomes' as any)
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(500) as any;
+
+        if (!cancelled && outcomeData) {
+          setOutcomes(outcomeData);
+        }
+      } catch {
+        // Tables may not exist yet — fail silently, use defaults
       }
-
-      // Load recent outcomes (last 500)
-      const { data: outcomeData } = await supabase
-        .from('self_opt_action_outcomes' as any)
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(500) as any;
-
-      if (!cancelled && outcomeData) {
-        setOutcomes(outcomeData);
-      }
-
       if (!cancelled) setLoaded(true);
     }
 
@@ -77,31 +81,28 @@ export function useSelfOptimizing(userId?: string) {
     const newPrefs = { ...prefs, ...updates };
     setPrefs(newPrefs);
 
-    await supabase
-      .from('self_opt_preferences' as any)
-      .upsert({
-        user_id: userId,
-        ...newPrefs,
-        updated_at: new Date().toISOString(),
-      } as any, { onConflict: 'user_id' });
+    try {
+      await supabase
+        .from('self_opt_preferences' as any)
+        .upsert({
+          user_id: userId,
+          ...newPrefs,
+          updated_at: new Date().toISOString(),
+        } as any, { onConflict: 'user_id' });
+    } catch { /* table may not exist */ }
   }, [userId, prefs]);
 
   // Record an action outcome
   const recordOutcome = useCallback(async (outcome: Omit<ActionOutcomeRecord, 'id' | 'created_at'>) => {
     if (!userId || !prefs.enabled) return;
 
-    const { data } = await supabase
-      .from('self_opt_action_outcomes' as any)
-      .insert({
-        user_id: userId,
-        ...outcome,
-      } as any)
-      .select()
-      .single() as any;
-
-    if (data) {
-      setOutcomes(prev => [data, ...prev].slice(0, 500));
-    }
+    try {
+      const { data } = await supabase
+        .from('self_opt_action_outcomes' as any)
+        .insert({ user_id: userId, ...outcome } as any)
+        .select().single() as any;
+      if (data) setOutcomes(prev => [data, ...prev].slice(0, 500));
+    } catch { /* table may not exist */ }
   }, [userId, prefs.enabled]);
 
   // Record daily behavior signal
@@ -119,13 +120,11 @@ export function useSelfOptimizing(userId?: string) {
 
     const today = new Date().toISOString().split('T')[0];
 
-    await supabase
-      .from('self_opt_behavior_signals' as any)
-      .upsert({
-        user_id: userId,
-        date: today,
-        ...signal,
-      } as any, { onConflict: 'user_id,date' });
+    try {
+      await supabase
+        .from('self_opt_behavior_signals' as any)
+        .upsert({ user_id: userId, date: today, ...signal } as any, { onConflict: 'user_id,date' });
+    } catch { /* table may not exist */ }
   }, [userId, prefs.enabled]);
 
   // Get optimized defaults for a context
@@ -137,16 +136,10 @@ export function useSelfOptimizing(userId?: string) {
   const resetLearning = useCallback(async () => {
     if (!userId) return;
 
-    await supabase
-      .from('self_opt_action_outcomes' as any)
-      .delete()
-      .eq('user_id', userId);
-
-    await supabase
-      .from('self_opt_behavior_signals' as any)
-      .delete()
-      .eq('user_id', userId);
-
+    try {
+      await supabase.from('self_opt_action_outcomes' as any).delete().eq('user_id', userId);
+      await supabase.from('self_opt_behavior_signals' as any).delete().eq('user_id', userId);
+    } catch { /* table may not exist */ }
     setOutcomes([]);
   }, [userId]);
 

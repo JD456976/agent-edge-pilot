@@ -175,7 +175,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [tasks, permission, sendNotification]);
 
-  const items = NAV_ITEMS;
+  const items = NAV_ITEMS.filter(item => item.workspace !== 'admin' || isAdminEmail(user?.email));
 
   const isActive = (item: NavItem) => {
     // Handle imported NAV_ITEMS which use 'home' workspace instead of path
@@ -325,7 +325,11 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
         <div className="flex items-center h-14 px-1">
           {MOBILE_MAIN_TABS.map(item => {
             const key = item.workspace ?? item.path ?? 'home';
-            const shortLabel = item.label === 'Open House' ? 'Open House' : item.label.split(' ')[0];
+            const SHORT_LABELS: Record<string, string> = {
+              'Open House': 'OH',
+              'Appointments': 'Appts',
+            };
+            const shortLabel = SHORT_LABELS[item.label] ?? item.label;
             return (
               <button
                 key={key}
@@ -360,7 +364,9 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
                 <SheetTitle>More</SheetTitle>
               </SheetHeader>
               <div className="grid gap-2 py-4">
-                {MOBILE_MORE_ITEMS.map(item => (
+                {MOBILE_MORE_ITEMS.filter(item =>
+                  item.workspace !== 'admin' || isAdminEmail(user?.email)
+                ).map(item => (
                   <SheetClose asChild key={item.workspace ?? item.label}>
                     <button
                       onClick={() => handleNavClick(item)}

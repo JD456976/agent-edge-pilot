@@ -911,8 +911,8 @@ function EmptyMovesCard() {
 // ── Pipeline Value Widget ─────────────────────────────────────────
 
 function PipelineValueWidget({ leads }: { leads: Lead[] }) {
-  const hotCount = leads.filter(l => l.leadTemperature === 'hot').length;
-  const warmCount = leads.filter(l => l.leadTemperature === 'warm').length;
+  const hotCount = leads.filter(l => getLeadHeatScore(l) >= 75).length;
+  const warmCount = leads.filter(l => { const s = getLeadHeatScore(l); return s >= 50 && s < 75; }).length;
   
   const pipelineValue = hotCount * 485000 + warmCount * 350000;
   const projCommission = pipelineValue * 0.025 * 0.65;
