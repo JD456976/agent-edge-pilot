@@ -22,25 +22,26 @@ interface CoachingResult {
 }
 
 function parseResponse(text: string): CoachingResult {
-  const sections = { mindset: '', whatToSay: '', mistake: '' };
-  const lower = text.toLowerCase();
-
-  const mindsetIdx = lower.indexOf('mindset');
-  const sayIdx = lower.indexOf('what to say');
-  const mistakeIdx = lower.indexOf('biggest mistake');
-
-  if (mindsetIdx !== -1 && sayIdx !== -1 && mistakeIdx !== -1) {
-    sections.mindset = text.slice(mindsetIdx, sayIdx).replace(/^[^:]*:\s*/i, '').trim();
-    sections.whatToSay = text.slice(sayIdx, mistakeIdx).replace(/^[^:]*:\s*/i, '').trim();
-    sections.mistake = text.slice(mistakeIdx).replace(/^[^:]*:\s*/i, '').trim();
-  } else {
-    // Fallback: split by numbered sections
-    const parts = text.split(/\(\d\)\s*/);
-    sections.mindset = parts[1]?.trim() || text.slice(0, text.length / 3);
-    sections.whatToSay = parts[2]?.trim() || text.slice(text.length / 3, (text.length * 2) / 3);
-    sections.mistake = parts[3]?.trim() || text.slice((text.length * 2) / 3);
+  try {
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    const sayLines = Array.isArray(parsed.sayThis) ? parsed.sayThis : [];
+    return {
+      mindset: parsed.mindset || '',
+      whatToSay: sayLines.join('\n\n'),
+      mistake: parsed.mistake || '',
+    };
+  } catch {
+    // Fallback for non-JSON responses
+    const lower = text.toLowerCase();
+    const mindsetIdx = Math.max(lower.indexOf('mindset'), 0);
+    const mistakeIdx = lower.lastIndexOf('mistake');
+    return {
+      mindset: text.slice(mindsetIdx, text.length / 3).replace(/^mindset:?\s*/i, '').trim(),
+      whatToSay: text.slice(text.length / 3, mistakeIdx > 0 ? mistakeIdx : (text.length * 2) / 3).trim(),
+      mistake: mistakeIdx > 0 ? text.slice(mistakeIdx).replace(/^.*mistake:?\s*/i, '').trim() : '',
+    };
   }
-  return sections;
 }
 
 export default function ObjectionCoach() {
@@ -60,14 +61,12 @@ export default function ObjectionCoach() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 600,
           system: 'You are a real estate coach. Be direct and tactical. Give concise, actionable coaching.',
-          messages: [{ role: 'user', content: `Scenario: ${selected.title}\nAgent situation: ${situation.trim() || 'Not specified'}\n\nProvide coaching in this exact format:\nMINDSET: [1-2 sentences on the right mindset]\nSAY_1: [exact word-for-word thing to say]\nSAY_2: [exact word-for-word thing to say]\nSAY_3: [exact word-for-word thing to say]\nMISTAKE: [the #1 mistake to avoid]` }],
+          messages: [{ role: 'user', content: `Scenario: ${selected.title}\nAgent situation: ${situation.trim() || 'Not specified'}\n\nReturn ONLY a JSON object, no markdown:\n{"mindset":"1-2 sentences on right mindset","sayThis":["exact word for word line 1","exact word for word line 2","exact word for word line 3"],"mistake":"the #1 mistake to avoid"}` }],
         }),
       });
       if (!resp.ok) throw new Error(`API ${resp.status}`);
@@ -140,12 +139,23 @@ export default function ObjectionCoach() {
           <div className="space-y-4">
             {[
               { emoji: '🧠', label: 'Mindset', content: result.mindset },
-              { emoji: '💬', label: 'What to Say', content: result.whatToSay },
+              { emoji: '💬', label: 'What to Say', content: result.whatToSay, isList: true },
               { emoji: '⚠️', label: 'Biggest Mistake', content: result.mistake },
             ].map(s => (
               <Card key={s.label} className="border-amber-500/30 bg-card p-4">
                 <h3 className="text-sm font-semibold text-amber-400 mb-2">{s.emoji} {s.label}</h3>
-                <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">{s.content}</p>
+                {(s as any).isList ? (
+                  <ul className="space-y-2">
+                    {s.content.split('\n\n').filter(Boolean).map((line, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                        <span className="text-amber-400 font-bold shrink-0 mt-0.5">{i + 1}.</span>
+                        <span className="leading-relaxed">{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">{s.content}</p>
+                )}
               </Card>
             ))}
 

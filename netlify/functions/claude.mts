@@ -9,7 +9,7 @@ export default async (req: Request) => {
     });
   }
 
-  const apiKey = Netlify.env.get("ANTHROPIC_API_KEY");
+  const apiKey = Netlify.env.get("ANTHROPIC_API_KEY") || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "API key not configured" }), {
       status: 500,

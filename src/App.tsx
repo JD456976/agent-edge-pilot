@@ -32,6 +32,7 @@ import CommissionCoach from "@/pages/CommissionCoach";
 import Sequences from "@/pages/Sequences";
 import Appointments from "@/pages/Appointments";
 import ObjectionCoach from "@/pages/ObjectionCoach";
+import MessageTemplates from "@/pages/MessageTemplates";
 import Deals from "@/pages/Deals";
 import OpenHouseKiosk from "@/pages/OpenHouseKiosk";
 import { ReviewPrompt } from "@/components/ReviewPrompt";
@@ -115,6 +116,8 @@ function WorkspaceOverlays() {
     settings: { title: 'Settings', subtitle: 'Preferences and account', Component: Settings },
     objectioncoach: { title: 'Objection Coach', subtitle: 'AI-powered scripts for every tough conversation', Component: ObjectionCoach },
     'objection-coach': { title: 'Objection Coach', subtitle: 'AI-powered scripts for every tough conversation', Component: ObjectionCoach },
+    'message-templates': { title: 'Message Templates', subtitle: 'Ready-to-use scripts for every situation', Component: MessageTemplates },
+    templates: { title: 'Message Templates', subtitle: 'Ready-to-use scripts for every situation', Component: MessageTemplates },
   };
 
   return (
