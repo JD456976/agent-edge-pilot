@@ -153,7 +153,7 @@ function AppRoutes() {
       <Route path="/settings" element={<Navigate to="/?workspace=settings" replace />} />
       <Route path="/admin" element={<Navigate to="/?workspace=settings" replace />} />
       <Route path="/install" element={<Install />} />
-      <Route path="/app-store-assets" element={<AppStoreAssets />} />
+
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
