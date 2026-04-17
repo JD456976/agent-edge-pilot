@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { Copy, Check, Loader2, PenLine } from 'lucide-react';
+import { Copy, Check, Loader2, PenLine, Share2, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 
 const STYLES = ['Professional', 'Warm', 'Luxury', 'High Energy'] as const;
@@ -220,12 +220,34 @@ export default function ListingWriter() {
       {/* Results */}
       {resultCards.length > 0 && (
         <div className="space-y-3 animate-fade-in">
+          {/* Copy All / Share All bar */}
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Results</span>
+            <div className="flex items-center gap-2">
+              <CopyButton text={resultCards.map(c => `--- ${c.label} ---\n${c.text}`).join('\n\n')} />
+            </div>
+          </div>
           {resultCards.map(card => (
             <Card key={card.label} className="bg-card border-border">
               <CardHeader className="pb-2 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-semibold">{card.label}</CardTitle>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-muted-foreground">{wordCount(card.text)} words</span>
+                  {card.label === 'Social Media' && (
+                    <button
+                      onClick={() => {
+                        if (navigator.share) {
+                          navigator.share({ text: card.text }).catch(() => {});
+                        } else {
+                          window.open(\`sms:?body=\${encodeURIComponent(card.text)}\`);
+                        }
+                      }}
+                      className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors"
+                      title="Share"
+                    >
+                      <Share2 className="h-3 w-3" />
+                    </button>
+                  )}
                   <CopyButton text={card.text} />
                 </div>
               </CardHeader>

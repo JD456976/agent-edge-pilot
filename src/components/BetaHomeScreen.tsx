@@ -2046,13 +2046,46 @@ export default function BetaHomeScreen() {
           const daysSince = (lead.lastTouchedAt || lead.lastContactAt)
             ? Math.floor((Date.now() - new Date((lead.lastTouchedAt || lead.lastContactAt)!).getTime()) / 86400000)
             : null;
-          if (daysSince === null) return { verb: 'Make first contact', color: 'text-warning' };
-          if (daysSince === 0) return { verb: 'Follow up today', color: 'text-opportunity' };
-          if (score >= 80 && daysSince <= 2) return { verb: 'Keep momentum', color: 'text-opportunity' };
-          if (score >= 75) return { verb: 'Call — hot lead', color: 'text-opportunity' };
-          if (daysSince > 7) return { verb: `Re-engage — ${daysSince}d silent`, color: 'text-urgent' };
-          if (daysSince > 3) return { verb: `Check in — ${daysSince}d ago`, color: 'text-warning' };
-          return { verb: 'Nurture — stay warm', color: 'text-muted-foreground' };
+          const src = (lead.source || '').toLowerCase();
+          const tags = (lead.statusTags || []).map(t => t.toLowerCase());
+          const isReferral = src.includes('referral') || src.includes('sphere');
+          const isZillow = src.includes('zillow') || src.includes('realtor') || src.includes('redfin');
+          const hasPreaproval = tags.some(t => t.includes('pre') && (t.includes('approv') || t.includes('qual')));
+          const hasAppointment = tags.some(t => t.includes('appoint') || t.includes('showing'));
+          const hasOffer = tags.some(t => t.includes('offer') || t.includes('contract'));
+
+          // Never contacted
+          if (daysSince === null) {
+            if (isZillow) return { verb: 'Call now — Zillow leads go cold fast', color: 'text-urgent' };
+            if (isReferral) return { verb: 'Reach out — warm intro waiting', color: 'text-warning' };
+            return { verb: 'Make first contact today', color: 'text-warning' };
+          }
+          // Active tags override everything
+          if (hasOffer) return { verb: 'Follow up on offer', color: 'text-opportunity' };
+          if (hasAppointment && daysSince <= 2) return { verb: 'Confirm appointment', color: 'text-opportunity' };
+          // Contacted today
+          if (daysSince === 0) return { verb: 'Keep the momentum going', color: 'text-opportunity' };
+          // Hot lead + recent
+          if (score >= 80 && daysSince <= 2) return { verb: 'Strike while it's hot', color: 'text-opportunity' };
+          if (score >= 75 && hasPreaproval) return { verb: 'Call — pre-approved buyer', color: 'text-opportunity' };
+          if (score >= 75) return { verb: 'Call — high intent signals', color: 'text-opportunity' };
+          // Going cold
+          if (daysSince > 14) {
+            if (isReferral) return { verb: `Re-engage — referral gone ${daysSince}d silent`, color: 'text-urgent' };
+            return { verb: `Re-engage — ${daysSince}d no contact`, color: 'text-urgent' };
+          }
+          if (daysSince > 7) {
+            if (isZillow) return { verb: `Act fast — ${daysSince}d since Zillow lead`, color: 'text-urgent' };
+            return { verb: `Check in — ${daysSince}d since last touch`, color: 'text-warning' };
+          }
+          if (daysSince > 3) {
+            if (isReferral) return { verb: 'Nurture the referral', color: 'text-warning' };
+            return { verb: `Send a quick update — ${daysSince}d ago`, color: 'text-warning' };
+          }
+          // Recent contact, warm lead
+          if (isReferral) return { verb: 'Keep referral warm', color: 'text-muted-foreground' };
+          if (isZillow) return { verb: 'Send listing options', color: 'text-muted-foreground' };
+          return { verb: 'Stay in touch — due for a touch', color: 'text-muted-foreground' };
         };
 
         const handleLogTouch = (lead: Lead) => {
