@@ -1793,7 +1793,14 @@ function InlineMorningBrief({ leads, agentName }: { leads: Lead[]; agentName: st
       const neverContacted = leads.filter(l => !l.lastTouchedAt && !l.lastContactAt).length;
       const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
-      const userMsg = `Today is ${weekday}. Pipeline has ${leads.length} leads. ${top ? `Top lead: ${top.l.name}, score ${top.s}, ${daysSince !== null ? daysSince + ' days since contact' : 'never contacted'}.` : ''} ${neverContacted} leads have never been contacted. Give the agent their #1 focus and first action for today.`;
+      const hotLeads = leads.filter(l => getLeadHeatScore(l) >= 75).length;
+      const overdueLeads = leads.filter(l => {
+        const d = l.lastTouchedAt || l.lastContactAt;
+        if (!d) return true;
+        return (Date.now() - new Date(d).getTime()) / 86400000 > 7;
+      }).length;
+
+      const userMsg = `Today is ${weekday}. Pipeline: ${leads.length} total leads, ${hotLeads} hot, ${overdueLeads} overdue (7d+ no contact), ${neverContacted} never contacted. ${top ? `#1 lead: ${top.l.name} (score ${top.s}/100, ${daysSince !== null ? daysSince + 'd since last contact' : 'never contacted'}, source: ${top.l.source || 'unknown'}).` : ''} Give the agent: 1) their single most urgent action right now, 2) one lead name to call first, 3) one thing to watch today. Be direct, specific, no fluff.`;
 
       const resp = await fetch('/api/claude', {
         method: 'POST',
@@ -1802,8 +1809,8 @@ function InlineMorningBrief({ leads, agentName }: { leads: Lead[]; agentName: st
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 300,
-          system: 'You are a real estate coach. Give a sharp daily briefing in 3 sentences max.',
+          max_tokens: 250,
+          system: 'You are a sharp real estate coach giving a morning briefing. Be direct and specific. 3 sentences max. No generic advice — reference actual lead names and numbers.',
           messages: [{ role: 'user', content: userMsg }],
         }),
       });
@@ -1842,9 +1849,10 @@ function InlineMorningBrief({ leads, agentName }: { leads: Lead[]; agentName: st
           </Button>
         </div>
         {loading && !brief ? (
-          <div className="flex items-center gap-2 py-2">
-            <RefreshCw className="h-4 w-4 text-muted-foreground animate-spin" />
-            <span className="text-sm text-muted-foreground">Generating your brief…</span>
+          <div className="space-y-2 py-1">
+            <div className="h-3 bg-muted/60 rounded animate-pulse w-full" />
+            <div className="h-3 bg-muted/60 rounded animate-pulse w-5/6" />
+            <div className="h-3 bg-muted/60 rounded animate-pulse w-4/6" />
           </div>
         ) : brief ? (
           <p className="text-sm text-foreground leading-relaxed">{brief}</p>

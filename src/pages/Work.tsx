@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
-import { Flame, Search, Plus, MapPin, Calendar, Clock, Users, ChevronRight, RefreshCw } from 'lucide-react';
+import { Flame, Search, Plus, MapPin, Calendar, Clock, Users, ChevronRight, RefreshCw, Phone, MessageSquare, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -146,25 +146,73 @@ function LeadsTab() {
               : null;
             const verdict = getClientVerdict(lead, score);
             return (
-              <button
+              <div
                 key={lead.id}
-                onClick={() => setExecutionEntity({ entity: lead, entityType: 'lead' })}
-                className="w-full text-left flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                className="w-full flex items-center gap-2 p-3 rounded-lg border border-border bg-card"
               >
-                <div className="flex-1 min-w-0 space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm truncate text-primary cursor-pointer underline-offset-2 hover:underline">{lead.name}</span>
+                {/* Main tap area */}
+                <button
+                  className="flex-1 min-w-0 text-left space-y-0.5 active:opacity-70"
+                  onClick={() => setExecutionEntity({ entity: lead, entityType: 'lead' })}
+                >
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-sm truncate text-primary">{lead.name}</span>
                     <Badge variant="secondary" className="text-[10px] shrink-0">{lead.source || 'Direct'}</Badge>
                     <HeatBadge score={score} onClick={(e) => { e.stopPropagation(); setExecutionEntity({ entity: lead, entityType: 'lead' }); }} />
                   </div>
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="text-muted-foreground">
-                      {daysSince !== null ? `${daysSince}d since last touch` : 'Never contacted'}
+                    <span className={cn(
+                      'text-muted-foreground',
+                      daysSince !== null && daysSince > 7 ? 'text-warning' : '',
+                      daysSince !== null && daysSince > 14 ? 'text-destructive' : ''
+                    )}>
+                      {daysSince !== null ? `${daysSince}d ago` : 'Never contacted'}
                     </span>
+                    <span className="text-muted-foreground/40">·</span>
+                    <span className={cn('text-xs', verdict.color)}>{verdict.text}</span>
                   </div>
-                  <p className={cn('text-xs', verdict.color)}>{verdict.text}</p>
+                </button>
+                {/* Quick action buttons */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {(lead.phonePrimary || lead.phoneMobile) && (
+                    <a
+                      href={`tel:${lead.phonePrimary || lead.phoneMobile}`}
+                      onClick={e => e.stopPropagation()}
+                      className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary active:bg-primary/20 transition-colors"
+                      aria-label="Call"
+                    >
+                      <Phone className="h-3.5 w-3.5" />
+                    </a>
+                  )}
+                  {(lead.phonePrimary || lead.phoneMobile) && (
+                    <a
+                      href={`sms:${lead.phonePrimary || lead.phoneMobile}`}
+                      onClick={e => e.stopPropagation()}
+                      className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary active:bg-primary/20 transition-colors"
+                      aria-label="Text"
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                    </a>
+                  )}
+                  {lead.emailPrimary && !(lead.phonePrimary || lead.phoneMobile) && (
+                    <a
+                      href={`mailto:${lead.emailPrimary}`}
+                      onClick={e => e.stopPropagation()}
+                      className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary active:bg-primary/20 transition-colors"
+                      aria-label="Email"
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                    </a>
+                  )}
+                  <button
+                    onClick={() => setExecutionEntity({ entity: lead, entityType: 'lead' })}
+                    className="h-8 w-8 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground active:bg-muted transition-colors"
+                    aria-label="Open lead"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -501,6 +549,18 @@ function QuickAddLeadFAB() {
 
 export default function Work() {
   const [tab, setTab] = useState<typeof TABS[number]>('Leads');
+  const { leads } = useData();
+
+  // Badge counts for tabs
+  const ghostCount = leads.filter(l => {
+    const d = l.lastTouchedAt || l.lastContactAt;
+    if (!d) return true;
+    return (Date.now() - new Date(d).getTime()) / 86400000 > 14;
+  }).length;
+
+  const tabBadge: Partial<Record<typeof TABS[number], number>> = {
+    Leads: ghostCount > 0 ? ghostCount : 0,
+  };
 
   return (
     <div className="animate-fade-in relative">
@@ -510,11 +570,16 @@ export default function Work() {
             key={t}
             onClick={() => setTab(t)}
             className={cn(
-              'flex-1 text-sm font-medium py-1.5 rounded-md transition-colors whitespace-nowrap',
+              'flex-1 text-sm font-medium py-1.5 rounded-md transition-colors whitespace-nowrap flex items-center justify-center gap-1.5',
               tab === t ? 'bg-card shadow-sm' : 'text-muted-foreground hover:text-foreground'
             )}
           >
             {t}
+            {tabBadge[t] ? (
+              <span className="inline-flex items-center justify-center h-4 min-w-[1rem] px-1 rounded-full bg-destructive/80 text-[9px] font-bold text-white leading-none">
+                {tabBadge[t]}
+              </span>
+            ) : null}
           </button>
         ))}
       </div>
