@@ -349,13 +349,18 @@ function PrepDrawer({ appt, onClose, leads, onUpdate }: {
           <div className="bg-muted/30 rounded-lg p-3 border border-border/20">
             <p className="text-xs font-semibold text-primary mb-2">AI Prep Notes</p>
             {loading ? (
-              <div className="flex items-center gap-2 py-4 justify-center text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-xs">Generating prep notes...</span>
+              <div className="space-y-2 py-1">
+                <div className="h-2.5 bg-muted/70 rounded animate-pulse w-full" />
+                <div className="h-2.5 bg-muted/70 rounded animate-pulse w-5/6" />
+                <div className="h-2.5 bg-muted/70 rounded animate-pulse w-4/6" />
+                <div className="h-2.5 bg-muted/70 rounded animate-pulse w-full" />
+                <div className="h-2.5 bg-muted/70 rounded animate-pulse w-3/4" />
               </div>
             ) : prepNotes ? (
               <div className="text-xs text-foreground/90 whitespace-pre-line leading-relaxed">{prepNotes}</div>
-            ) : null}
+            ) : (
+              <p className="text-xs text-muted-foreground italic">Tap the appointment to generate AI prep notes.</p>
+            )}
           </div>
 
           {/* Log Outcome */}

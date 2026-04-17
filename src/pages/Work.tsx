@@ -17,6 +17,22 @@ import Pipeline from '@/pages/Pipeline';
 import Tasks from '@/pages/Tasks';
 import type { Lead } from '@/types';
 
+function logQuickContact(lead: Lead, type: 'call' | 'text' | 'email') {
+  try {
+    const log = JSON.parse(localStorage.getItem('dealPilot_activityLog') || '[]');
+    log.push({ leadId: lead.id, leadName: lead.name, type, timestamp: Date.now(), date: new Date().toISOString() });
+    localStorage.setItem('dealPilot_activityLog', JSON.stringify(log));
+    const today = new Date().toISOString().split('T')[0];
+    const lastActive = localStorage.getItem('dealPilot_lastActive');
+    if (lastActive !== today) {
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const streak = lastActive === yesterday ? parseInt(localStorage.getItem('dealPilot_streak') || '0', 10) + 1 : 1;
+      localStorage.setItem('dealPilot_streak', String(streak));
+      localStorage.setItem('dealPilot_lastActive', today);
+    }
+  } catch { /* ignore */ }
+}
+
 function SyncButton() {
   const { syncNow, isSyncing } = useSyncContext();
   return (
@@ -177,7 +193,7 @@ function LeadsTab() {
                   {(lead.phonePrimary || lead.phoneMobile) && (
                     <a
                       href={`tel:${lead.phonePrimary || lead.phoneMobile}`}
-                      onClick={e => e.stopPropagation()}
+                      onClick={e => { e.stopPropagation(); logQuickContact(lead, 'call'); }}
                       className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary active:bg-primary/20 transition-colors"
                       aria-label="Call"
                     >
@@ -187,7 +203,7 @@ function LeadsTab() {
                   {(lead.phonePrimary || lead.phoneMobile) && (
                     <a
                       href={`sms:${lead.phonePrimary || lead.phoneMobile}`}
-                      onClick={e => e.stopPropagation()}
+                      onClick={e => { e.stopPropagation(); logQuickContact(lead, 'text'); }}
                       className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary active:bg-primary/20 transition-colors"
                       aria-label="Text"
                     >
@@ -197,7 +213,7 @@ function LeadsTab() {
                   {lead.emailPrimary && !(lead.phonePrimary || lead.phoneMobile) && (
                     <a
                       href={`mailto:${lead.emailPrimary}`}
-                      onClick={e => e.stopPropagation()}
+                      onClick={e => { e.stopPropagation(); logQuickContact(lead, 'email'); }}
                       className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary active:bg-primary/20 transition-colors"
                       aria-label="Email"
                     >
