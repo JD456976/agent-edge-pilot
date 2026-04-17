@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Zap, Clock, Target, MessageSquare, AlertTriangle, TrendingUp, Activity, BarChart3,
   RefreshCw, Home, MapPin, DollarSign, Tag, Heart, Phone, Mail, MessageCircle,
@@ -11,7 +12,6 @@ import { cn } from '@/lib/utils';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow, differenceInDays, format } from 'date-fns';
-import { callEdgeFunction } from '@/lib/edgeClient';
 import { ExpandableContent } from '@/components/ExpandableContent';
 import {
   type ActivityEvent, type FubActivity, type FubPersonProfile, type PropertyInterest,
@@ -41,48 +41,42 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity,
 
   const fetchLocalData = async () => {
     if (!user) return { acts: [], fubs: [] };
-    const [actRes, fubRes] = await Promise.all([
-      supabase
-        .from('activity_events')
-        .select('touch_type, note, created_at')
-        .eq('entity_id', entityId)
-        .order('created_at', { ascending: false })
-        .limit(200),
-      supabase
-        .from('fub_activity_log')
-        .select('activity_type, subject, body_preview, direction, occurred_at, duration_seconds')
-        .eq('entity_id', entityId)
-        .eq('user_id', user.id)
-        .order('occurred_at', { ascending: false })
-        .limit(200),
-    ]);
-    return {
-      acts: (actRes.data as any[]) || [],
-      fubs: (fubRes.data as any[]) || [],
-    };
+    try {
+      const [actRes, fubRes] = await Promise.all([
+        supabase
+          .from('activity_events')
+          .select('touch_type, note, created_at')
+          .eq('entity_id', entityId)
+          .order('created_at', { ascending: false })
+          .limit(200),
+        supabase
+          .from('fub_activity_log')
+          .select('activity_type, subject, body_preview, direction, occurred_at, duration_seconds')
+          .eq('entity_id', entityId)
+          .eq('user_id', user.id)
+          .order('occurred_at', { ascending: false })
+          .limit(200),
+      ]);
+      return {
+        acts: (actRes.data as any[]) || [],
+        fubs: (fubRes.data as any[]) || [],
+      };
+    } catch {
+      // Supabase tables may not exist yet — return empty gracefully
+      return { acts: [], fubs: [] };
+    }
   };
 
   const fetchFromFub = async () => {
     if (!user || !entity) return;
-    const importedFrom = entity.importedFrom || entity.imported_from;
-    const fubPersonId = importedFrom?.startsWith('fub:') ? importedFrom.replace('fub:', '') : null;
-    if (!fubPersonId) return;
-
+    // FUB edge function is paused — refresh local data only
     setFetchingFub(true);
     try {
-      const result = await callEdgeFunction('fub-activity', {
-        fub_person_id: parseInt(fubPersonId),
-        entity_id: entityId,
-        limit: 200,
-      });
-      if (result?.personProfile) {
-        setPersonProfile(result.personProfile as FubPersonProfile);
-      }
       const { acts, fubs } = await fetchLocalData();
       setActivities(acts);
       setFubActivities(fubs);
     } catch (err) {
-      console.warn('FUB activity fetch failed:', err);
+      console.warn('Intel refresh failed:', err);
     } finally {
       setFetchingFub(false);
     }
@@ -102,23 +96,9 @@ export function LocalIntelBriefPanel({ entityId, entityType, entityName, entity,
         return;
       }
 
-      const importedFrom = entity?.importedFrom || entity?.imported_from;
-      if (importedFrom?.startsWith('fub:')) {
-        try {
-          const fubPersonId = importedFrom.replace('fub:', '');
-          const result = await callEdgeFunction('fub-activity', {
-            fub_person_id: parseInt(fubPersonId),
-            entity_id: entityId,
-            limit: 200,
-          });
-          if (result?.personProfile) {
-            setPersonProfile(result.personProfile as FubPersonProfile);
-          }
-          const { acts: newActs, fubs: newFubs } = await fetchLocalData();
-          setActivities(newActs);
-          setFubActivities(newFubs);
-        } catch { /* non-critical */ }
-      }
+      // Note: FUB edge function is paused — skip to avoid errors
+      // const importedFrom = entity?.importedFrom || entity?.imported_from;
+      // FUB activity enrichment disabled until edge functions are re-enabled
     })();
   }, [user, entityId, externalPersonProfile]);
 

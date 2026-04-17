@@ -104,24 +104,25 @@ function HeatBadge({ score, lead, allLeads, interactive }: { score: number; lead
     return () => document.removeEventListener('click', close);
   }, [open]);
 
-  return (
-    <span className="relative inline-flex">
-      <span
-        className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium', bg, interactive && 'cursor-pointer')}
-        onClick={handleClick}
-      >
-        <Flame className="h-2.5 w-2.5" /> {score} · {label}
-      </span>
-      {open && bullets.length > 0 && (
-        <div
-          className="absolute bottom-full right-0 mb-1.5 z-50 w-56 rounded-lg bg-foreground text-background p-2.5 shadow-lg text-[11px] space-y-1"
+  if (interactive && lead) {
+    return (
+      <LeadScorePopover lead={lead} score={score}>
+        <span
+          className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium cursor-pointer', bg)}
           onClick={e => e.stopPropagation()}
         >
-          {bullets.map((b, i) => (
-            <p key={i} className="leading-snug">• {b}</p>
-          ))}
-        </div>
-      )}
+          <Flame className="h-2.5 w-2.5" /> {score} · {label}
+        </span>
+      </LeadScorePopover>
+    );
+  }
+
+  return (
+    <span
+      className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium', bg)}
+      onClick={handleClick}
+    >
+      <Flame className="h-2.5 w-2.5" /> {score} · {label}
     </span>
   );
 }

@@ -134,9 +134,24 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const urgentCounts = useMemo(() => {
     const overdue = tasks.filter(t => !t.completedAt && new Date(t.dueAt) < new Date()).length;
     const riskDeals = deals.filter(d => d.stage !== 'closed' && d.riskLevel === 'red').length;
+    let seqDue = 0;
+    try {
+      const enrollments = JSON.parse(localStorage.getItem('dealPilot_enrollments') || '[]');
+      const todayStr = new Date().toISOString().split('T')[0];
+      enrollments.forEach((en: any) => {
+        if (!en.active) return;
+        (en.steps || []).forEach((step: any) => {
+          if ((en.completedSteps || []).includes(step.day)) return;
+          const dueDate = new Date(new Date(en.startDate).getTime() + step.day * 86400000)
+            .toISOString().split('T')[0];
+          if (dueDate <= todayStr) seqDue++;
+        });
+      });
+    } catch { /* ignore */ }
     return {
       work: overdue,
-      sync: 0, // could track pending sync items
+      sequences: seqDue,
+      sync: 0,
       insights: riskDeals,
       settings: 0,
     } as Record<string, number>;

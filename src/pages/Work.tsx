@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
+import { LeadScorePopover } from '@/components/LeadScorePopover';
 import { Flame, Search, Plus, MapPin, Calendar, Clock, Users, ChevronRight, RefreshCw, Phone, MessageSquare, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -80,17 +81,25 @@ function getClientVerdict(lead: Lead, score: number): { text: string; color: str
   return { text: 'Cold — low activity, low engagement', color: 'text-muted-foreground' };
 }
 
-function HeatBadge({ score, onClick }: { score: number; onClick?: (e: React.MouseEvent) => void }) {
+function HeatBadge({ score, lead, onClick }: { score: number; lead?: import('@/types').Lead; onClick?: (e: React.MouseEvent) => void }) {
   const bg = score >= 75 ? 'bg-urgent/15 text-urgent' : score >= 50 ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground';
   const label = score >= 75 ? 'Hot' : score >= 50 ? 'Warm' : 'Cool';
-  return (
-    <button
-      onClick={onClick}
+  const badge = (
+    <span
       className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all', bg)}
+      onClick={onClick}
     >
       <Flame className="h-2.5 w-2.5" /> {score} · {label}
-    </button>
+    </span>
   );
+  if (lead) {
+    return (
+      <LeadScorePopover lead={lead} score={score}>
+        {badge}
+      </LeadScorePopover>
+    );
+  }
+  return badge;
 }
 
 function LeadsTab() {
@@ -174,7 +183,7 @@ function LeadsTab() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-sm truncate text-primary">{lead.name}</span>
                     <Badge variant="secondary" className="text-[10px] shrink-0">{lead.source || 'Direct'}</Badge>
-                    <HeatBadge score={score} onClick={(e) => { e.stopPropagation(); setExecutionEntity({ entity: lead, entityType: 'lead' }); }} />
+                    <HeatBadge score={score} lead={lead} onClick={(e) => { e.stopPropagation(); setExecutionEntity({ entity: lead, entityType: 'lead' }); }} />
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <span className={cn(
