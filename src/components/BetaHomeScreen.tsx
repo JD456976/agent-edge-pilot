@@ -2067,7 +2067,7 @@ export default function BetaHomeScreen() {
           // Contacted today
           if (daysSince === 0) return { verb: 'Keep the momentum going', color: 'text-opportunity' };
           // Hot lead + recent
-          if (score >= 80 && daysSince <= 2) return { verb: 'Strike while it's hot', color: 'text-opportunity' };
+          if (score >= 80 && daysSince <= 2) return { verb: 'Strike while iron is hot', color: 'text-opportunity' };
           if (score >= 75 && hasPreaproval) return { verb: 'Call — pre-approved buyer', color: 'text-opportunity' };
           if (score >= 75) return { verb: 'Call — high intent signals', color: 'text-opportunity' };
           // Going cold

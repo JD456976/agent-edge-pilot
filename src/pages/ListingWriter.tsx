@@ -239,7 +239,7 @@ export default function ListingWriter() {
                         if (navigator.share) {
                           navigator.share({ text: card.text }).catch(() => {});
                         } else {
-                          window.open(\`sms:?body=\${encodeURIComponent(card.text)}\`);
+                          window.open(`sms:?body=${encodeURIComponent(card.text)}`);
                         }
                       }}
                       className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors"
