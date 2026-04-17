@@ -383,12 +383,7 @@ export function ActionComposerDrawer({
     let cancelled = false;
     (async () => {
       try {
-        const { callEdgeFunction } = await import('@/lib/edgeClient');
-        const result = await callEdgeFunction('fub-activity', {
-          fub_person_id: fubPersonId,
-          entity_id: (entity as any).id,
-          limit: 25,
-        });
+        // FUB activity edge function paused — skipping enrichment
         if (!cancelled && result) {
           setRecentFubActivities(result.activities || []);
           if (result.personProfile) setFubProfile(result.personProfile as FubPersonProfile);

@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { SkeletonCard } from '@/components/SkeletonCard';
-import { callEdgeFunction } from '@/lib/edgeClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { relativeTime } from '@/lib/relativeTime';
@@ -116,16 +115,11 @@ export function ClientFitPanel({ entityId, entityType, entityName, entity }: Pro
           .maybeSingle();
         if (!ac?.client_identity_id) { setNoFubLink(true); setLoading(false); return; }
         if (!cancelled) setClientIdentityId(ac.client_identity_id);
-        const result = await callEdgeFunction('client-analysis', {
-          client_identity_id: ac.client_identity_id,
-        });
-        if (!cancelled && result?.analysis?.client_fit) {
-          setFit(result.analysis.client_fit);
-          setActivityCount(result.activity_count ?? 0);
-          setUpdatedAt(result.updated_at ?? null);
-        }
+        // Client analysis requires edge functions — unavailable while paused
+        // Show graceful empty state instead of error toast
+        if (!cancelled) setNoFubLink(true);
       } catch (err: any) {
-        if (!cancelled) toast({ description: err?.message || 'Failed to load client fit', variant: 'destructive' });
+        // Silently fail — edge functions not available
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -137,18 +131,10 @@ export function ClientFitPanel({ entityId, entityType, entityName, entity }: Pro
     if (!clientIdentityId) return;
     setRefreshing(true);
     try {
-      const result = await callEdgeFunction('client-analysis', {
-        client_identity_id: clientIdentityId,
-        force_refresh: true,
-      });
-      if (result?.analysis?.client_fit) {
-        setFit(result.analysis.client_fit);
-        setActivityCount(result.activity_count ?? 0);
-        setUpdatedAt(result.updated_at ?? null);
-        toast({ description: 'Client fit refreshed' });
-      }
+      // Edge functions unavailable — nothing to refresh
+      toast({ description: 'Client analysis unavailable right now' });
     } catch (err: any) {
-      toast({ description: err?.message || 'Refresh failed', variant: 'destructive' });
+      // Silently ignore
     } finally {
       setRefreshing(false);
     }

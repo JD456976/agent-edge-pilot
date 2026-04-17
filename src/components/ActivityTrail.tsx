@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Phone, MessageSquare, Mail, Home, StickyNote, Loader2, RefreshCw, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
-import { callEdgeFunction } from '@/lib/edgeClient';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -98,11 +97,7 @@ export function ActivityTrail({ entityType, entityId, fubPersonId, refreshKey = 
     if (!fubPersonId) return;
     setSyncingFub(true);
     try {
-      await callEdgeFunction('fub-activity', {
-        fub_person_id: fubPersonId,
-        entity_id: entityId,
-        limit: 20,
-      });
+      // FUB activity sync is handled automatically — nothing to do manually
       // Reload
       const { data: fubData } = await (supabase
         .from('fub_activity_log' as any)
