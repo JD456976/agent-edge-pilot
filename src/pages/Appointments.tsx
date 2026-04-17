@@ -309,7 +309,7 @@ function PrepDrawer({ appt, onClose, leads, onUpdate }: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 400,
           system: 'You are a real estate coach. Give concise, tactical appointment prep in plain text.',
           messages: [{ role: 'user', content: `Prep notes for a ${a.type} appointment with ${a.leadName} (source: ${lead?.source || 'Unknown'}, score: ${lead?.engagementScore ?? lead?.score ?? 50}/100).\nNotes: ${a.notes || lead?.notes || 'none'}\n\nProvide: (1) Key talking points (2-3 bullets), (2) Questions to ask (2 bullets), (3) One thing to watch for. Keep it under 150 words.` }],

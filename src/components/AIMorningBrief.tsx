@@ -37,7 +37,7 @@ export function AIMorningBrief({ agentName, leads, getHeatScore, pipelineValue }
       const resp = await fetch('/api/claude', {
         method: 'POST',
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
+          model: 'claude-haiku-4-5',
           max_tokens: 400,
           system: 'You are a concise real estate sales coach. Give practical, specific advice.',
           messages: [{ role: 'user', content: userMessage }],

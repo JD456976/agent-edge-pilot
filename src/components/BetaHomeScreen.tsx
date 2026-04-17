@@ -515,7 +515,7 @@ function ShowingTodayCard({ userId, leads, refreshData }: { userId: string; lead
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 300,
           system: 'You are a real estate coach. Give concise showing prep as 3-4 bullet points. Each bullet starts with •',
           messages: [{ role: 'user', content: `Showing prep for: ${task.title}\nNotes: ${task.notes || 'None'}\nGive 3-4 tactical talking points the agent should use at this showing.` }],
@@ -1808,7 +1808,7 @@ function InlineMorningBrief({ leads, agentName }: { leads: Lead[]; agentName: st
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 250,
           system: 'You are a sharp real estate coach giving a morning briefing. Be direct and specific. 3 sentences max. No generic advice — reference actual lead names and numbers.',
           messages: [{ role: 'user', content: userMsg }],

@@ -433,7 +433,7 @@ export function ActionWorkspaceDrawer({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 200,
           system: 'You are a real estate sales coach. Write natural, non-pushy follow-up openers. Never sound like a template. Reply with ONLY the opener text, no labels or quotes.',
           messages: [{ role: 'user', content: `Lead: ${context.entityName}\nStage: ${stage}\nRisk signals: ${riskNotes}\nIntent: ${context.intent || 'general follow-up'}\nChannel: ${channel}\n\n${channelInstruction}` }],
@@ -1224,7 +1224,7 @@ export function ActionWorkspaceDrawer({
                                 'Content-Type': 'application/json',
                               },
                               body: JSON.stringify({
-                                model: 'claude-sonnet-4-20250514',
+                                model: 'claude-sonnet-4-6',
                                 max_tokens: 400,
                                 system: 'You are a real estate copywriter. Write compelling MLS listing descriptions. Reply with the description text only, no labels or JSON.',
                                 messages: [{ role: 'user', content: `Write a professional MLS listing description for:\n${listingBeds || '3'}bd/${listingBaths || '2'}ba at ${listingAddress}\nKey features: ${listingFeatures || 'not specified'}\n\nKeep it 120-160 words, professional tone, highlight the best features.` }],

@@ -66,7 +66,7 @@ export default function ListingWriter() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 1200,
           system: 'You are a real estate listing copywriter. Always respond with valid JSON only, no markdown fences.',
           messages: [{ role: 'user', content: `Write 3 real estate listing descriptions for:\n${bedrooms}bd/${bathrooms}ba, ${sqft} sqft, ${propertyType}\nPrice: ${price} | Location: ${neighborhood}${yearBuilt ? ` | Built: ${yearBuilt}` : ''}\nFeatures: ${features || 'none specified'}\nSelling angle: ${angle || 'none'}\nStyle: ${style}\n\nReturn ONLY this JSON:\n{"mls":"150-200 word professional MLS description","social":"80-110 word social post with hashtags","email":"120-160 word warm email with call to action"}` }],

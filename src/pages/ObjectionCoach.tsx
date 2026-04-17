@@ -62,7 +62,7 @@ export default function ObjectionCoach() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 600,
           system: 'You are a real estate coach. Be direct and tactical. Give concise, actionable coaching.',
           messages: [{ role: 'user', content: `Scenario: ${selected.title}\nAgent situation: ${situation.trim() || 'Not specified'}\n\nReturn ONLY a JSON object, no markdown:\n{"mindset":"1-2 sentences on right mindset","sayThis":["exact word for word line 1","exact word for word line 2","exact word for word line 3"],"mistake":"the #1 mistake to avoid"}` }],

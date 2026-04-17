@@ -70,7 +70,7 @@ function PreListingPrep() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 800,
           system: 'You are a real estate commission negotiation coach. Help agents confidently justify their commission. Always respond with valid JSON only, no markdown.',
           messages: [{ role: 'user', content: `Build a commission justification script for:\nAgent: ${agentName}${yearsAgent ? `, ${yearsAgent} years experience` : ''}${homesSold ? `, ${homesSold} homes sold` : ''}\nProperty: ${propertyAddress || 'not specified'} at ${listingPrice || 'list price TBD'}\nNeighborhood: ${neighborhood || 'not specified'}\nMarketing: ${marketing || 'standard marketing'}\n\nReturn ONLY this JSON (no other text):\n{"script":"2-3 sentence compelling justification the agent says out loud","valuePoints":["data-backed value point 1","data-backed value point 2","data-backed value point 3"],"objections":[{"question":"Their commission is too high","rebuttal":"strong rebuttal here"},{"question":"I found a cheaper agent","rebuttal":"strong rebuttal here"},{"question":"What do I get for that?","rebuttal":"strong rebuttal here"}],"closingLine":"One powerful closing line to seal the deal"}` }],
@@ -231,7 +231,7 @@ function ObjectionSimulator() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 500,
           system: 'You are a real estate sales coach evaluating agent responses to seller objections. Be direct and constructive. Always respond with valid JSON only, no markdown.',
           messages: [{ role: 'user', content: `Seller objection: "${currentPrompt}"\nAgent response: "${response.trim()}"\n\nScore and critique this response. Return ONLY this JSON:\n{"score":7,"what_worked":"what was effective","what_to_improve":"specific improvement","better_response":"a stronger version of their response in 1-2 sentences"}` }],
