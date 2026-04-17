@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Phone, MessageSquare, Mail, Home, StickyNote, Loader2, RefreshCw, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { callEdgeFunction } from '@/lib/edgeClient';
 import { formatDistanceToNow } from 'date-fns';
@@ -38,28 +39,38 @@ export function ActivityTrail({ entityType, entityId, fubPersonId, refreshKey = 
 
   const loadEvents = useCallback(async () => {
     setLoading(true);
-    // Load local activity events
-    const { data: localData } = await (supabase
-      .from('activity_events' as any)
-      .select('id, touch_type, note, created_at')
-      .eq('entity_type', entityType)
-      .eq('entity_id', entityId)
-      .order('created_at', { ascending: false })
-      .limit(10) as any);
+    let localData: any[] = [];
+    let fubData: any[] = [];
+    
+    try {
+      // Load local activity events
+      const localRes = await (supabase
+        .from('activity_events' as any)
+        .select('id, touch_type, note, created_at')
+        .eq('entity_type', entityType)
+        .eq('entity_id', entityId)
+        .order('created_at', { ascending: false })
+        .limit(10) as any);
+      localData = localRes.data || [];
+
+      // Load FUB activity if available
+      const fubRes = await (supabase
+        .from('fub_activity_log' as any)
+        .select('id, activity_type, body_preview, occurred_at, direction, duration_seconds')
+        .eq('entity_id', entityId)
+        .order('occurred_at', { ascending: false })
+        .limit(10) as any);
+      fubData = fubRes.data || [];
+    } catch {
+      // Tables may not exist yet — show empty state
+    }
 
     const localEvents: ActivityEvent[] = (localData || []).map((e: any) => ({
       ...e,
       source: 'local' as const,
     }));
 
-    // Load FUB activity if available
-    const { data: fubData } = await (supabase
-      .from('fub_activity_log' as any)
-      .select('id, activity_type, body_preview, occurred_at, direction, duration_seconds')
-      .eq('entity_id', entityId)
-      .order('occurred_at', { ascending: false })
-      .limit(10) as any);
-
+    // placeholder to maintain structure
     const fubEvents: ActivityEvent[] = (fubData || []).map((e: any) => ({
       id: e.id,
       touch_type: e.activity_type,

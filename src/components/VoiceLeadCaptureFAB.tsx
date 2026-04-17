@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Mic, MicOff, Loader2, X, UserPlus, Phone, Mail, FileText, Home, DollarSign, BedDouble, MapPin, User, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

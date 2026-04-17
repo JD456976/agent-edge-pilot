@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useMemo, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import type { Deal, Lead, Task } from '@/types';
 import {
   recordOutcome,

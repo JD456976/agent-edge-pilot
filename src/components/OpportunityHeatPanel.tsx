@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { TrendingUp, Flame, Settings, ChevronRight, X, Check, Plus, Phone } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { PanelHelpTooltip } from '@/components/PanelHelpTooltip';

@@ -109,7 +109,6 @@ function HeatBadge({ score, lead, allLeads, interactive }: { score: number; lead
       <LeadScorePopover lead={lead} score={score}>
         <span
           className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium cursor-pointer', bg)}
-          onClick={e => e.stopPropagation()}
         >
           <Flame className="h-2.5 w-2.5" /> {score} · {label}
         </span>
