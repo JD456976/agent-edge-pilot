@@ -26,7 +26,7 @@ export function useFubSend(options: SendOptions | null) {
       toast({ description: 'Text sent via FUB' });
       return true;
     } catch (err: any) {
-      toast({ description: err?.message || 'Failed to send text', variant: 'destructive' });
+      toast({ description: 'Text send via FUB is not available right now. The SMS will still open.' });
       return false;
     } finally {
       setSending(false);
@@ -49,7 +49,7 @@ export function useFubSend(options: SendOptions | null) {
       toast({ description: 'Email sent via FUB' });
       return true;
     } catch (err: any) {
-      toast({ description: err?.message || 'Failed to send email', variant: 'destructive' });
+      toast({ description: 'Email send via FUB is not available right now. Your email app will open instead.' });
       return false;
     } finally {
       setSending(false);

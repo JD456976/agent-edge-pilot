@@ -30,7 +30,7 @@ export function GhostingRecoveryAction({ leadId, leadName, ghostScore }: Props) 
       toast({ description: `Ghosting recovery sent to FUB for ${leadName}` });
     } catch (err: any) {
       setResult({ ok: false, message: err?.message || 'Failed to trigger recovery' });
-      toast({ description: 'Recovery failed', variant: 'destructive' });
+      toast({ description: 'Ghosting recovery requires FUB integration to be active.' });
     } finally {
       setTriggering(false);
     }

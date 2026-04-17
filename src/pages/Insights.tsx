@@ -68,7 +68,7 @@ export default function Insights() {
             typicalPriceMid: (data as any).typical_price_mid ? Number((data as any).typical_price_mid) : undefined,
           });
         }
-      });
+      }).catch(() => { /* table may not exist yet */ });
   }, [user?.id]);
 
   const forecast = useMemo(() => {

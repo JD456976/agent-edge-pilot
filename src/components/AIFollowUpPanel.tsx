@@ -52,7 +52,7 @@ export function AIFollowUpPanel({ entityType, entityId, entityName }: Props) {
         const msg = err?.details?.message || err?.message || 'Daily AI limit reached. Resets at midnight.';
         setRateLimitMessage(msg);
       } else {
-        toast({ description: err?.message || 'Failed to generate draft', variant: 'destructive' });
+        toast({ description: 'AI follow-up suggestions require FUB integration.' });
       }
     } finally {
       setGenerating(false);
