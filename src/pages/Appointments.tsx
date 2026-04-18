@@ -317,6 +317,7 @@ function PrepDrawer({ appt, onClose, leads, onUpdate }: {
       });
       if (!resp.ok) throw new Error(`API ${resp.status}`);
       const result = await resp.json();
+      if (result?.type === 'error') throw new Error(result?.error?.message || 'Could not generate response.');
       setPrepNotes(result?.content?.[0]?.text || 'Could not generate prep notes.');
     } catch (e) {
       console.error('Prep generation failed:', e);

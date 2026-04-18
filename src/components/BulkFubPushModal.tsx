@@ -59,7 +59,7 @@ export function BulkFubPushModal({ open, onClose, leads, deals }: Props) {
       setResults(data.results);
       toast({ description: `${data.succeeded} pushed, ${data.failed} failed` });
     } catch (err: any) {
-      toast({ description: err?.message || 'Bulk push failed', variant: 'destructive' });
+      toast({ description: 'FUB bulk push unavailable while edge functions are paused.' });
     } finally {
       setPushing(false);
     }

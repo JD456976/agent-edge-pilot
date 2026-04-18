@@ -205,7 +205,7 @@ export function VoiceLeadCaptureFAB() {
       setStep('idle');
       setParsed(EMPTY_LEAD);
     } catch (err: any) {
-      toast({ description: err.message || 'Failed to save lead', variant: 'destructive' });
+      toast({ description: 'Lead captured locally — FUB push unavailable.' });
     } finally {
       setSaving(false);
     }

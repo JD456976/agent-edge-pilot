@@ -46,6 +46,7 @@ export function AIMorningBrief({ agentName, leads, getHeatScore, pipelineValue }
 
       if (!resp.ok) throw new Error(`API error ${resp.status}`);
       const result = await resp.json();
+      if (result?.type === 'error') throw new Error(result?.error?.message || 'Could not generate response.');
       const text = result?.content?.[0]?.text || 'Unable to generate brief.';
 
       setBrief(text);

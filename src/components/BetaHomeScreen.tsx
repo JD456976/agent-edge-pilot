@@ -4,8 +4,7 @@ import {
   Home, DollarSign, AlertTriangle, Flame, ShieldAlert,
   Sun, CloudSun, Moon, TrendingUp, TrendingDown, Minus,
   CheckCircle2, Shield, Target, Zap, ArrowRight, X, User, Plus,
-  Sparkles, MapPin, RefreshCw,
-} from 'lucide-react';
+  Sparkles, MapPin, RefreshCw, Info} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -107,10 +106,11 @@ function HeatBadge({ score, lead, allLeads, interactive }: { score: number; lead
   if (interactive && lead) {
     return (
       <LeadScorePopover lead={lead} score={score}>
-        <span
-          className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium cursor-pointer', bg)}
-        >
-          <Flame className="h-2.5 w-2.5" /> {score} · {label}
+        <span className="inline-flex items-center gap-1 cursor-pointer" title="Tap for score breakdown">
+          <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold', bg)}>
+            <Flame className="h-2.5 w-2.5" /> {score} · {label}
+          </span>
+          <Info className="h-3 w-3 text-muted-foreground shrink-0" />
         </span>
       </LeadScorePopover>
     );
@@ -124,6 +124,21 @@ function HeatBadge({ score, lead, allLeads, interactive }: { score: number; lead
       <Flame className="h-2.5 w-2.5" /> {score} · {label}
     </span>
   );
+}
+
+function getLastContactDate(lead: Lead): Date | null {
+  const dbDate = lead.lastTouchedAt || lead.lastContactAt;
+  let best = dbDate ? new Date(dbDate) : null;
+  try {
+    const log = JSON.parse(localStorage.getItem('dealPilot_activityLog') || '[]') as Array<{leadId?: string; leadName?: string; timestamp?: number}>;
+    const entries = log.filter(e => e.leadId === lead.id || e.leadName === lead.name);
+    if (entries.length > 0) {
+      const latest = entries.reduce((a, b) => (a.timestamp || 0) > (b.timestamp || 0) ? a : b);
+      const localDate = new Date(latest.timestamp || 0);
+      if (!best || localDate > best) best = localDate;
+    }
+  } catch { /* ignore */ }
+  return best;
 }
 
 function getLeadHeatScore(lead: Lead): number {
@@ -142,10 +157,10 @@ function getLeadHeatScore(lead: Lead): number {
   else if (src.includes('realtor') || src.includes('redfin')) score += 8;
   else if (src) score += 5;
 
-  // 3. Recency of contact — more recent = higher score
-  const contactDate = lead.lastTouchedAt || lead.lastContactAt;
-  if (contactDate) {
-    const daysSince = (Date.now() - new Date(contactDate).getTime()) / 86400000;
+  // 3. Recency of contact — check DB + localStorage activity log
+  const lastContactDate = getLastContactDate(lead);
+  if (lastContactDate) {
+    const daysSince = (Date.now() - lastContactDate.getTime()) / 86400000;
     if (daysSince < 1) score += 20;
     else if (daysSince < 3) score += 15;
     else if (daysSince < 7) score += 10;
@@ -523,6 +538,7 @@ function ShowingTodayCard({ userId, leads, refreshData }: { userId: string; lead
       });
       if (!resp.ok) throw new Error(`API ${resp.status}`);
       const result = await resp.json();
+      if (result?.type === 'error') throw new Error(result?.error?.message || 'Could not generate response.');
       const text = result?.content?.[0]?.text || '';
       const points = text.split('\n').map((l: string) => l.replace(/^[•\-\*]\s*/, '').trim()).filter(Boolean);
       setPrepResults(p => ({ ...p, [task.id]: points.length > 0 ? points : [text] }));
@@ -1816,6 +1832,7 @@ function InlineMorningBrief({ leads, agentName }: { leads: Lead[]; agentName: st
       });
       if (!resp.ok) throw new Error(`API ${resp.status}`);
       const result = await resp.json();
+      if (result?.type === 'error') throw new Error(result?.error?.message || 'Could not generate response.');
       const text = result?.content?.[0]?.text || 'Unable to generate brief.';
       setBrief(text);
       localStorage.setItem(getMorningBriefKey(), JSON.stringify({ text, date: new Date().toDateString() }));
@@ -2043,9 +2060,8 @@ export default function BetaHomeScreen() {
           .slice(0, 3);
 
         const getVerb = (lead: Lead, score: number): { verb: string; color: string } => {
-          const daysSince = (lead.lastTouchedAt || lead.lastContactAt)
-            ? Math.floor((Date.now() - new Date((lead.lastTouchedAt || lead.lastContactAt)!).getTime()) / 86400000)
-            : null;
+          const _lc = getLastContactDate(lead);
+          const daysSince = _lc ? Math.floor((Date.now() - _lc.getTime()) / 86400000) : null;
           const src = (lead.source || '').toLowerCase();
           const tags = (lead.statusTags || []).map(t => t.toLowerCase());
           const isReferral = src.includes('referral') || src.includes('sphere');

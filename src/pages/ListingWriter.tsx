@@ -74,6 +74,7 @@ export default function ListingWriter() {
       });
       if (!resp.ok) throw new Error(`API ${resp.status}`);
       const result = await resp.json();
+      if (result?.type === 'error') throw new Error(result?.error?.message || 'Could not generate response.');
       const text = result?.content?.[0]?.text || '{}';
       const clean = text.replace(/```json|```/g, '').trim();
       const data = JSON.parse(clean);

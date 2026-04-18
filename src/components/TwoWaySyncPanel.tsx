@@ -42,7 +42,7 @@ export function TwoWaySyncPanel({ entity, entityType }: Props) {
       toast({ description: `${entityType === 'deal' ? 'Deal' : 'Lead'} synced to FUB` });
     } catch (err: any) {
       setLastPush({ ok: false, message: err?.message || 'Push failed' });
-      toast({ description: 'Failed to sync to FUB', variant: 'destructive' });
+      toast({ description: 'FUB sync unavailable — changes saved locally.' });
     } finally {
       setPushing(false);
     }

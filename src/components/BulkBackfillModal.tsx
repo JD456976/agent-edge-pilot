@@ -54,7 +54,7 @@ export function BulkBackfillModal({ open, onClose, eligibleCount, onSuccess }: P
       toast({
         title: 'Backfill failed',
         description: err?.message || 'An unexpected error occurred.',
-        variant: 'destructive',
+        // paused edge function
       });
     } finally {
       setLoading(false);

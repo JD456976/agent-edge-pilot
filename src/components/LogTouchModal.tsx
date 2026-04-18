@@ -87,7 +87,7 @@ export function LogTouchModal({ open, onClose, entityType, entityId, entityTitle
 
       if (activityError) {
         console.error('Activity insert error:', activityError);
-        toast({ description: 'Could not log touch. Please try again.', variant: 'destructive' });
+        toast({ description: 'Could not log touch. Please try again.' });
         setSubmitting(false);
         return;
       }

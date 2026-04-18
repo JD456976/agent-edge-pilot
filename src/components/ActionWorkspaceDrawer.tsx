@@ -441,6 +441,7 @@ export function ActionWorkspaceDrawer({
       });
       if (!resp.ok) throw new Error(`API ${resp.status}`);
       const result = await resp.json();
+      if (result?.type === 'error') throw new Error(result?.error?.message || 'Could not generate response.');
       const opener = result?.content?.[0]?.text?.trim() || '';
       if (opener) {
         setOpenerResult(prev => ({ ...prev, [channel]: opener }));
@@ -1232,6 +1233,7 @@ export function ActionWorkspaceDrawer({
                             });
                             if (!resp.ok) throw new Error(`API ${resp.status}`);
                             const result = await resp.json();
+      if (result?.type === 'error') throw new Error(result?.error?.message || 'Could not generate response.');
                             setListingResult(result?.content?.[0]?.text?.trim() || 'Could not generate listing.');
                           } catch (err: any) {
                             toast({ title: 'Could not generate listing', description: err?.message || 'Try again', variant: 'destructive' });

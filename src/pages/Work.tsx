@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
 import { LeadScorePopover } from '@/components/LeadScorePopover';
-import { Flame, Search, Plus, MapPin, Calendar, Clock, Users, ChevronRight, RefreshCw, Phone, MessageSquare, Mail } from 'lucide-react';
+import { Flame, Info, Search, Plus, MapPin, Calendar, Clock, Users, ChevronRight, RefreshCw, Phone, MessageSquare, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -47,22 +47,53 @@ function SyncButton() {
 const TABS = ['Leads', 'Pipeline', 'Tasks', 'Open House'] as const;
 const HEAT_FILTERS = ['All', 'Hot', 'Warm', 'Cool'] as const;
 
+function getLastContactDate(lead: Lead): Date | null {
+  // Check DB field first
+  const dbDate = lead.lastTouchedAt || lead.lastContactAt;
+  let best = dbDate ? new Date(dbDate) : null;
+  // Also check localStorage activity log (logged from quick-action buttons)
+  try {
+    const log = JSON.parse(localStorage.getItem('dealPilot_activityLog') || '[]') as Array<{leadId?: string; leadName?: string; timestamp?: number}>;
+    const entries = log.filter(e => e.leadId === lead.id || e.leadName === lead.name);
+    if (entries.length > 0) {
+      const latest = entries.reduce((a, b) => (a.timestamp || 0) > (b.timestamp || 0) ? a : b);
+      const localDate = new Date(latest.timestamp || 0);
+      if (!best || localDate > best) best = localDate;
+    }
+  } catch { /* ignore */ }
+  return best;
+}
+
 function getLeadHeatScore(lead: Lead): number {
   let score = lead.engagementScore || 0;
+  // Temperature
   if (lead.leadTemperature === 'hot') score = Math.max(score, 75);
   else if (lead.leadTemperature === 'warm') score = Math.max(score, 50);
-  if (lead.lastTouchedAt) {
-    const daysSince = (Date.now() - new Date(lead.lastTouchedAt).getTime()) / 86400000;
-    if (daysSince < 1) score += 15;
-    else if (daysSince < 3) score += 8;
+  // Source quality — Zillow/Referral leads have inherent intent
+  const src = (lead.source || '').toLowerCase();
+  if (src.includes('zillow preferred')) score = Math.max(score, 35);
+  else if (src.includes('zillow')) score = Math.max(score, 25);
+  else if (src.includes('referral') || src.includes('sphere')) score = Math.max(score, 30);
+  else if (src.includes('realtor') || src.includes('redfin')) score = Math.max(score, 22);
+  else if (lead.source) score = Math.max(score, 18);
+  // Recency (check both DB and localStorage)
+  const lastContact = getLastContactDate(lead);
+  if (lastContact) {
+    const daysSince = (Date.now() - lastContact.getTime()) / 86400000;
+    if (daysSince < 1) score += 20;
+    else if (daysSince < 3) score += 12;
+    else if (daysSince < 7) score += 6;
+    else if (daysSince < 14) score += 2;
   }
-  if (lead.statusTags?.some(t => ['pre-approved', 'pre_approved', 'showing', 'appointment set', 'cash_buyer'].includes(t.toLowerCase()))) score += 15;
+  // Intent tags
+  if (lead.statusTags?.some(t => ['pre-approved', 'pre_approved', 'showing', 'appointment set', 'cash_buyer'].includes(t.toLowerCase()))) score += 20;
   return Math.min(score, 100);
 }
 
 function getClientVerdict(lead: Lead, score: number): { text: string; color: string } {
-  const daysSinceContact = lead.lastTouchedAt
-    ? Math.floor((Date.now() - new Date(lead.lastTouchedAt).getTime()) / 86400000)
+  const lastContact = getLastContactDate(lead);
+  const daysSinceContact = lastContact
+    ? Math.floor((Date.now() - lastContact.getTime()) / 86400000)
     : null;
   const hasIntentTags = lead.statusTags?.some(t =>
     ['pre-approved', 'pre_approved', 'showing', 'appointment set', 'cash_buyer'].includes(t.toLowerCase())
@@ -81,25 +112,29 @@ function getClientVerdict(lead: Lead, score: number): { text: string; color: str
   return { text: 'Cold — low activity, low engagement', color: 'text-muted-foreground' };
 }
 
-function HeatBadge({ score, lead, onClick }: { score: number; lead?: import('@/types').Lead; onClick?: (e: React.MouseEvent) => void }) {
-  const bg = score >= 75 ? 'bg-urgent/15 text-urgent' : score >= 50 ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground';
+function HeatBadge({ score, lead }: { score: number; lead?: import('@/types').Lead }) {
+  const bg = score >= 75 ? 'bg-urgent/15 text-urgent' : score >= 50 ? 'bg-warning/15 text-warning' : 'bg-muted/60 text-muted-foreground';
   const label = score >= 75 ? 'Hot' : score >= 50 ? 'Warm' : 'Cool';
-  const badge = (
-    <span
-      className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all', bg)}
-      onClick={onClick}
-    >
+  
+  const pill = (
+    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold', bg)}>
       <Flame className="h-2.5 w-2.5" /> {score} · {label}
     </span>
   );
-  if (lead) {
-    return (
-      <LeadScorePopover lead={lead} score={score}>
-        {badge}
-      </LeadScorePopover>
-    );
-  }
-  return badge;
+
+  if (!lead) return pill;
+
+  return (
+    <LeadScorePopover lead={lead} score={score}>
+      <span
+        className="inline-flex items-center gap-1 cursor-pointer"
+        title="Tap to see score breakdown"
+      >
+        {pill}
+        <Info className="h-3 w-3 text-muted-foreground hover:text-foreground transition-colors shrink-0" />
+      </span>
+    </LeadScorePopover>
+  );
 }
 
 function LeadsTab() {
@@ -166,8 +201,9 @@ function LeadsTab() {
       ) : (
         <div className="space-y-1">
           {filtered.map(({ lead, score }) => {
-            const daysSince = lead.lastTouchedAt
-              ? Math.floor((Date.now() - new Date(lead.lastTouchedAt).getTime()) / 86400000)
+            const _lastContact = getLastContactDate(lead);
+            const daysSince = _lastContact
+              ? Math.floor((Date.now() - _lastContact.getTime()) / 86400000)
               : null;
             const verdict = getClientVerdict(lead, score);
             return (
@@ -183,7 +219,7 @@ function LeadsTab() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-sm truncate text-primary">{lead.name}</span>
                     <Badge variant="secondary" className="text-[10px] shrink-0">{lead.source || 'Direct'}</Badge>
-                    <HeatBadge score={score} lead={lead} onClick={(e) => { e.stopPropagation(); setExecutionEntity({ entity: lead, entityType: 'lead' }); }} />
+                    <HeatBadge score={score} lead={lead} />
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <span className={cn(

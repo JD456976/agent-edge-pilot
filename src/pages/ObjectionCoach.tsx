@@ -70,6 +70,7 @@ export default function ObjectionCoach() {
       });
       if (!resp.ok) throw new Error(`API ${resp.status}`);
       const result = await resp.json();
+      if (result?.type === 'error') throw new Error(result?.error?.message || 'Could not generate response.');
       const text = result?.content?.[0]?.text || '';
       setResult(parseResponse(text));
     } catch (e: any) {
