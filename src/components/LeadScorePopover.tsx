@@ -101,9 +101,11 @@ export function LeadScorePopover({ lead, score, children }: Props) {
 
   return (
     <>
-      <span onClick={toggle} className="cursor-pointer inline-flex items-center gap-1">
+      <span onClick={toggle} className="cursor-pointer inline-flex items-center gap-1 group">
         {children}
-        <Info className="h-2.5 w-2.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-primary/15 group-hover:bg-primary/30 transition-colors shrink-0">
+          <Info className="h-2.5 w-2.5 text-primary/80 group-hover:text-primary transition-colors" />
+        </span>
       </span>
 
       {open && (
