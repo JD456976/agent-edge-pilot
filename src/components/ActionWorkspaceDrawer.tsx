@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap, Send, Clock, ArrowUpRight, ArrowDownLeft, Loader2, CalendarDays, Activity, Flame, StickyNote as NotesIcon, History, AlertTriangle, Sparkles, Eye } from 'lucide-react';
+import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap, Send, Clock, ArrowUpRight, ArrowDownLeft, Loader2, CalendarDays, Activity, Flame, StickyNote as NotesIcon, History, AlertTriangle, Sparkles, Eye, Info } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { relativeTime } from '@/lib/relativeTime';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -40,6 +40,7 @@ import {
   type ConfidenceLevel,
 } from '@/lib/executionEngine';
 import { ShowingFeedbackTab } from '@/components/ShowingFeedbackTab';
+import { LeadScorePopover } from '@/components/LeadScorePopover';
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -158,6 +159,45 @@ function getSmartDueDate(entity: Deal | Lead, entityType: 'deal' | 'lead'): stri
   in2days.setDate(in2days.getDate() + 2);
   in2days.setHours(9, 0, 0, 0);
   return in2days.toISOString();
+}
+
+// ── Score helpers ────────────────────────────────────────────────────
+
+function getLastContactDate(lead: Lead): Date | null {
+  const dbDate = lead.lastTouchedAt || lead.lastContactAt;
+  let best = dbDate ? new Date(dbDate) : null;
+  try {
+    const log = JSON.parse(localStorage.getItem('dealPilot_activityLog') || '[]') as Array<{leadId?: string; leadName?: string; timestamp?: number}>;
+    const entries = log.filter(e => e.leadId === lead.id || e.leadName === lead.name);
+    if (entries.length > 0) {
+      const latest = entries.reduce((a, b) => (a.timestamp || 0) > (b.timestamp || 0) ? a : b);
+      const localDate = new Date(latest.timestamp || 0);
+      if (!best || localDate > best) best = localDate;
+    }
+  } catch { /* ignore */ }
+  return best;
+}
+
+function getLeadHeatScore(lead: Lead): number {
+  let score = lead.engagementScore || 0;
+  if (lead.leadTemperature === 'hot') score = Math.max(score, 75);
+  else if (lead.leadTemperature === 'warm') score = Math.max(score, 50);
+  const src = (lead.source || '').toLowerCase();
+  if (src.includes('zillow preferred')) score = Math.max(score, 35);
+  else if (src.includes('zillow')) score = Math.max(score, 25);
+  else if (src.includes('referral') || src.includes('sphere')) score = Math.max(score, 30);
+  else if (src.includes('realtor') || src.includes('redfin')) score = Math.max(score, 22);
+  else if (lead.source) score = Math.max(score, 18);
+  const lastContact = getLastContactDate(lead);
+  if (lastContact) {
+    const daysSince = (Date.now() - lastContact.getTime()) / 86400000;
+    if (daysSince < 1) score += 20;
+    else if (daysSince < 3) score += 12;
+    else if (daysSince < 7) score += 6;
+    else if (daysSince < 14) score += 2;
+  }
+  if (lead.statusTags?.some(t => ['pre-approved', 'pre_approved', 'showing', 'appointment set', 'cash_buyer'].includes(t.toLowerCase()))) score += 20;
+  return Math.min(score, 100);
 }
 
 // ── Main Component ───────────────────────────────────────────────────
@@ -706,13 +746,15 @@ export function ActionWorkspaceDrawer({
                           <span className="ml-auto font-medium">{daysSinceTouch != null ? `${daysSinceTouch}d ago` : '—'}</span>
                         </div>
                         <div className="col-span-2 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              <Activity className="h-3 w-3 text-muted-foreground shrink-0" />
-                              <span className="text-muted-foreground">Engagement</span>
+                          <LeadScorePopover lead={lead} score={getLeadHeatScore(lead)}>
+                            <div className="flex items-center justify-between w-full">
+                              <div className="flex items-center gap-1.5">
+                                <Activity className="h-3 w-3 text-muted-foreground shrink-0" />
+                                <span className="text-muted-foreground">Engagement</span>
+                              </div>
+                              <span className={cn("font-medium", engScore >= 70 ? 'text-opportunity' : engScore >= 40 ? 'text-warning' : 'text-muted-foreground')}>{engScore}/100</span>
                             </div>
-                            <span className={cn("font-medium", engScore >= 70 ? 'text-opportunity' : engScore >= 40 ? 'text-warning' : 'text-muted-foreground')}>{engScore}/100</span>
-                          </div>
+                          </LeadScorePopover>
                           <Progress value={engScore} className="h-1.5" />
                         </div>
                         <div className="flex items-center gap-1.5">

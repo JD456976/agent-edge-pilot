@@ -9,7 +9,7 @@ import {
   Phone, MessageSquare, Mail, ListTodo, StickyNote,
   Copy, Check, Shield, ChevronDown, ChevronUp,
   Clock, AlertTriangle, TrendingUp, Target, X,
-  Send, Loader2, ArrowUpRight, ArrowDownLeft,
+  Send, Loader2, ArrowUpRight, ArrowDownLeft, Info,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
 import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
 import { ClientFitPanel } from '@/components/ClientFitPanel';
 import { ClientCommitmentPanel } from '@/components/ClientCommitmentPanel';
+import { LeadScorePopover } from '@/components/LeadScorePopover';
 import type { FubPersonProfile } from '@/lib/intelAnalyzer';
 import type { Deal, Lead, Task, TaskType } from '@/types';
 import type { MoneyModelResult } from '@/lib/moneyModel';
@@ -127,6 +128,45 @@ function getSmartDueDate(entity: Deal | Lead, entityType: 'deal' | 'lead'): stri
   in2days.setDate(in2days.getDate() + 2);
   in2days.setHours(9, 0, 0, 0);
   return in2days.toISOString();
+}
+
+// ── Score helpers (mirrors Work.tsx) ─────────────────────────────────
+
+function getLastContactDate(lead: Lead): Date | null {
+  const dbDate = lead.lastTouchedAt || lead.lastContactAt;
+  let best = dbDate ? new Date(dbDate) : null;
+  try {
+    const log = JSON.parse(localStorage.getItem('dealPilot_activityLog') || '[]') as Array<{leadId?: string; leadName?: string; timestamp?: number}>;
+    const entries = log.filter(e => e.leadId === lead.id || e.leadName === lead.name);
+    if (entries.length > 0) {
+      const latest = entries.reduce((a, b) => (a.timestamp || 0) > (b.timestamp || 0) ? a : b);
+      const localDate = new Date(latest.timestamp || 0);
+      if (!best || localDate > best) best = localDate;
+    }
+  } catch { /* ignore */ }
+  return best;
+}
+
+function getLeadHeatScore(lead: Lead): number {
+  let score = lead.engagementScore || 0;
+  if (lead.leadTemperature === 'hot') score = Math.max(score, 75);
+  else if (lead.leadTemperature === 'warm') score = Math.max(score, 50);
+  const src = (lead.source || '').toLowerCase();
+  if (src.includes('zillow preferred')) score = Math.max(score, 35);
+  else if (src.includes('zillow')) score = Math.max(score, 25);
+  else if (src.includes('referral') || src.includes('sphere')) score = Math.max(score, 30);
+  else if (src.includes('realtor') || src.includes('redfin')) score = Math.max(score, 22);
+  else if (lead.source) score = Math.max(score, 18);
+  const lastContact = getLastContactDate(lead);
+  if (lastContact) {
+    const daysSince = (Date.now() - lastContact.getTime()) / 86400000;
+    if (daysSince < 1) score += 20;
+    else if (daysSince < 3) score += 12;
+    else if (daysSince < 7) score += 6;
+    else if (daysSince < 14) score += 2;
+  }
+  if (lead.statusTags?.some(t => ['pre-approved', 'pre_approved', 'showing', 'appointment set', 'cash_buyer'].includes(t.toLowerCase()))) score += 20;
+  return Math.min(score, 100);
 }
 
 // ── Post-Action Bar ──────────────────────────────────────────────────
@@ -278,15 +318,17 @@ function ContextPanel({ entity, entityType, moneyResult, oppResult, tasks: entit
     <div className="space-y-3">
       {/* Compact Intel Strip */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize', tempColor)}>
-          {lead!.leadTemperature || 'cold'}
-        </span>
-        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-          <span className="font-medium text-foreground">{effectiveEngagement}</span>
-          <span className="w-10 h-1.5 rounded-full bg-muted overflow-hidden inline-block align-middle">
-            <span className="block h-full rounded-full bg-primary/60 transition-all" style={{ width: `${Math.min(100, effectiveEngagement)}%` }} />
+        <LeadScorePopover lead={lead!} score={getLeadHeatScore(lead!)}>
+          <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize', tempColor)}>
+            {lead!.leadTemperature || 'cold'}
           </span>
-        </span>
+          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+            <span className="font-medium text-foreground">{effectiveEngagement}</span>
+            <span className="w-10 h-1.5 rounded-full bg-muted overflow-hidden inline-block align-middle">
+              <span className="block h-full rounded-full bg-primary/60 transition-all" style={{ width: `${Math.min(100, effectiveEngagement)}%` }} />
+            </span>
+          </span>
+        </LeadScorePopover>
         {lead!.source && (
           <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
             {lead!.source}

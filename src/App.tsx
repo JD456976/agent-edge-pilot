@@ -34,6 +34,7 @@ import Appointments from "@/pages/Appointments";
 import ObjectionCoach from "@/pages/ObjectionCoach";
 import MessageTemplates from "@/pages/MessageTemplates";
 import Deals from "@/pages/Deals";
+import Clients from "@/pages/Clients";
 import OpenHouseKiosk from "@/pages/OpenHouseKiosk";
 import { ReviewPrompt } from "@/components/ReviewPrompt";
 import { PWAUpdatePrompt } from "@/components/PWAUpdatePrompt";
@@ -102,6 +103,7 @@ function WorkspaceOverlays() {
 
   const WORKSPACE_CONFIG: Record<string, { title: string; subtitle: string; Component: React.ComponentType }> = {
     work: { title: 'Work', subtitle: 'Pipeline and tasks', Component: Work },
+    clients: { title: 'Clients', subtitle: 'Your full client roster', Component: Clients },
     deals: { title: 'Active Deals', subtitle: 'Track every deal from contract to close', Component: Deals },
     calendar: { title: 'Calendar', subtitle: 'Appointments, tasks & milestones', Component: CalendarPage },
     openhouse: { title: 'Open House Intelligence', subtitle: 'Capture visitors and follow up', Component: OpenHouse },
