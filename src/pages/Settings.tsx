@@ -569,11 +569,13 @@ export default function Settings() {
       {/* Notification Preferences */}
       <NotificationPreferencesSection />
 
-      <IncomeTargetSettings
-        settings={strategicSettings}
-        onUpdate={updateStrategicSettings}
-        onReset={resetStrategicSettings}
-      />
+      <div id="income-target-section">
+        <IncomeTargetSettings
+          settings={strategicSettings}
+          onUpdate={updateStrategicSettings}
+          onReset={resetStrategicSettings}
+        />
+      </div>
 
       {/* Target Market */}
       <TargetMarketSettings />

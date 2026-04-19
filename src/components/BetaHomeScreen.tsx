@@ -2372,7 +2372,13 @@ export default function BetaHomeScreen() {
         hasDeals={deals.length > 0}
         hasIncomeTarget={!!(ccData.strategicSettings as any)?.annualIncomeTarget}
         onConnectCrm={() => openWorkspace('sync')}
-        onSetIncomeTarget={() => openWorkspace('settings')}
+        onSetIncomeTarget={() => {
+          openWorkspace('settings');
+          // Scroll to income target after the workspace animates in
+          setTimeout(() => {
+            document.getElementById('income-target-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 350);
+        }}
       />
 
       {/* Snoozed leads — all modes */}

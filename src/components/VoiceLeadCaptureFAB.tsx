@@ -218,21 +218,27 @@ export function VoiceLeadCaptureFAB() {
   // === FAB (idle state) ===
   if (step === 'idle') {
     return (
-      <button
-        onClick={startRecording}
-        className={cn(
-          'fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-40',
-          'h-14 w-14 rounded-full',
-          'bg-primary text-primary-foreground shadow-lg shadow-primary/30',
-          'flex items-center justify-center',
-          'hover:scale-105 active:scale-95 transition-transform',
-          'min-h-[44px] min-w-[44px]',
-          'voice-fab-pulse',
-        )}
-        aria-label="Voice Lead Capture"
-      >
-        <Mic className="h-6 w-6" />
-      </button>
+      <div className="fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-40 flex flex-col items-end gap-1.5">
+        {/* Label — visible on hover/focus so users know what this does */}
+        <span className="hidden group-hover:block opacity-0 group-hover:opacity-100 transition-opacity bg-card border border-border text-xs font-medium px-2.5 py-1 rounded-full shadow-md pointer-events-none whitespace-nowrap">
+          Voice Lead Capture
+        </span>
+        <button
+          onClick={startRecording}
+          className={cn(
+            'h-14 w-14 rounded-full group',
+            'bg-primary text-primary-foreground shadow-lg shadow-primary/30',
+            'flex items-center justify-center',
+            'hover:scale-105 active:scale-95 transition-transform',
+            'min-h-[44px] min-w-[44px]',
+            'voice-fab-pulse',
+          )}
+          aria-label="Voice Lead Capture — tap to speak a new lead"
+          title="Voice Lead Capture"
+        >
+          <Mic className="h-6 w-6" />
+        </button>
+      </div>
     );
   }
 
