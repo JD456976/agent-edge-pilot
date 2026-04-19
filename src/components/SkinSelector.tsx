@@ -25,7 +25,7 @@ export function SkinSelector() {
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 p-3">
         <p className="text-xs font-semibold mb-3">Appearance</p>
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-72 overflow-y-auto pr-0.5">
           {SKINS.map(s => {
             const meta = SKIN_META[s];
             const preview = SKIN_PREVIEWS[s];
