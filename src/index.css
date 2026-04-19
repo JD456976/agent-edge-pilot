@@ -91,6 +91,38 @@
     --sidebar-ring: 243 75% 59%;
   }
 
+  /* Command Center — explicit LIGHT mode */
+  [data-skin="command-center"].light, :root.light {
+    --background: 214 32% 96%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 243 75% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 32% 90%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 214 32% 90%;
+    --muted-foreground: 215 20% 40%;
+    --accent: 263 70% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 47% 11% / 0.1;
+    --input: 222 47% 11% / 0.1;
+    --ring: 243 75% 52%;
+
+    --sidebar-background: 214 32% 93%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 243 75% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 214 32% 88%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 222 47% 11% / 0.1;
+    --sidebar-ring: 243 75% 52%;
+  }
+
   /* ═══════════════════════════════════════════════════
      SKIN: Dark Luxury — Linear/Vercel-inspired, glass depth
      ═══════════════════════════════════════════════════ */
@@ -178,6 +210,98 @@
     --sidebar-border: 0 0% 12%;
     --sidebar-ring: 0 0% 100%;
   }
+}
+
+  /* ═══════════════════════════════════════════════════
+     SKIN: Field Agent — Warm, grounded, built for the road
+     Inspired by maps, terrain, and outdoor navigation tools.
+     Earthy greens + amber + warm grays
+     ═══════════════════════════════════════════════════ */
+  [data-skin="field-agent"] {
+    --background: 45 25% 96%;
+    --foreground: 30 15% 15%;
+    --card: 45 30% 99%;
+    --card-foreground: 30 15% 15%;
+    --popover: 45 30% 99%;
+    --popover-foreground: 30 15% 15%;
+    --primary: 142 50% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 45 25% 90%;
+    --secondary-foreground: 30 15% 15%;
+    --muted: 45 20% 90%;
+    --muted-foreground: 30 12% 45%;
+    --accent: 38 90% 48%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 5 78% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 15% 15% / 0.12;
+    --input: 30 15% 15% / 0.12;
+    --ring: 142 50% 36%;
+    --radius: 0.5rem;
+
+    --urgent: 5 78% 52%;
+    --urgent-foreground: 0 0% 100%;
+    --warning: 38 90% 48%;
+    --warning-foreground: 0 0% 100%;
+    --opportunity: 142 50% 36%;
+    --opportunity-foreground: 0 0% 100%;
+    --time-sensitive: 270 50% 50%;
+    --time-sensitive-foreground: 0 0% 100%;
+    --gold: 38 90% 48%;
+    --gold-foreground: 0 0% 100%;
+
+    --sidebar-background: 45 20% 93%;
+    --sidebar-foreground: 30 15% 15%;
+    --sidebar-primary: 142 50% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 45 20% 88%;
+    --sidebar-accent-foreground: 30 15% 15%;
+    --sidebar-border: 30 15% 15% / 0.12;
+    --sidebar-ring: 142 50% 36%;
+  }
+
+  [data-skin="field-agent"].dark {
+    --background: 30 18% 8%;
+    --foreground: 45 20% 90%;
+    --card: 30 16% 12%;
+    --card-foreground: 45 20% 90%;
+    --popover: 30 16% 12%;
+    --popover-foreground: 45 20% 90%;
+    --primary: 142 55% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 30 14% 18%;
+    --secondary-foreground: 45 20% 90%;
+    --muted: 30 14% 18%;
+    --muted-foreground: 45 15% 55%;
+    --accent: 38 85% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 5 65% 35%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 45 20% 90% / 0.1;
+    --input: 45 20% 90% / 0.1;
+    --ring: 142 55% 42%;
+
+    --urgent: 5 78% 58%;
+    --urgent-foreground: 0 0% 100%;
+    --warning: 38 85% 52%;
+    --warning-foreground: 0 0% 100%;
+    --opportunity: 142 55% 42%;
+    --opportunity-foreground: 0 0% 100%;
+    --time-sensitive: 270 55% 58%;
+    --time-sensitive-foreground: 0 0% 100%;
+    --gold: 38 85% 52%;
+    --gold-foreground: 0 0% 100%;
+
+    --sidebar-background: 30 18% 6%;
+    --sidebar-foreground: 45 20% 85%;
+    --sidebar-primary: 142 55% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 30 14% 15%;
+    --sidebar-accent-foreground: 45 20% 90%;
+    --sidebar-border: 45 20% 90% / 0.1;
+    --sidebar-ring: 142 55% 42%;
+  }
+
 }
 
 @layer base {

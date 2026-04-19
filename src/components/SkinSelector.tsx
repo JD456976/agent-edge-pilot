@@ -4,11 +4,12 @@ import { Paintbrush } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 
-const SKINS: Skin[] = ['command-center', 'luxury'];
+const SKINS: Skin[] = ['command-center', 'luxury', 'field-agent'];
 
 const SKIN_PREVIEWS: Record<Skin, { bg: string; accent: string; card: string }> = {
-  'command-center': { bg: 'bg-[hsl(222,47%,7%)]', accent: 'bg-[hsl(217,91%,60%)]', card: 'bg-[hsl(222,41%,11%)]' },
+  'command-center': { bg: 'bg-[hsl(222,47%,7%)]', accent: 'bg-[hsl(243,75%,59%)]', card: 'bg-[hsl(222,41%,11%)]' },
   'luxury': { bg: 'bg-[hsl(0,0%,4%)]', accent: 'bg-[hsl(0,0%,100%)]', card: 'bg-[hsl(0,0%,8%)]' },
+  'field-agent': { bg: 'bg-[hsl(45,25%,96%)]', accent: 'bg-[hsl(142,50%,36%)]', card: 'bg-[hsl(45,30%,99%)]' },
 };
 
 export function SkinSelector() {

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 type Theme = 'dark' | 'light';
-export type Skin = 'command-center' | 'luxury';
+export type Skin = 'command-center' | 'luxury' | 'field-agent';
 
 interface ThemeContextType {
   theme: Theme;
@@ -14,8 +14,9 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const SKIN_META: Record<Skin, { label: string; description: string }> = {
-  'command-center': { label: 'Command Center', description: 'Bloomberg-inspired, data-dense with gold accents' },
+  'command-center': { label: 'Command Center', description: 'Bloomberg-inspired, data-dense with blue accents' },
   'luxury': { label: 'Dark Luxury', description: 'Linear-inspired, minimal with glass depth' },
+  'field-agent': { label: 'Field Agent', description: 'Warm earthy tones — built for agents on the road' },
 };
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -26,7 +27,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const [skin, setSkinState] = useState<Skin>(() => {
     const stored = localStorage.getItem('dp-skin');
-    return (stored === 'command-center' || stored === 'luxury') ? stored : 'command-center';
+    return (stored === 'command-center' || stored === 'luxury' || stored === 'field-agent') ? stored as Skin : 'command-center';
   });
 
   useEffect(() => {

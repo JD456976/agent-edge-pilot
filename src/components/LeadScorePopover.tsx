@@ -91,7 +91,7 @@ export function LeadScorePopover({ lead, score, children }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };\
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
@@ -101,20 +101,29 @@ export function LeadScorePopover({ lead, score, children }: Props) {
 
   return (
     <>
-      <span onClick={toggle} className="cursor-pointer inline-flex items-center gap-1 group">
+      <span
+        onClick={toggle}
+        className="cursor-pointer inline-flex items-center gap-1.5 group"
+        title="Tap to see score breakdown"
+        aria-label="Score breakdown"
+      >
         {children}
-        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-primary/15 group-hover:bg-primary/30 transition-colors shrink-0">
-          <Info className="h-2.5 w-2.5 text-primary/80 group-hover:text-primary transition-colors" />
+        {/* Visible "Why?" badge — larger and labeled so users know it's tappable */}
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-primary/15 group-hover:bg-primary/25 active:bg-primary/30 transition-colors shrink-0 border border-primary/20">
+          <Info className="h-3 w-3 text-primary/80 group-hover:text-primary transition-colors" />
+          <span className="text-[9px] font-semibold text-primary/80 group-hover:text-primary leading-none hidden sm:inline">Why?</span>
         </span>
       </span>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setOpen(false)}>
-          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm" />
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center" onClick={() => setOpen(false)}>
+          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm touch-none" />
           <div
             className="relative w-full max-w-sm bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 space-y-4 mx-0 sm:mx-4"
             onClick={e => e.stopPropagation()}
           >
+            {/* Drag handle — mobile only */}
+            <div className="sm:hidden absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-border" />
             {/* Header */}
             <div className="flex items-start justify-between gap-3">
               <div>
