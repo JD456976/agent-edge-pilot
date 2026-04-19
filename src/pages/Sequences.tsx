@@ -347,7 +347,7 @@ function EnrollSheet({ leads, templates, preselectedTemplateId, existingLeadIds,
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div className="relative w-full max-w-lg bg-card border-t border-border rounded-t-2xl p-5 pb-8 animate-slide-up" onClick={e => e.stopPropagation()}>
+      <div className="relative w-full max-w-lg bg-card border-t border-border rounded-t-2xl p-5 pb-safe animate-slide-up" style={{ paddingBottom: 'max(2rem, calc(env(safe-area-inset-bottom, 0px) + 5rem))' }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-foreground">Enroll a Lead</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>

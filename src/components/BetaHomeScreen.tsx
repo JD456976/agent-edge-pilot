@@ -864,20 +864,24 @@ function ActivityStreakStrip({ userId }: { userId: string }) {
       <div className="flex items-center gap-3 text-[11px] text-muted-foreground min-w-0">
         <span className="flex items-center gap-1 shrink-0">
           <span>📞</span> <span className="font-medium text-foreground">{stats.calls}</span>
+          <span className="text-muted-foreground/60 text-[10px]">calls</span>
         </span>
         <span className="text-border">·</span>
         <span className="flex items-center gap-1 shrink-0">
           <span>✉️</span> <span className="font-medium text-foreground">{stats.contacts}</span>
+          <span className="text-muted-foreground/60 text-[10px]">contacts</span>
         </span>
         <span className="text-border">·</span>
         <span className={cn('flex items-center gap-1 shrink-0', streakHot && 'text-warning')}>
           <span className={streakHot ? 'drop-shadow-[0_0_4px_hsl(var(--warning))]' : ''}>🔥</span>
           <span className="font-medium text-foreground">{streak}d</span>
+          <span className="text-muted-foreground/60 text-[10px]">streak</span>
         </span>
         <span className="text-border">·</span>
         <span className="flex items-center gap-1.5 shrink-0">
           <span>⭐</span>
           <span className="font-medium text-foreground">{stats.weekContacts}/{weekGoal}</span>
+          <span className="text-muted-foreground/60 text-[10px]">weekly goal</span>
           <div className="w-10 h-1.5 rounded-full bg-muted overflow-hidden">
             <div
               className={cn('h-full rounded-full transition-all', goalMet ? 'bg-opportunity' : 'bg-primary')}

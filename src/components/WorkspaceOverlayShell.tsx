@@ -45,7 +45,7 @@ export function WorkspaceOverlayShell({ title, subtitle, open, onClose, children
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-background/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-background/60 backdrop-blur-sm touch-none"
             onClick={onClose}
           />
 
@@ -101,7 +101,7 @@ export function WorkspaceOverlayShell({ title, subtitle, open, onClose, children
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1, duration: 0.2 }}
-              className="flex-1 overflow-y-auto p-4 lg:p-6 pb-6"
+              className="flex-1 overflow-y-auto overscroll-contain p-4 lg:p-6 pb-24 lg:pb-8"
             >
               {children}
             </motion.div>

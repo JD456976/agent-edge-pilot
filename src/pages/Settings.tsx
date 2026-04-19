@@ -1,7 +1,62 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const OWNER_EMAILS = ['craig219@comcast.net', 'jason.craig@chinattirealty.com', 'jdog45@gmail.com'];
 const isAdminEmail = (email?: string | null) => !!email && OWNER_EMAILS.some(e => e.toLowerCase() === email.toLowerCase());
+
+function DPAccessStatus({ userId }: { userId: string | null }) {
+  const [expiry, setExpiry] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!userId) { setLoaded(true); return; }
+    supabase.from('profiles').select('beta_access_expires_at').eq('user_id', userId).maybeSingle()
+      .then(({ data }) => { setExpiry((data as any)?.beta_access_expires_at || null); setLoaded(true); });
+  }, [userId]);
+
+  if (!loaded) return null;
+
+  const { user } = useAuth();
+  const isOwner = isAdminEmail(user?.email);
+
+  if (isOwner) return (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 mt-1">
+      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+      <div>
+        <p className="text-sm font-medium text-emerald-400">Full Access</p>
+        <p className="text-xs text-muted-foreground">Owner account — all features unlocked</p>
+      </div>
+    </div>
+  );
+
+  if (!expiry) return (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20 mt-1">
+      <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+      <p className="text-sm text-primary font-medium">Active Access</p>
+    </div>
+  );
+
+  const now = new Date();
+  const exp = new Date(expiry);
+  const diffMs = exp.getTime() - now.getTime();
+  const daysLeft = Math.ceil(diffMs / 86400000);
+  const expired = daysLeft < 0;
+  const urgent = daysLeft <= 7 && !expired;
+  const expStr = exp.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  return (
+    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border mt-1 ${expired ? 'bg-destructive/10 border-destructive/20' : urgent ? 'bg-warning/10 border-warning/20' : 'bg-primary/10 border-primary/20'}`}>
+      {expired ? <AlertTriangle className="h-4 w-4 text-destructive shrink-0" /> : <Clock className={`h-4 w-4 shrink-0 ${urgent ? 'text-warning' : 'text-primary'}`} />}
+      <div>
+        <p className={`text-sm font-medium ${expired ? 'text-destructive' : urgent ? 'text-warning' : 'text-primary'}`}>
+          {expired ? 'Access Expired' : `${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining`}
+        </p>
+        <p className="text-xs text-muted-foreground">{expired ? `Expired ${expStr}` : `Access until ${expStr}`}</p>
+      </div>
+    </div>
+  );
+}
 import { useDemo } from '@/contexts/DemoContext';
 import { TargetMarketSettings } from '@/components/TargetMarketSettings';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -26,7 +81,6 @@ import { useSessionMode, type SessionMode } from '@/hooks/useSessionMode';
 import { useStrategicSettings } from '@/hooks/useStrategicSettings';
 import { useSelfOptimizing } from '@/hooks/useSelfOptimizing';
 import { getAutonomyLevel, setAutonomyLevel, getFeedbackStats, type AutonomyLevel } from '@/lib/preparedActions';
-import { useHabitTracking } from '@/hooks/useHabitTracking';
 import Admin from '@/pages/Admin';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -188,6 +242,7 @@ function ProfileSection() {
           </div>
           <div><Label className="text-xs text-muted-foreground">Email</Label><p className="text-sm font-medium">{user?.email}</p></div>
           <div><Label className="text-xs text-muted-foreground">Role</Label><p className="text-sm font-medium capitalize">{user?.role}</p></div>
+          <DPAccessStatus userId={user?.id || null} />
         </div>
       </div>
     </section>
@@ -428,7 +483,6 @@ export default function Settings() {
   const [autonomy, setAutonomy] = useState<AutonomyLevel>(() => getAutonomyLevel());
   const feedbackStats = getFeedbackStats();
   const { prefs: selfOptPrefs, analysis: selfOptAnalysis, updatePrefs: updateSelfOptPrefs, resetLearning: resetSelfOptLearning, exportSummary: exportSelfOptSummary } = useSelfOptimizing(user?.id);
-  const { stats: habitStats } = useHabitTracking();
   const [noisePrefs, setNoisePrefsState] = useState(() => getNoisePrefs());
   const updateNoisePref = (partial: Partial<typeof noisePrefs>) => {
     const next = setNoisePrefs(partial);
@@ -524,9 +578,6 @@ export default function Settings() {
       {/* Target Market */}
       <TargetMarketSettings />
 
-      {/* Lead Sources Insight */}
-      <LeadSourcesInsight />
-
       {/* Self-Optimizing Mode */}
       <SelfOptimizingSettingsPanel
         prefs={selfOptPrefs}
@@ -583,36 +634,6 @@ export default function Settings() {
         )}
       </section>
 
-      {/* Daily Consistency */}
-      <section className="rounded-lg border border-border bg-card p-4 mb-4">
-        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Calendar className="h-4 w-4" /> Daily Consistency</h2>
-        <p className="text-xs text-muted-foreground mb-3">Your daily operating loop performance.</p>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs text-muted-foreground">Morning Brief</p>
-            <p className="text-lg font-semibold">{habitStats.briefStreak} day{habitStats.briefStreak !== 1 ? 's' : ''}</p>
-            <p className="text-[10px] text-muted-foreground">Consecutive days viewed</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">EOD Review</p>
-            <p className="text-lg font-semibold">{habitStats.eodStreak} day{habitStats.eodStreak !== 1 ? 's' : ''}</p>
-            <p className="text-[10px] text-muted-foreground">Consecutive days completed</p>
-          </div>
-        </div>
-        {habitStats.last7.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-border">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Last 7 Days</p>
-            <div className="flex gap-1">
-              {habitStats.last7.map(day => (
-                <div key={day.date} className="flex flex-col items-center gap-0.5">
-                  <div className={`w-5 h-5 rounded-sm ${day.briefViewed && day.eodCompleted ? 'bg-opportunity/20' : day.briefViewed || day.eodCompleted ? 'bg-warning/20' : 'bg-muted'}`} />
-                  <span className="text-[8px] text-muted-foreground">{new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'narrow' })}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
 
       {/* Command Center View */}
       <section className="rounded-lg border border-border bg-card p-4 mb-4">
