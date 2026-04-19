@@ -2190,35 +2190,6 @@ export default function BetaHomeScreen() {
         );
       })()}
 
-      {/* 3. Activity Streak Strip */}
-      {(() => {
-        let calls = 0, texts = 0, streak = 0, goalProgress = 0;
-        try {
-          const log = JSON.parse(localStorage.getItem('dealPilot_activityLog') || '[]') as Array<{ type?: string; date?: string }>;
-          const todayStr = new Date().toDateString();
-          const todayEntries = log.filter(e => e.date && new Date(e.date).toDateString() === todayStr);
-          calls = todayEntries.filter(e => e.type === 'call').length;
-          texts = todayEntries.filter(e => e.type === 'text' || e.type === 'sms').length;
-        } catch {}
-        try { streak = parseInt(localStorage.getItem('dealPilot_streak') || '0', 10); } catch {}
-        try {
-          const log = JSON.parse(localStorage.getItem('dealPilot_activityLog') || '[]');
-          const now = new Date();
-          const day = now.getDay();
-          const mondayOffset = day === 0 ? 6 : day - 1;
-          const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - mondayOffset);
-          goalProgress = (log as Array<{ date?: string }>).filter((e: any) => e.date && new Date(e.date) >= weekStart).length;
-        } catch {}
-        return (
-          <div className="flex items-center justify-between rounded-lg bg-muted/40 px-4 py-2 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1">📞 <span className="font-semibold text-foreground">{calls}</span></span>
-            <span className="flex items-center gap-1">💬 <span className="font-semibold text-foreground">{texts}</span></span>
-            <span className="flex items-center gap-1">🔥 <span className="font-semibold text-foreground">{streak}d</span></span>
-            <span className="flex items-center gap-1">⭐ <span className="font-semibold text-foreground">{goalProgress}/20</span></span>
-          </div>
-        );
-      })()}
-
       {/* Ghosting Risk Alert — leads not contacted in 7+ days */}
       {(() => {
         const now = Date.now();
