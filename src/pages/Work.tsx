@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ActionComposerDrawer } from '@/components/ActionComposerDrawer';
 import { LeadScorePopover } from '@/components/LeadScorePopover';
-import { Flame, Info, Search, Plus, MapPin, Calendar, Clock, Users, ChevronRight, RefreshCw, Phone, MessageSquare, Mail } from 'lucide-react';
+import { QuickTaskDrawer } from '@/components/QuickTaskDrawer';
+import { Flame, Info, Search, Plus, MapPin, Calendar, Clock, Users, ChevronRight, RefreshCw, Phone, MessageSquare, Mail, ListChecks } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -142,6 +143,7 @@ function LeadsTab() {
   const [search, setSearch] = useState('');
   const [heatFilter, setHeatFilter] = useState<typeof HEAT_FILTERS[number]>('All');
   const [executionEntity, setExecutionEntity] = useState<{ entity: Lead; entityType: 'lead' } | null>(null);
+  const [quickTaskLead, setQuickTaskLead] = useState<Lead | null>(null);
 
   const scored = useMemo(() =>
     leads.map(l => ({ lead: l, score: getLeadHeatScore(l) })).sort((a, b) => b.score - a.score),
@@ -266,6 +268,13 @@ function LeadsTab() {
                     </a>
                   )}
                   <button
+                    onClick={e => { e.stopPropagation(); setQuickTaskLead(lead); }}
+                    className="h-8 w-8 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground active:bg-muted transition-colors"
+                    aria-label="Add task"
+                  >
+                    <ListChecks className="h-3.5 w-3.5" />
+                  </button>
+                  <button
                     onClick={() => setExecutionEntity({ entity: lead, entityType: 'lead' })}
                     className="h-8 w-8 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground active:bg-muted transition-colors"
                     aria-label="Open lead"
@@ -287,6 +296,13 @@ function LeadsTab() {
           onClose={() => setExecutionEntity(null)}
         />
       )}
+
+      <QuickTaskDrawer
+        open={!!quickTaskLead}
+        onClose={() => setQuickTaskLead(null)}
+        leadId={quickTaskLead?.id}
+        leadName={quickTaskLead?.name}
+      />
     </div>
   );
 }
