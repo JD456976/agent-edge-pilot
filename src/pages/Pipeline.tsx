@@ -3,7 +3,7 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/EmptyState';
-import { Target, DollarSign, Calendar, X, Users, Check, Phone } from 'lucide-react';
+import { Target, DollarSign, Calendar, X, Users, Check, Phone, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Deal, DealStage, RiskLevel, DealParticipant } from '@/types';
 import { PARTICIPANT_ROLE_LABELS } from '@/types';
@@ -13,6 +13,7 @@ import { DealCommissionEditor, type DealCommissionState, type ParticipantEdit } 
 import { CommissionDebugPanel } from '@/components/CommissionDebugPanel';
 import { LogTouchModal } from '@/components/LogTouchModal';
 import { ActivityTrail } from '@/components/ActivityTrail';
+import { QuickTaskDrawer } from '@/components/QuickTaskDrawer';
 import { resolvePersonalCommission } from '@/lib/commissionResolver';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -37,9 +38,10 @@ interface DealCardProps {
   deal: Deal;
   onClick: () => void;
   onProbabilityChange: (dealId: string, value: number) => void;
+  onQuickTask: (deal: Deal) => void;
 }
 
-function DealCard({ deal, onClick, onProbabilityChange }: DealCardProps) {
+function DealCard({ deal, onClick, onProbabilityChange, onQuickTask }: DealCardProps) {
   const userComm = deal.userCommission ?? (() => {
     if (import.meta.env.DEV) {
       console.warn(`[DealCard] userCommission missing for deal "${deal.id}", falling back to $0`);
@@ -97,6 +99,15 @@ function DealCard({ deal, onClick, onProbabilityChange }: DealCardProps) {
           'text-[11px] font-semibold tabular-nums w-8 text-right',
           localProb >= 70 ? 'text-emerald-400' : localProb >= 40 ? 'text-amber-400' : 'text-muted-foreground'
         )}>{localProb}%</span>
+      </div>
+      {/* Quick Task button */}
+      <div onClick={e => e.stopPropagation()} className="pt-1">
+        <button
+          onClick={() => onQuickTask(deal)}
+          className="w-full flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground hover:text-primary border border-dashed border-border hover:border-primary/50 rounded-md py-1.5 transition-colors"
+        >
+          <Plus className="h-3 w-3" /> Add Task
+        </button>
       </div>
     </button>
   );
@@ -350,6 +361,7 @@ export default function Pipeline() {
   const { user } = useAuth();
   const { deals, tasks, dealParticipants, hasData, refreshData, updateDealParticipant, addDealParticipant, deleteDealParticipant } = useData();
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [quickTaskDeal, setQuickTaskDeal] = useState<Deal | null>(null);
   const [orgUsers, setOrgUsers] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
@@ -449,7 +461,7 @@ export default function Pipeline() {
                 {stageDeals.length === 0 ? (
                   <div className="border border-dashed border-border rounded-lg py-8 text-center text-xs text-muted-foreground">No deals</div>
                 ) : (
-                  stageDeals.map(deal => <DealCard key={deal.id} deal={deal} onClick={() => setSelectedDeal(deal)} onProbabilityChange={handleProbabilityChange} />)
+                  stageDeals.map(deal => <DealCard key={deal.id} deal={deal} onClick={() => setSelectedDeal(deal)} onProbabilityChange={handleProbabilityChange} onQuickTask={setQuickTaskDeal} />)
                 )}
               </div>
             </div>
@@ -484,6 +496,13 @@ export default function Pipeline() {
           orgUsers={orgUsers}
         />
       )}
+
+      <QuickTaskDrawer
+        open={!!quickTaskDeal}
+        onClose={() => setQuickTaskDeal(null)}
+        dealId={quickTaskDeal?.id}
+        dealTitle={quickTaskDeal?.title}
+      />
     </div>
   );
 }
