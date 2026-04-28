@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap, Send, Clock, ArrowUpRight, ArrowDownLeft, Loader2, CalendarDays, Activity, Flame, StickyNote as NotesIcon, History, AlertTriangle, Sparkles, Eye, Info } from 'lucide-react';
+import { Phone, MessageSquare, Mail, ListTodo, StickyNote, Copy, Check, Shield, Target, X, ChevronDown, ChevronUp, Zap, Send, Clock, ArrowUpRight, ArrowDownLeft, Loader2, CalendarDays, Activity, Flame, StickyNote as NotesIcon, History, AlertTriangle, Sparkles, Eye, Info, GitBranch } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { relativeTime } from '@/lib/relativeTime';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -240,6 +240,8 @@ export function ActionWorkspaceDrawer({
   const [taskType, setTaskType] = useState<TaskType>('follow_up');
   const [taskDueAt, setTaskDueAt] = useState('');
   const [taskCreated, setTaskCreated] = useState(false);
+  const [seqEnrolled, setSeqEnrolled] = useState(false);
+  const [seqSelected, setSeqSelected] = useState('new-internet');
 
   // AI Opener state
   const [openerResult, setOpenerResult] = useState<Record<string, string>>({});
@@ -1407,6 +1409,66 @@ export function ActionWorkspaceDrawer({
                     </Button>
                   </>
                 )}
+
+                {/* ── Sequence Enroll ──────────────────────────────── */}
+                <div className="pt-2 border-t border-border/50">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-3">Add to Sequence</p>
+                  {seqEnrolled ? (
+                    <div className="flex items-center gap-2 text-sm text-opportunity p-3 rounded-md border border-opportunity/20 bg-opportunity/5">
+                      <Check className="h-4 w-4 flex-shrink-0" />
+                      <span className="text-xs">Enrolled in sequence — check Sequences tab for due steps</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <select
+                        value={seqSelected}
+                        onChange={e => setSeqSelected(e.target.value)}
+                        className="w-full h-8 text-xs rounded-md border border-input bg-background px-2 text-foreground"
+                      >
+                        <option value="new-internet">New Internet Lead</option>
+                        <option value="hot-sphere">Hot Sphere Contact</option>
+                        <option value="open-house">Open House Follow-Up</option>
+                        <option value="past-client">Past Client Nurture</option>
+                        <option value="price-reduction">Price Reduction Follow-Up</option>
+                      </select>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-xs gap-1.5"
+                        onClick={() => {
+                          if (!entity?.id) return;
+                          try {
+                            const existing = JSON.parse(localStorage.getItem('dealPilot_enrollments') || '[]');
+                            const alreadyEnrolled = existing.some((e: any) => e.leadId === entity.id);
+                            if (alreadyEnrolled) {
+                              toast({ title: 'Already in a sequence', description: 'Remove the existing sequence first', variant: 'destructive' });
+                              return;
+                            }
+                            const enrollment = {
+                              id: crypto.randomUUID(),
+                              leadId: entity.id,
+                              leadName: context.entityName,
+                              sequenceId: seqSelected,
+                              startDate: new Date().toISOString().split('T')[0],
+                              currentStep: 0,
+                              completedSteps: [],
+                              skippedSteps: [],
+                              paused: false,
+                            };
+                            localStorage.setItem('dealPilot_enrollments', JSON.stringify([...existing, enrollment]));
+                            setSeqEnrolled(true);
+                            toast({ title: `${context.entityName} enrolled`, description: 'Go to Sequences to see due steps' });
+                          } catch {
+                            toast({ title: 'Failed to enroll', variant: 'destructive' });
+                          }
+                        }}
+                      >
+                        <GitBranch className="h-3.5 w-3.5" />
+                        Start Sequence
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

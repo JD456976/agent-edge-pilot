@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
-import { Phone, Mail, MessageSquare, Check, SkipForward, Pause, Trash2, Play, Search, CalendarDays, UserPlus, X } from 'lucide-react';
+import { Phone, Mail, MessageSquare, Check, SkipForward, Pause, Trash2, Play, Search, CalendarDays, UserPlus, X, Sparkles, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -110,6 +110,57 @@ export default function Sequences() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>(loadEnrollments);
   const [enrollModalOpen, setEnrollModalOpen] = useState(false);
   const [enrollTemplateId, setEnrollTemplateId] = useState<string | null>(null);
+  const [aiMessages, setAiMessages] = useState<Record<string, string>>({});
+  const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
+  const [aiExpanded, setAiExpanded] = useState<Record<string, boolean>>({});
+  const [copied, setCopied] = useState<Record<string, boolean>>({});
+
+  const generateAiMessage = useCallback(async (key: string, lead: any, step: SequenceStep, seqName: string) => {
+    if (aiMessages[key]) {
+      setAiExpanded(p => ({ ...p, [key]: !p[key] }));
+      return;
+    }
+    setAiLoading(p => ({ ...p, [key]: true }));
+    setAiExpanded(p => ({ ...p, [key]: true }));
+    const name = lead?.name?.split(' ')[0] || 'them';
+    const temp = lead?.leadTemperature || 'unknown';
+    const source = lead?.source || '';
+    const tags = (lead?.statusTags || []).join(', ');
+    const daysAgo = lead?.lastTouchedAt
+      ? Math.floor((Date.now() - new Date(lead.lastTouchedAt).getTime()) / 86400000)
+      : null;
+    const contactNote = daysAgo !== null ? `last contacted ${daysAgo} days ago` : 'never contacted';
+    const actionType = step.type === 'call' ? 'call script opening line' : step.type === 'text' ? 'text message' : 'email (subject + 3-sentence body)';
+    try {
+      const resp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 250,
+          system: `You are a real estate sales coach writing outreach for an agent. Write one ${actionType} that is personal, natural, and non-salesy. No asterisks, no markdown, no bullet points. Just the message text, ready to copy and use.`,
+          messages: [{
+            role: 'user',
+            content: `Sequence: ${seqName}\nStep: Day ${step.day} — ${step.type}\nLead: ${name} | temp: ${temp} | source: ${source}${tags ? ' | ' + tags : ''} | ${contactNote}\n\nWrite the ${actionType}.`
+          }]
+        })
+      });
+      const result = await resp.json();
+      if (result?.type === 'error') throw new Error('API error');
+      const text = (result?.content?.[0]?.text || '').trim();
+      setAiMessages(p => ({ ...p, [key]: text }));
+    } catch {
+      setAiMessages(p => ({ ...p, [key]: 'Could not generate message. Try again.' }));
+    } finally {
+      setAiLoading(p => ({ ...p, [key]: false }));
+    }
+  }, [aiMessages]);
+
+  const copyMessage = useCallback((key: string, text: string) => {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(p => ({ ...p, [key]: true }));
+    setTimeout(() => setCopied(p => ({ ...p, [key]: false })), 2000);
+  }, []);
 
   useEffect(() => { saveEnrollments(enrollments); }, [enrollments]);
 
@@ -214,9 +265,32 @@ export default function Sequences() {
                       <span>Day {step.day} — {stepLabel(step.type)}</span>
                     </div>
                     {step.message && <p className="text-xs text-muted-foreground italic mb-2 line-clamp-2">"{step.message}"</p>}
-                    <div className="flex gap-2">
+                    {/* AI Message */}
+                    {aiExpanded[`${enrollment.id}-${stepIndex}`] && (
+                      <div className="mt-2 rounded-lg bg-muted/40 p-3 space-y-2">
+                        {aiLoading[`${enrollment.id}-${stepIndex}`] ? (
+                          <div className="space-y-1.5 animate-pulse">
+                            <div className="h-3 bg-muted rounded w-full" />
+                            <div className="h-3 bg-muted rounded w-4/5" />
+                            <div className="h-3 bg-muted rounded w-3/5" />
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{aiMessages[`${enrollment.id}-${stepIndex}`]}</p>
+                            <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => copyMessage(`${enrollment.id}-${stepIndex}`, aiMessages[`${enrollment.id}-${stepIndex}`] || '')}>
+                              {copied[`${enrollment.id}-${stepIndex}`] ? <><Check size={10} /> Copied!</> : <><Copy size={10} /> Copy</>}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex gap-2 flex-wrap">
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={() => generateAiMessage(`${enrollment.id}-${stepIndex}`, lead, step, tpl?.name || '')}>
+                        <Sparkles size={11} className="text-primary" />
+                        {aiExpanded[`${enrollment.id}-${stepIndex}`] ? (aiLoading[`${enrollment.id}-${stepIndex}`] ? 'Writing…' : 'Hide') : 'Write Message'}
+                      </Button>
                       <Button size="sm" className="h-7 text-xs bg-opportunity hover:bg-opportunity/90 text-white" onClick={() => markDone(enrollment.id, stepIndex)}>
-                        <Check size={12} className="mr-1" /> Mark Done
+                        <Check size={12} className="mr-1" /> Done
                       </Button>
                       <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => skipStep(enrollment.id, stepIndex)}>
                         <SkipForward size={12} className="mr-1" /> Skip
