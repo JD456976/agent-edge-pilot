@@ -8,6 +8,10 @@ export function useStrategicSettings(userId?: string) {
     setSettings(prev => {
       const next = { ...prev, ...patch };
       saveStrategicSettings(next, userId);
+      // Mark goal as set so the onboarding widget dismisses immediately
+      if (patch.weeklyTarget || patch.monthlyTarget || (patch as any).annualIncomeTarget) {
+        localStorage.setItem('dp-goal-set', 'true');
+      }
       return next;
     });
   }, [userId]);

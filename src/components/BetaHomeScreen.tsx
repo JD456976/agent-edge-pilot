@@ -1830,7 +1830,7 @@ function InlineMorningBrief({ leads, agentName }: { leads: Lead[]; agentName: st
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
           max_tokens: 250,
-          system: 'You are a sharp real estate coach giving a morning briefing. Be direct and specific. 3 sentences max. No generic advice — reference actual lead names and numbers.',
+          system: 'You are a sharp real estate coach giving a morning briefing. Be direct and specific. 3 sentences max. No generic advice — reference actual lead names and numbers. Do not use markdown formatting. No asterisks, no bold, no hashtags, no bullet points. Write in plain conversational sentences only.',
           messages: [{ role: 'user', content: userMsg }],
         }),
       });
@@ -1876,7 +1876,9 @@ function InlineMorningBrief({ leads, agentName }: { leads: Lead[]; agentName: st
             <div className="h-3 bg-muted/60 rounded animate-pulse w-4/6" />
           </div>
         ) : brief ? (
-          <p className="text-sm text-foreground leading-relaxed">{brief}</p>
+          <p className="text-sm text-foreground leading-relaxed">
+            {brief.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/^#+\s*/gm, '').replace(/\*+/g, '').trim()}
+          </p>
         ) : null}
       </div>
     </div>
@@ -2341,7 +2343,7 @@ export default function BetaHomeScreen() {
         hasFubConnected={hasFubConnected}
         hasLeads={leads.length > 0}
         hasDeals={deals.length > 0}
-        hasIncomeTarget={!!(ccData.strategicSettings as any)?.annualIncomeTarget}
+        hasIncomeTarget={!!(ccData.strategicSettings as any)?.annualIncomeTarget || localStorage.getItem('dp-goal-set') === 'true'}
         onConnectCrm={() => openWorkspace('sync')}
         onSetIncomeTarget={() => {
           openWorkspace('settings');
