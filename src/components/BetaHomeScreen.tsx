@@ -30,6 +30,7 @@ import { getDailyBriefing } from '@/lib/dailyIntelligence';
 import { useDemo } from '@/contexts/DemoContext';
 
 import { LeadScorePopover } from '@/components/LeadScorePopover';
+import { AiTop3Panel } from '@/components/AiTop3Panel';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -979,10 +980,11 @@ function PipelineValueWidget({ leads }: { leads: Lead[] }) {
 
 // ── Morning Mode ────────────────────────────────────────────────────
 
-function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket, onAddLead, onSeeAll, onTaskTap, refreshData, userId }: {
+function MorningMode({ intel, priorityLead, ccData, leads, onLeadAction, onOpenLead, onOpenWorkspace, targetMarket, onAddLead, onSeeAll, onTaskTap, refreshData, userId }: {
   intel: ReturnType<typeof useTimeIntelligence>;
   priorityLead: { lead: Lead; score: number } | null;
   ccData: any;
+  leads: Lead[];
   onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email' | 'snooze') => void;
   onOpenLead: (lead: Lead) => void;
   onOpenWorkspace: (id: string) => void;
@@ -1139,15 +1141,18 @@ function MorningMode({ intel, priorityLead, ccData, onLeadAction, onOpenLead, on
           allLeads={scoredLeads.map(s => s.lead)}
         />
       )}
+      {/* AI Top 3 — morning priority picks */}
+      <AiTop3Panel leads={leads} onLeadAction={onLeadAction} onOpenLead={onOpenLead} />
     </div>
   );
 }
 
 // ── Midday Mode ─────────────────────────────────────────────────────
 
-function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, totalMoneyAtRisk, onTaskTap }: {
+function MiddayMode({ intel, ccData, leads, onLeadAction, onOpenLead, targetMarket, totalMoneyAtRisk, onTaskTap }: {
   intel: ReturnType<typeof useTimeIntelligence>;
   ccData: any;
+  leads: Lead[];
   onLeadAction: (lead: Lead, type: 'call' | 'text' | 'email' | 'snooze') => void;
   onOpenLead: (lead: Lead) => void;
   targetMarket: TargetMarket;
@@ -1296,6 +1301,9 @@ function MiddayMode({ intel, ccData, onLeadAction, onOpenLead, targetMarket, tot
       )}
 
       {isDemoMode && <DealMilestonesPanel />}
+
+      {/* AI Top 3 — midday refresh */}
+      <AiTop3Panel leads={leads} onLeadAction={onLeadAction} onOpenLead={onOpenLead} />
     </div>
   );
 }
@@ -2290,6 +2298,7 @@ export default function BetaHomeScreen() {
           intel={intel}
           priorityLead={priorityLead}
           ccData={ccData}
+          leads={leads}
           onLeadAction={handleLeadAction}
           onOpenLead={handleOpenLeadDetail}
           onOpenWorkspace={openWorkspace}
@@ -2305,6 +2314,7 @@ export default function BetaHomeScreen() {
         <MiddayMode
           intel={intel}
           ccData={ccData}
+          leads={leads}
           onLeadAction={handleLeadAction}
           onOpenLead={handleOpenLeadDetail}
           targetMarket={targetMarket}
