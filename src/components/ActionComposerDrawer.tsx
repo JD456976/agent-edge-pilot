@@ -9,7 +9,7 @@ import {
   Phone, MessageSquare, Mail, ListTodo, StickyNote,
   Copy, Check, Shield, ChevronDown, ChevronUp,
   Clock, AlertTriangle, TrendingUp, Target, X,
-  Send, Loader2, ArrowUpRight, ArrowDownLeft, Info,
+  Send, Loader2, ArrowUpRight, ArrowDownLeft, Info, Sparkles,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFubSend } from '@/hooks/useFubSend';
 import { toast } from '@/hooks/use-toast';
+import { callClaude } from '@/lib/aiError';
 import { ActivityTrail } from '@/components/ActivityTrail';
 import { LocalIntelBriefPanel } from '@/components/LocalIntelBriefPanel';
 import { ClientPreferencesPanel } from '@/components/ClientPreferencesPanel';
@@ -403,6 +404,8 @@ export function ActionComposerDrawer({
   const [emailSent, setEmailSent] = useState(false);
   const [recentFubActivities, setRecentFubActivities] = useState<Array<{ activity_type: string; direction?: string; body_preview?: string; subject?: string; occurred_at: string; duration_seconds?: number }>>([]);
   const [fubProfile, setFubProfile] = useState<FubPersonProfile | null>(null);
+  const [aiTextDraft, setAiTextDraft] = useState<string | null>(null);
+  const [aiTextLoading, setAiTextLoading] = useState(false);
 
   // Derive FUB person ID
   useEffect(() => {
@@ -596,6 +599,57 @@ export function ActionComposerDrawer({
     setShowPostAction(false);
     onLogTouch?.(context.entityType, context.entityId, context.entityName, 'follow_up', '');
   }, [context, onLogTouch]);
+
+  const handleAiTextPersonalize = useCallback(async () => {
+    if (!context || !entity) return;
+    setAiTextLoading(true);
+    setAiTextDraft(null);
+    try {
+      const lead = entity as any;
+      const name = context.entityName;
+      const daysSinceContact = lead.lastTouchedAt || lead.lastContactAt
+        ? Math.floor((Date.now() - new Date(lead.lastTouchedAt || lead.lastContactAt).getTime()) / 86400000)
+        : null;
+      const temperature = lead.leadTemperature || 'unknown';
+      const source = lead.source || 'unknown';
+      const stage = lead.stage || lead.status || 'unknown';
+      const tags = (lead.statusTags || []).join(', ') || 'none';
+      const timeline = lead.timeline || lead.buyerTimeline || null;
+
+      const prompt = `You are a real estate agent's assistant. Write a short, natural, personalized text message (under 160 characters) to send to a lead.
+
+Lead context:
+- Name: ${name}
+- Lead temperature: ${temperature}
+- Lead source: ${source}
+- Stage: ${stage}
+- Tags: ${tags}
+${daysSinceContact !== null ? `- Days since last contact: ${daysSinceContact}` : '- Never contacted before'}
+${timeline ? `- Timeline: ${timeline}` : ''}
+
+Rules:
+- Sound like a real person, not a bot
+- Don't mention specific property prices or addresses (you don't have them)
+- Start with "Hi ${name.split(' ')[0]}," or "Hey ${name.split(' ')[0]},"
+- Be warm and low-pressure
+- Under 160 characters
+- Do NOT include quotes, preamble, or explanation — just the message text itself`;
+
+      const data = await callClaude({
+        model: 'claude-haiku-4-5',
+        max_tokens: 200,
+        messages: [{ role: 'user', content: prompt }],
+      });
+
+      const text = data?.content?.[0]?.text?.trim();
+      if (text) setAiTextDraft(text);
+      else throw new Error('No response');
+    } catch {
+      toast({ title: 'AI unavailable', description: 'Could not generate a draft. Try again.', variant: 'destructive' });
+    } finally {
+      setAiTextLoading(false);
+    }
+  }, [context, entity]);
 
   if (!entity || !context || !draft) return null;
 
@@ -795,12 +849,58 @@ export function ActionComposerDrawer({
 
                     <div className="flex items-center justify-between">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Templates</p>
-                      {fubPersonId && (
-                        <div className="flex items-center gap-2">
-                          <Label className="text-[10px] text-muted-foreground">Quick Send</Label>
-                          <Switch checked={quickSendMode} onCheckedChange={setQuickSendMode} className="scale-75" />
+                      <div className="flex items-center gap-2">
+                        {fubPersonId && (
+                          <div className="flex items-center gap-2">
+                            <Label className="text-[10px] text-muted-foreground">Quick Send</Label>
+                            <Switch checked={quickSendMode} onCheckedChange={setQuickSendMode} className="scale-75" />
+                          </div>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-[11px] px-2 gap-1 border-primary/30 text-primary hover:bg-primary/10"
+                          onClick={handleAiTextPersonalize}
+                          disabled={aiTextLoading}
+                        >
+                          {aiTextLoading ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3 w-3" />
+                          )}
+                          {aiTextLoading ? 'Writing…' : `Personalize for ${context.entityName.split(' ')[0]}`}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* AI-generated draft */}
+                    {aiTextDraft && (
+                      <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-2">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="h-3 w-3 text-primary" />
+                          <p className="text-[10px] font-medium text-primary uppercase tracking-wider">AI Draft</p>
+                          <span className={cn('text-[10px] ml-auto', aiTextDraft.length > 155 ? 'text-destructive' : 'text-muted-foreground')}>
+                            {aiTextDraft.length}/160
+                          </span>
                         </div>
-                      )}
+                        <p className="text-xs leading-relaxed">{aiTextDraft}</p>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="ghost" className="h-7 text-[11px] px-2 gap-1"
+                            onClick={() => { handleCopy(aiTextDraft, 'ai-sms'); }}>
+                            {copiedField === 'ai-sms' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                            {copiedField === 'ai-sms' ? 'Copied' : 'Copy'}
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-[11px] px-2 gap-1 text-muted-foreground"
+                            onClick={handleAiTextPersonalize} disabled={aiTextLoading}>
+                            <Sparkles className="h-3 w-3" /> Regenerate
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-[11px] px-2 gap-1 text-muted-foreground ml-auto"
+                            onClick={() => setAiTextDraft(null)}>
+                            <X className="h-3 w-3" /> Dismiss
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     </div>
                     {smsVariants.map((v, i) => (
                       <button key={i} onClick={() => setSelectedSmsIndex(i)}
