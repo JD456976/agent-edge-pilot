@@ -2,15 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Users, ShieldCheck, Clock, TrendingUp, RefreshCw, Search,
-  MoreHorizontal, X, UserCheck, UserX, Database, Trash2,
-  Sparkles, Activity, ChevronRight,
+  Users, ShieldCheck, Clock, TrendingUp, RefreshCw,
+  UserCheck, Database, Sparkles, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { format, differenceInDays, addDays } from 'date-fns';
+import { format, addDays } from 'date-fns';
+import { UserManagementPanel } from '@/components/admin/UserManagementPanel';
 
 const OWNER_EMAILS = ['craig219@comcast.net', 'jason.craig@chinattirealty.com', 'jdog45@gmail.com'];
 const isAdminEmail = (e?: string | null) => !!e && OWNER_EMAILS.some(a => a.toLowerCase() === e.toLowerCase());
@@ -54,23 +53,6 @@ function getStatus(u: AppUser): AccessStatus {
   return 'none';
 }
 
-const STATUS: Record<AccessStatus, { label: string; cls: string }> = {
-  active:   { label: 'Active',     cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' },
-  trial:    { label: 'Trial',      cls: 'bg-blue-500/15 text-blue-400 border-blue-500/20' },
-  expiring: { label: 'Expiring',   cls: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
-  expired:  { label: 'Expired',    cls: 'bg-red-500/15 text-red-400 border-red-500/20' },
-  revoked:  { label: 'Revoked',    cls: 'bg-red-500/15 text-red-400 border-red-500/20' },
-  none:     { label: 'No Access',  cls: 'bg-muted text-muted-foreground border-border' },
-};
-
-const DURATION_OPTS = [
-  { label: '7 days', days: 7 },
-  { label: '14 days', days: 14 },
-  { label: '30 days', days: 30 },
-  { label: '60 days', days: 60 },
-  { label: '90 days', days: 90 },
-];
-
 // ── Sub-components ─────────────────────────────────────────────────────────────
 function Stat({ icon: Icon, label, value, sub }: { icon: React.ElementType; label: string; value: string | number; sub?: string }) {
   return (
@@ -81,158 +63,6 @@ function Stat({ icon: Icon, label, value, sub }: { icon: React.ElementType; labe
       </div>
       <p className="text-2xl font-bold tabular-nums">{value}</p>
       {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
-    </div>
-  );
-}
-
-function GrantModal({ user, onClose, onDone }: { user: AppUser; onClose: () => void; onDone: () => void }) {
-  const [days, setDays] = useState(30);
-  const [customDays, setCustomDays] = useState('');
-  const [useCustom, setUseCustom] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const { toast } = useToast();
-  const { logAdminAction } = useAuth();
-
-  const effectiveDays = useCustom ? (parseInt(customDays) || 0) : days;
-  const expiresDate = effectiveDays > 0 ? addDays(new Date(), effectiveDays) : null;
-
-  const grant = async () => {
-    if (!expiresDate) return;
-    setSaving(true);
-    try {
-      await supabase.from('user_entitlements' as any).upsert({
-        user_id: user.userId,
-        is_pro: true,
-        is_trial: true,
-        expires_at: expiresDate.toISOString(),
-        source: 'admin_grant',
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
-      await logAdminAction('grant_access', { targetUserId: user.userId, days: effectiveDays, expiresAt: expiresDate.toISOString() });
-      toast({ description: `Access granted to ${user.name || user.email} · expires ${format(expiresDate, 'MMM d, yyyy')}` });
-      onDone();
-    } catch (e: any) {
-      toast({ description: e.message || 'Failed', variant: 'destructive' });
-    } finally { setSaving(false); }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-card border border-border rounded-2xl p-5 space-y-5 shadow-2xl">
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="font-semibold">Grant Access</h3>
-            <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[240px]">{user.email}</p>
-          </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-0.5">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Access Duration</p>
-          <div className="grid grid-cols-3 gap-2">
-            {DURATION_OPTS.map(o => (
-              <button key={o.days} onClick={() => { setDays(o.days); setUseCustom(false); }}
-                className={cn('py-2 rounded-lg text-sm font-medium border transition-colors',
-                  !useCustom && days === o.days
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
-                )}>{o.label}</button>
-            ))}
-            <button onClick={() => setUseCustom(true)}
-              className={cn('py-2 rounded-lg text-sm font-medium border transition-colors col-span-3',
-                useCustom ? 'bg-primary text-primary-foreground border-primary'
-                  : 'border-border text-muted-foreground hover:border-primary/50'
-              )}>Custom…</button>
-          </div>
-
-          {useCustom && (
-            <div className="flex items-center gap-2">
-              <Input type="number" min="1" max="365" value={customDays}
-                onChange={e => setCustomDays(e.target.value.replace(/\D/g, ''))}
-                placeholder="Days" className="w-24 bg-muted/30" autoFocus />
-              <span className="text-sm text-muted-foreground">days</span>
-            </div>
-          )}
-
-          {expiresDate && (
-            <p className="text-xs text-muted-foreground">
-              Expires <span className="font-medium text-foreground">{format(expiresDate, 'MMMM d, yyyy')}</span>
-            </p>
-          )}
-        </div>
-
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onClose} className="flex-1" disabled={saving}>Cancel</Button>
-          <Button onClick={grant} className="flex-1" disabled={saving || !expiresDate}>
-            {saving ? 'Saving…' : 'Grant Access'}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function UserRow({ user, onGrant, onRevoke }: {
-  user: AppUser;
-  onGrant: (u: AppUser) => void;
-  onRevoke: (u: AppUser) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const st = getStatus(user);
-  const cfg = STATUS[st];
-  const lastActive = user.lastActiveAt
-    ? (() => {
-        const d = differenceInDays(new Date(), new Date(user.lastActiveAt));
-        return d === 0 ? 'Today' : d === 1 ? 'Yesterday' : `${d}d ago`;
-      })()
-    : 'Never';
-
-  return (
-    <div className="flex items-center gap-3 px-4 py-3 hover:bg-accent/20 transition-colors border-b border-border/40 last:border-0">
-      <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-        <span className="text-[11px] font-bold text-primary">
-          {(user.name || user.email).split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
-        </span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{user.name || '—'}</p>
-        <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
-      </div>
-      <div className="hidden sm:flex flex-col items-end shrink-0">
-        <p className="text-[11px] text-muted-foreground">{lastActive}</p>
-        {user.expiresAt && !['expired', 'revoked'].includes(st) && (
-          <p className="text-[10px] text-muted-foreground/60">exp {format(new Date(user.expiresAt), 'MMM d')}</p>
-        )}
-      </div>
-      <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0', cfg.cls)}>
-        {cfg.label}
-      </span>
-      <div className="relative shrink-0">
-        <button onClick={() => setOpen(o => !o)}
-          className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground">
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
-        {open && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-            <div className="absolute right-0 top-8 z-50 min-w-[160px] bg-card border border-border rounded-xl shadow-xl py-1">
-              <button onClick={() => { onGrant(user); setOpen(false); }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent/50 text-left">
-                <UserCheck className="h-3.5 w-3.5 text-emerald-400" />
-                {['active','trial','expiring'].includes(st) ? 'Extend Access' : 'Grant Access'}
-              </button>
-              {['active','trial','expiring'].includes(st) && (
-                <button onClick={() => { onRevoke(user); setOpen(false); }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent/50 text-left text-destructive">
-                  <UserX className="h-3.5 w-3.5" />Revoke Access
-                </button>
-              )}
-            </div>
-          </>
-        )}
-      </div>
     </div>
   );
 }
@@ -323,23 +153,20 @@ function DemoTab() {
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 export default function Admin() {
-  const { user, logAdminAction } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState<AppUser[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
-  const [search, setSearch] = useState('');
-  const [grantTarget, setGrantTarget] = useState<AppUser | null>(null);
   const [tab, setTab] = useState<'users' | 'metrics' | 'demo'>('users');
   const [refreshing, setRefreshing] = useState(false);
 
   const isAdmin = user?.role === 'admin' || isAdminEmail(user?.email);
 
-  const load = useCallback(async () => {
+  const loadMetrics = useCallback(async () => {
     setRefreshing(true);
     try {
       const [profilesRes, rolesRes, entRes, eventsRes] = await Promise.all([
-        supabase.from('profiles').select('user_id,name,email,status,is_deleted,created_at,last_active_at').order('created_at', { ascending: false }),
+        supabase.from('profiles').select('user_id,status,last_active_at,created_at').order('created_at', { ascending: false }),
         supabase.from('user_roles').select('user_id,role'),
         supabase.from('user_entitlements' as any).select('user_id,is_pro,is_trial,expires_at,source'),
         supabase.from('activity_events').select('touch_type').limit(1000),
@@ -353,7 +180,7 @@ export default function Admin() {
       const appUsers: AppUser[] = (profilesRes.data || []).map((p: any) => {
         const ent = entMap.get(p.user_id);
         return {
-          userId: p.user_id, name: p.name || '', email: p.email || '',
+          userId: p.user_id, name: '', email: '',
           role: roleMap.get(p.user_id) || 'agent',
           status: p.is_deleted ? 'removed' : (p.status || 'active'),
           createdAt: p.created_at, lastActiveAt: p.last_active_at ?? null,
@@ -361,8 +188,6 @@ export default function Admin() {
           expiresAt: ent?.expires_at ?? null, source: ent?.source ?? null,
         };
       });
-
-      setUsers(appUsers);
 
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -385,23 +210,14 @@ export default function Admin() {
         topEvents: [...eventCounts.entries()].sort((a,b) => b[1]-a[1]).slice(0,8).map(([type,count]) => ({ type, count })),
       });
     } catch {
-      toast({ description: 'Could not load — check Supabase connection', variant: 'destructive' });
+      toast({ description: 'Could not load metrics — check Supabase connection', variant: 'destructive' });
     } finally { setLoading(false); setRefreshing(false); }
   }, [toast]);
 
-  useEffect(() => { if (isAdmin) load(); else setLoading(false); }, [isAdmin, load]);
-
-  const revoke = async (u: AppUser) => {
-    try {
-      await supabase.from('user_entitlements' as any).upsert({
-        user_id: u.userId, is_pro: false, is_trial: false,
-        source: 'admin_revoked', updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
-      await logAdminAction('revoke_access', { targetUserId: u.userId });
-      toast({ description: `Access revoked for ${u.name || u.email}` });
-      load();
-    } catch (e: any) { toast({ description: e.message || 'Failed', variant: 'destructive' }); }
-  };
+  useEffect(() => {
+    if (isAdmin) loadMetrics();
+    else setLoading(false);
+  }, [isAdmin, loadMetrics]);
 
   if (!isAdmin) return (
     <div className="max-w-md mx-auto text-center py-20 space-y-3">
@@ -411,24 +227,21 @@ export default function Admin() {
     </div>
   );
 
-  const filtered = users.filter(u => !search ||
-    u.name.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
+    <div className="max-w-3xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold">Admin</h1>
           <p className="text-xs text-muted-foreground">Users, access management, and platform data</p>
         </div>
-        <Button size="sm" variant="outline" onClick={load} disabled={refreshing} className="gap-1.5">
-          <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />Refresh
-        </Button>
+        {tab === 'metrics' && (
+          <Button size="sm" variant="outline" onClick={loadMetrics} disabled={refreshing} className="gap-1.5">
+            <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />Refresh
+          </Button>
+        )}
       </div>
 
-      {/* Stats */}
+      {/* Summary stats — always visible */}
       {metrics && (
         <div className="grid grid-cols-3 gap-3">
           <Stat icon={Users} label="Total Users" value={metrics.total} />
@@ -447,28 +260,10 @@ export default function Admin() {
         ))}
       </div>
 
-      {/* Users */}
-      {tab === 'users' && (
-        <div className="space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input placeholder="Search by name or email…" value={search} onChange={e => setSearch(e.target.value)}
-              className="pl-9 bg-muted/30 h-9 text-sm" />
-          </div>
-          <div className="rounded-xl border border-border bg-card overflow-hidden">
-            {loading ? (
-              <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
-            ) : filtered.length === 0 ? (
-              <div className="py-12 text-center text-sm text-muted-foreground">No users found</div>
-            ) : filtered.map(u => (
-              <UserRow key={u.userId} user={u} onGrant={setGrantTarget} onRevoke={revoke} />
-            ))}
-          </div>
-          <p className="text-[11px] text-muted-foreground text-right">{filtered.length} user{filtered.length !== 1 ? 's' : ''}</p>
-        </div>
-      )}
+      {/* Users tab — full UserManagementPanel */}
+      {tab === 'users' && <UserManagementPanel />}
 
-      {/* Metrics */}
+      {/* Metrics tab */}
       {tab === 'metrics' && metrics && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -515,12 +310,6 @@ export default function Admin() {
 
       {/* Demo */}
       {tab === 'demo' && <DemoTab />}
-
-      {/* Grant modal */}
-      {grantTarget && (
-        <GrantModal user={grantTarget} onClose={() => setGrantTarget(null)}
-          onDone={() => { setGrantTarget(null); load(); }} />
-      )}
     </div>
   );
 }
