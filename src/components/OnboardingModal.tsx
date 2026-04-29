@@ -109,6 +109,9 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
     if (authUser) {
       await supabase.from('profiles').update({ onboarding_completed: true } as any).eq('user_id', authUser.id);
     }
+    // Persist first name locally so greeting works even when Supabase is offline
+    const firstName = user?.name?.split(' ')[0]?.trim();
+    if (firstName) localStorage.setItem('dp_user_firstname', firstName);
     if (!localStorage.getItem('dp-focus-mode')) {
       localStorage.setItem('dp-focus-mode', 'minimal');
     }

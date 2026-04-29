@@ -2038,8 +2038,9 @@ export default function BetaHomeScreen() {
   }
 
   // Mode greeting
+  const resolvedFirstName = user?.name?.split(' ')[0]?.trim() || localStorage.getItem('dp_user_firstname')?.trim() || 'Agent';
   const greetings: Record<string, string> = {
-    morning: `Good morning, ${user?.name?.split(' ')[0] || 'Agent'}`,
+    morning: `Good morning, ${resolvedFirstName}`,
     midday: `Here's what's changed`,
     evening: `Evening wrap-up`,
     night: `You're off the clock`,

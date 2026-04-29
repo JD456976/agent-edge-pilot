@@ -479,7 +479,7 @@ export default function CommandCenter() {
           </div>
           {missedYesterday > 0 && <p className="text-xs text-muted-foreground">Yesterday's unfinished priorities: {missedYesterday}</p>}
           <span className="text-xs text-muted-foreground block font-bold">
-            {currentMode === 'morning' ? 'Good morning' : currentMode === 'midday' ? 'Good afternoon' : 'Good evening'}, {user?.name?.split(' ')[0]}
+            {currentMode === 'morning' ? 'Good morning' : currentMode === 'midday' ? 'Good afternoon' : 'Good evening'}, {user?.name?.split(' ')[0]?.trim() || localStorage.getItem('dp_user_firstname')?.trim() || 'there'}
           </span>
         </div>
       </CollapsiblePanel>
