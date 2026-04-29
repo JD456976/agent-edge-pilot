@@ -197,6 +197,96 @@ function PostActionBar({ onLogTouch, onScheduleFollowUp, onDone }: {
 
 // ── Context Panel ────────────────────────────────────────────────────
 
+// ── Showing Prep Card ─────────────────────────────────────────────────
+
+function ShowingPrepCard({ lead }: { lead: Lead }) {
+  const [prep, setPrep] = useState<{ points: string[]; questions: string[] } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  const generate = useCallback(async () => {
+    setLoading(true);
+    try {
+      const name = `${lead.firstName || ''} ${lead.lastName || ''}`.trim() || 'this buyer';
+      const source = lead.source || '';
+      const tags = (lead.statusTags || []).join(', ');
+      const timeline = (lead as any).timeline || (lead as any).buyerTimeline || '';
+
+      const data = await callClaude({
+        model: 'claude-haiku-4-5',
+        max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: `A real estate agent is about to show a property to ${name}${source ? ` (source: ${source})` : ''}${timeline ? `, timeline: ${timeline}` : ''}${tags ? `, tags: ${tags}` : ''}.
+
+Return JSON only (no markdown) with:
+{
+  "points": ["3 short talking points for the showing — features to highlight, value angles, or conversation starters"],
+  "questions": ["2 qualifying questions to ask the buyer during the showing"]
+}`,
+        }],
+      });
+
+      const raw = data?.content?.[0]?.text?.replace(/```json|```/g, '').trim();
+      if (raw) setPrep(JSON.parse(raw));
+    } catch {
+      setPrep({ points: ['Focus on value relative to asking price', 'Note condition vs. comparable listings', 'Ask about their timeline and flexibility'], questions: ['What\'s most important to you in this home?', 'Is this price range comfortable, or do you have flexibility?'] });
+    } finally {
+      setLoading(false);
+    }
+  }, [lead]);
+
+  useEffect(() => { generate(); }, []);
+
+  if (dismissed) return null;
+
+  return (
+    <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <span className="text-base">🏠</span>
+          <p className="text-[11px] font-semibold text-primary">Showing Prep</p>
+        </div>
+        <button onClick={() => setDismissed(true)} className="text-muted-foreground hover:text-foreground">
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center gap-2 py-1">
+          <Loader2 className="h-3 w-3 animate-spin text-primary" />
+          <p className="text-[11px] text-muted-foreground">Prepping talking points…</p>
+        </div>
+      ) : prep ? (
+        <>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Talking Points</p>
+            <ul className="space-y-1">
+              {prep.points.map((p, i) => (
+                <li key={i} className="text-[11px] flex items-start gap-1.5">
+                  <span className="text-primary shrink-0 mt-0.5">·</span>
+                  <span>{p}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Ask During Showing</p>
+            <ul className="space-y-1">
+              {prep.questions.map((q, i) => (
+                <li key={i} className="text-[11px] flex items-start gap-1.5 text-muted-foreground">
+                  <span className="shrink-0 mt-0.5">?</span>
+                  <span>{q}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 function ContextPanel({ entity, entityType, moneyResult, oppResult, tasks: entityTasks, recentFubActivities }: {
   entity: Deal | Lead;
   entityType: 'deal' | 'lead';
@@ -354,6 +444,11 @@ function ContextPanel({ entity, entityType, moneyResult, oppResult, tasks: entit
 
       {lead!.notes && (
         <p className="text-[10px] text-muted-foreground line-clamp-3">{lead!.notes}</p>
+      )}
+
+      {/* Showing Prep — auto-show when a showing task is queued */}
+      {relatedTasks.some(t => t.type === 'showing') && (
+        <ShowingPrepCard lead={lead!} />
       )}
 
       {relatedTasks.length > 0 && (
