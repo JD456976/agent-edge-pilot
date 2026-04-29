@@ -249,11 +249,17 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
   const handleDeleteUser = async () => {
     setDeleting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('admin-delete-user', {
-        body: { targetUserId: userId },
+      const session = (await supabase.auth.getSession()).data.session;
+      const res = await fetch('/api/admin-delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ targetUserId: userId }),
       });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
+      const result = await res.json();
+      if (!res.ok || result.error) throw new Error(result.error || 'Delete failed');
 
       toast({ title: 'User deleted', description: 'Account and all data have been permanently removed.' });
       onSaved();
