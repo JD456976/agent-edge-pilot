@@ -996,7 +996,7 @@ Rules:
                         </div>
                       </div>
                     )}
-                    </div>
+
                     {smsVariants.map((v, i) => (
                       <button key={i} onClick={() => setSelectedSmsIndex(i)}
                         className={cn('w-full text-left rounded-md border p-2.5 transition-colors', i === selectedSmsIndex ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30')}>
