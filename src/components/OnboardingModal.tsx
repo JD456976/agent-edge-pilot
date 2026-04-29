@@ -189,8 +189,14 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
               <motion.div variants={iconPulse} initial="initial" animate="animate" className="mx-auto h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center ring-4 ring-primary/5">
                 <Rocket className="h-7 w-7 text-primary" />
               </motion.div>
-              <h2 className="text-lg font-bold">Welcome to Deal Pilot</h2>
-              <p className="text-sm text-muted-foreground">Let's get you started. Connect Follow Up Boss to import your leads.</p>
+              <h2 className="text-lg font-bold">
+                Welcome{user?.name?.split(' ')[0] ? `, ${user.name.split(' ')[0]}` : ' to Deal Pilot'}!
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {user?.name?.split(' ')[0]
+                  ? `Let's get Deal Pilot set up for you. Connect Follow Up Boss to import your leads.`
+                  : `Let's get you started. Connect Follow Up Boss to import your leads.`}
+              </p>
               <div className="space-y-2 pt-2">
                 <Button className="w-full" onClick={() => goToStep(3)}>
                   <Link2 className="h-4 w-4 mr-2" /> Connect Follow Up Boss
