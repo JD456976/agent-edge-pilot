@@ -261,7 +261,11 @@ export function UserDetailDrawer({ userId, onClose, onSaved }: Props) {
       const result = await res.json();
       if (!res.ok || result.error) throw new Error(result.error || 'Delete failed');
 
-      toast({ title: 'User deleted', description: 'Account and all data have been permanently removed.' });
+      if (result.warning) {
+        toast({ title: 'User removed', description: result.warning });
+      } else {
+        toast({ title: 'User deleted', description: 'Account and all data have been permanently removed.' });
+      }
       onSaved();
       onClose();
     } catch (err: any) {
