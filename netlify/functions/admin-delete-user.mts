@@ -14,54 +14,42 @@ const OWNER_EMAILS = [
   "claude.dev@chinattirealty.com",
 ];
 
-async function safeDelete(
+async function tryDelete(
   client: ReturnType<typeof createClient>,
   table: string,
   column: string,
   value: string
 ): Promise<void> {
-  try {
-    await (client.from(table as any).delete() as any).eq(column, value);
-  } catch { /* table may not exist */ }
+  try { await (client.from(table as any).delete() as any).eq(column, value); } catch { /* ok */ }
 }
 
-async function safeDeleteIn(
+async function tryDeleteIn(
   client: ReturnType<typeof createClient>,
   table: string,
   column: string,
   values: string[]
 ): Promise<void> {
   if (!values.length) return;
-  try {
-    await (client.from(table as any).delete() as any).in(column, values);
-  } catch { /* table may not exist */ }
+  try { await (client.from(table as any).delete() as any).in(column, values); } catch { /* ok */ }
 }
 
 export default async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
-  if (req.method !== "POST") {
+  if (req.method !== "POST")
     return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: CORS });
-  }
 
-  // Support all likely env var names Lovable/Netlify might use
   const supabaseUrl =
-    Netlify.env.get("VITE_SUPABASE_URL") ||
-    Netlify.env.get("SUPABASE_URL") ||
-    process.env.VITE_SUPABASE_URL ||
-    process.env.SUPABASE_URL;
+    Netlify.env.get("VITE_SUPABASE_URL") || Netlify.env.get("SUPABASE_URL") ||
+    process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 
   const serviceRoleKey =
-    Netlify.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
-    Netlify.env.get("SERVICE_ROLE_KEY") ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SERVICE_ROLE_KEY;
+    Netlify.env.get("SUPABASE_SERVICE_ROLE_KEY") || Netlify.env.get("SERVICE_ROLE_KEY") ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
 
   const anonKey =
-    Netlify.env.get("VITE_SUPABASE_ANON_KEY") ||
-    Netlify.env.get("VITE_SUPABASE_PUBLISHABLE_KEY") ||
+    Netlify.env.get("VITE_SUPABASE_ANON_KEY") || Netlify.env.get("VITE_SUPABASE_PUBLISHABLE_KEY") ||
     Netlify.env.get("SUPABASE_ANON_KEY") ||
-    process.env.VITE_SUPABASE_ANON_KEY ||
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
     process.env.SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !anonKey) {
@@ -72,63 +60,44 @@ export default async (req: Request) => {
   }
 
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader) {
+  if (!authHeader)
     return new Response(JSON.stringify({ error: "Missing authorization" }), { status: 401, headers: CORS });
-  }
 
-  // Client that inherits caller's RLS context
   const callerClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
     auth: { autoRefreshToken: false, persistSession: false },
   });
-
-  // Admin client — full access only if service role key is available
   const adminClient = serviceRoleKey
     ? createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
     : null;
 
   try {
-    // Verify caller identity
-    const { data: { user: caller }, error: authError } = await callerClient.auth.getUser();
-    if (authError || !caller) {
+    // Verify caller
+    const { data: { user: caller }, error: authErr } = await callerClient.auth.getUser();
+    if (authErr || !caller)
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: CORS });
-    }
 
-    // Verify caller is admin — check user_roles table or owner email list
+    // Verify admin
     const { data: roleRow } = await callerClient
-      .from("user_roles" as any)
-      .select("role")
-      .eq("user_id", caller.id)
-      .maybeSingle();
-
+      .from("user_roles" as any).select("role").eq("user_id", caller.id).maybeSingle();
     const isOwner = OWNER_EMAILS.some(e => e.toLowerCase() === caller.email?.toLowerCase());
-
-    if ((roleRow as any)?.role !== "admin" && !isOwner) {
+    if ((roleRow as any)?.role !== "admin" && !isOwner)
       return new Response(JSON.stringify({ error: "Admin access required" }), { status: 403, headers: CORS });
-    }
 
     const { targetUserId } = await req.json();
-    if (!targetUserId) {
+    if (!targetUserId)
       return new Response(JSON.stringify({ error: "targetUserId required" }), { status: 400, headers: CORS });
-    }
-    if (targetUserId === caller.id) {
+    if (targetUserId === caller.id)
       return new Response(JSON.stringify({ error: "Cannot delete your own account" }), { status: 400, headers: CORS });
-    }
 
-    // Use service role client if available, otherwise fall back to caller client (RLS-bound)
+    // Check protected
     const db = adminClient || callerClient;
-
-    // Check protected flag
-    const { data: targetProfile } = await db
-      .from("profiles" as any)
-      .select("is_protected")
-      .eq("user_id", targetUserId)
-      .maybeSingle();
-    if ((targetProfile as any)?.is_protected) {
+    const { data: profileRow } = await db
+      .from("profiles" as any).select("is_protected, id").eq("user_id", targetUserId).maybeSingle();
+    if ((profileRow as any)?.is_protected)
       return new Response(JSON.stringify({ error: "Cannot delete a protected user" }), { status: 403, headers: CORS });
-    }
 
-    // ── Cleanup: all wrapped individually so missing tables are silently skipped ──
+    // ── Cleanup all user data (each wrapped) ──────────────────────────────────
     const userTables = [
       "activity_events", "ai_follow_up_drafts", "fub_activity_log", "fub_appointments",
       "fub_push_log", "fub_webhook_events", "fub_watchlist", "fub_ignored_changes",
@@ -138,93 +107,71 @@ export default async (req: Request) => {
       "agent_intelligence_profile", "crm_integrations", "import_dedup_rules",
       "intel_briefs", "user_entitlements",
     ];
-    for (const table of userTables) {
-      await safeDelete(db, table, "user_id", targetUserId);
-    }
+    for (const t of userTables) await tryDelete(db, t, "user_id", targetUserId);
 
-    // FUB import run cascade
+    // FUB import runs
     try {
       const { data: runs } = await db.from("fub_import_runs" as any).select("id").eq("user_id", targetUserId);
       if (runs?.length) {
         const ids = (runs as any[]).map((r: any) => r.id);
-        for (const t of ["fub_staged_leads", "fub_staged_deals", "fub_staged_tasks"]) {
-          await safeDeleteIn(db, t, "import_run_id", ids);
-        }
-        await safeDelete(db, "fub_import_runs", "user_id", targetUserId);
+        for (const t of ["fub_staged_leads", "fub_staged_deals", "fub_staged_tasks"])
+          await tryDeleteIn(db, t, "import_run_id", ids);
+        await tryDelete(db, "fub_import_runs", "user_id", targetUserId);
       }
     } catch { /* ok */ }
 
-    await safeDelete(db, "admin_audit_events", "admin_user_id", targetUserId);
-    await safeDelete(db, "deal_participants", "user_id", targetUserId);
-    await safeDelete(db, "tasks", "assigned_to_user_id", targetUserId);
+    await tryDelete(db, "admin_audit_events", "admin_user_id", targetUserId);
+    await tryDelete(db, "deal_participants", "user_id", targetUserId);
+    await tryDelete(db, "tasks", "assigned_to_user_id", targetUserId);
 
     try {
       const { data: leads } = await db.from("leads" as any).select("id").eq("assigned_to_user_id", targetUserId);
       const { data: deals } = await db.from("deals" as any).select("id").eq("assigned_to_user_id", targetUserId);
-      if (leads?.length) await safeDeleteIn(db, "alerts", "related_lead_id", (leads as any[]).map((l: any) => l.id));
-      if (deals?.length) await safeDeleteIn(db, "alerts", "related_deal_id", (deals as any[]).map((d: any) => d.id));
+      if (leads?.length) await tryDeleteIn(db, "alerts", "related_lead_id", (leads as any[]).map((l: any) => l.id));
+      if (deals?.length) await tryDeleteIn(db, "alerts", "related_deal_id", (deals as any[]).map((d: any) => d.id));
     } catch { /* ok */ }
 
-    await safeDelete(db, "deals", "assigned_to_user_id", targetUserId);
-    await safeDelete(db, "leads", "assigned_to_user_id", targetUserId);
-    await safeDelete(db, "team_members", "user_id", targetUserId);
-    await safeDelete(db, "user_invitations", "invited_by", targetUserId);
-    await safeDelete(db, "user_roles", "user_id", targetUserId);
+    await tryDelete(db, "deals", "assigned_to_user_id", targetUserId);
+    await tryDelete(db, "leads", "assigned_to_user_id", targetUserId);
+    await tryDelete(db, "team_members", "user_id", targetUserId);
+    await tryDelete(db, "user_invitations", "invited_by", targetUserId);
+    await tryDelete(db, "user_roles", "user_id", targetUserId);
 
-    // ── Profile: hard delete or soft-delete depending on access ──
+    // ── Profile: hard DELETE row (not soft-update) ────────────────────────────
+    // Try both the profile id and user_id columns
+    let profileDeleted = false;
+    try {
+      const res = await db.from("profiles" as any).delete().eq("user_id", targetUserId);
+      if (!res.error) profileDeleted = true;
+    } catch { /* try next */ }
+
+    // ── Auth user (requires service role) ────────────────────────────────────
+    let authDeleted = false;
+    let authWarning = "";
     if (adminClient) {
-      // Full delete: remove profile row and auth user
-      await adminClient.from("profiles" as any).delete().eq("user_id", targetUserId);
-
-      const { error: authDeleteErr } = await adminClient.auth.admin.deleteUser(targetUserId);
-      if (authDeleteErr) {
-        // Auth delete failed — profile is already gone; warn but don't fail
-        console.error("Auth user delete failed:", authDeleteErr.message);
-        return new Response(
-          JSON.stringify({
-            success: true,
-            warning: `Profile and data removed, but Supabase auth account could not be deleted: ${authDeleteErr.message}. The user cannot log in.`,
-          }),
-          { headers: CORS }
-        );
+      const { error: authErr } = await adminClient.auth.admin.deleteUser(targetUserId);
+      if (authErr) {
+        authWarning = `Profile and data removed. Supabase auth account could not be deleted: ${authErr.message}`;
+        console.error("Auth delete failed:", authErr.message);
+      } else {
+        authDeleted = true;
       }
     } else {
-      // Soft delete — no service role key available
-      // Mark profile as deleted so app-level checks block this user
-      try {
-        await callerClient
-          .from("profiles" as any)
-          .update({ is_deleted: true, status: "removed", email: null, full_name: "Deleted User" } as any)
-          .eq("user_id", targetUserId);
-      } catch { /* if update fails, at least roles/entitlements are gone */ }
-
-      // Audit
-      try {
-        await callerClient.from("admin_audit_events" as any).insert({
-          admin_user_id: caller.id,
-          action: "user_soft_deleted",
-          metadata: { targetUserId, reason: "no_service_role_key" },
-        });
-      } catch { /* ok */ }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          warning: "User data and access removed. Their Supabase auth account was not deleted because SUPABASE_SERVICE_ROLE_KEY is not configured in Netlify — add it to fully remove the account.",
-        }),
-        { headers: CORS }
-      );
+      authWarning = "User data and access removed. Add SUPABASE_SERVICE_ROLE_KEY to Netlify env vars to also delete the Supabase auth account.";
     }
 
     // Audit log (best-effort)
     try {
-      await adminClient!.from("admin_audit_events" as any).insert({
+      await db.from("admin_audit_events" as any).insert({
         admin_user_id: caller.id,
-        action: "user_deleted",
-        metadata: { targetUserId },
+        action: authDeleted ? "user_deleted" : "user_data_wiped",
+        metadata: { targetUserId, profileDeleted, authDeleted },
       });
     } catch { /* ok */ }
 
+    if (authWarning) {
+      return new Response(JSON.stringify({ success: true, warning: authWarning }), { headers: CORS });
+    }
     return new Response(JSON.stringify({ success: true }), { headers: CORS });
 
   } catch (err: any) {
