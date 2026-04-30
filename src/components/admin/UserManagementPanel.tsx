@@ -1,500 +1,631 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Plus, Pencil, UserX, ShieldCheck, Copy, Check, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
-import { InviteUserModal } from './InviteUserModal';
-import { EditUserModal } from './EditUserModal';
-import { RemoveUserModal } from './RemoveUserModal';
-import { UserDetailDrawer } from './UserDetailDrawer';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import type { UserRole } from '@/types';
+import {
+  Users, Search, Loader2, Eye, Ban, UserCheck, Mail, Calendar,
+  Shield, Trash2, UserPlus, X, RefreshCw, Building2,
+} from 'lucide-react';
+import { format } from 'date-fns';
 
-interface ManagedUser {
-  userId: string;
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface Profile {
+  id: string;
+  user_id: string;
   name: string;
   email: string;
-  role: UserRole;
   status: string;
-  isProtected: boolean;
-  isDeleted: boolean;
-  organizationId: string | null;
-  teams: { teamId: string; teamName: string }[];
-  createdAt: string;
-  // entitlement
-  isPro: boolean;
-  isTrial: boolean;
-  expiresAt: string | null;
+  is_deleted: boolean;
+  is_protected: boolean;
+  created_at: string;
+}
+
+interface Entitlement {
+  user_id: string;
+  is_pro: boolean;
+  is_trial: boolean;
+  expires_at: string | null;
   source: string | null;
 }
 
-type AccessPill = 'active' | 'expiring_soon' | 'expired' | 'revoked' | 'trial' | 'none';
-
-function getAccessPill(u: ManagedUser): AccessPill {
-  if (u.isDeleted || u.status === 'removed') return 'revoked';
-  if (u.status === 'disabled') return 'revoked';
-  if (u.source === 'admin_revoked') return 'revoked';
-  if (u.expiresAt) {
-    const exp = new Date(u.expiresAt);
-    if (exp < new Date()) return 'expired';
-    if (exp.getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000) return 'expiring_soon';
-  }
-  if (u.isTrial) return 'trial';
-  if (u.isPro) return 'active';
-  if (u.status === 'active') return 'active';
-  return 'none';
+interface UserRole {
+  user_id: string;
+  role: string;
 }
 
-const PILL_CONFIG: Record<AccessPill, { color: string; label: string }> = {
-  active: { color: 'bg-emerald-500', label: 'Active' },
-  expiring_soon: { color: 'bg-amber-500', label: 'Expiring' },
-  expired: { color: 'bg-destructive', label: 'Expired' },
-  revoked: { color: 'bg-destructive', label: 'Revoked' },
-  trial: { color: 'bg-muted-foreground/50', label: 'Trial' },
-  none: { color: 'bg-muted-foreground/30', label: '—' },
-};
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const GRANT_OPTS = [
+  { label: '7d', days: 7 }, { label: '14d', days: 14 }, { label: '30d', days: 30 },
+  { label: '60d', days: 60 }, { label: '90d', days: 90 },
+];
 
-function StatusDot({ pill }: { pill: AccessPill }) {
-  const cfg = PILL_CONFIG[pill];
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs">
-      <span className={`h-2 w-2 rounded-full shrink-0 ${cfg.color}`} />
-      {cfg.label}
-    </span>
-  );
+function accessBadge(ent: Entitlement | undefined) {
+  if (!ent) return <Badge variant="outline" className="text-xs">No Access</Badge>;
+  if (ent.source === 'admin_revoked')
+    return <Badge variant="destructive" className="text-xs">Revoked</Badge>;
+  if (ent.expires_at && new Date(ent.expires_at) < new Date())
+    return <Badge variant="destructive" className="text-xs">Expired</Badge>;
+  if (ent.is_trial)
+    return <Badge variant="secondary" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/20">Trial</Badge>;
+  if (ent.is_pro)
+    return <Badge variant="default" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Active</Badge>;
+  return <Badge variant="outline" className="text-xs">No Access</Badge>;
 }
 
-type SortKey = 'name' | 'status' | 'expiresAt';
-type SortDir = 'asc' | 'desc';
-
+// ── Component ─────────────────────────────────────────────────────────────────
 export function UserManagementPanel() {
-  const { user, logAdminAction } = useAuth();
-  const { toast } = useToast();
-  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [entitlements, setEntitlements] = useState<Entitlement[]>([]);
+  const [roles, setRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [teamFilter, setTeamFilter] = useState<string>('all');
-  const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
+  const { toast } = useToast();
+
+  // Modal state
+  const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [grantTarget, setGrantTarget] = useState<Profile | null>(null);
+  const [grantDays, setGrantDays] = useState(30);
+  const [grantCustom, setGrantCustom] = useState('');
+  const [grantUseCustom, setGrantUseCustom] = useState(false);
+  const [extendFromCurrent, setExtendFromCurrent] = useState(false);
+  const [granting, setGranting] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
-  const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
-  const [removingUser, setRemovingUser] = useState<ManagedUser | null>(null);
-  const [invitations, setInvitations] = useState<any[]>([]);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteName, setInviteName] = useState('');
+  const [inviteDays, setInviteDays] = useState(30);
+  const [inviting, setInviting] = useState(false);
+  const [suspending, setSuspending] = useState<string | null>(null);
 
-  // Sort
-  const [sortKey, setSortKey] = useState<SortKey>('name');
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  // ── Data fetching ──────────────────────────────────────────────────────────
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true);
+    else setRefreshing(true);
+    try {
+      const [profilesRes, entsRes, rolesRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, user_id, name, email, status, is_deleted, is_protected, created_at')
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('user_entitlements' as any)
+          .select('user_id, is_pro, is_trial, expires_at, source'),
+        supabase.from('user_roles').select('user_id, role'),
+      ]);
 
-  // Bulk selection
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkGranting, setBulkGranting] = useState(false);
-
-  const loadUsers = async () => {
-    setLoading(true);
-    const [{ data: profiles }, { data: roles }, { data: members }, { data: tms }, { data: invites }, { data: entitlements }] = await Promise.all([
-      supabase.from('profiles').select('*'),
-      supabase.from('user_roles').select('*'),
-      supabase.from('team_members').select('team_id, user_id'),
-      supabase.from('teams').select('id, name'),
-      supabase.from('user_invitations' as any).select('*').order('created_at', { ascending: false }),
-      supabase.from('user_entitlements').select('user_id, is_pro, is_trial, expires_at, source'),
-    ]);
-
-    if (tms) setTeams(tms.map((t: any) => ({ id: t.id, name: t.name })));
-    if (invites) setInvitations(invites as any[]);
-
-    const roleMap = new Map<string, UserRole>();
-    roles?.forEach((r: any) => roleMap.set(r.user_id, r.role as UserRole));
-
-    const entMap = new Map<string, { isPro: boolean; isTrial: boolean; expiresAt: string | null; source: string | null }>();
-    entitlements?.forEach((e: any) => entMap.set(e.user_id, {
-      isPro: e.is_pro ?? false,
-      isTrial: e.is_trial ?? false,
-      expiresAt: e.expires_at ?? null,
-      source: e.source ?? null,
-    }));
-
-    const teamMap = new Map<string, { teamId: string; teamName: string }[]>();
-    const teamNameMap = new Map<string, string>();
-    tms?.forEach((t: any) => teamNameMap.set(t.id, t.name));
-    members?.forEach((m: any) => {
-      const arr = teamMap.get(m.user_id) || [];
-      arr.push({ teamId: m.team_id, teamName: teamNameMap.get(m.team_id) || 'Unknown' });
-      teamMap.set(m.user_id, arr);
-    });
-
-    const mapped: ManagedUser[] = (profiles || []).map((p: any) => {
-      const ent = entMap.get(p.user_id);
-      return {
-        userId: p.user_id,
-        name: p.name,
-        email: p.email,
-        role: roleMap.get(p.user_id) || 'agent',
-        status: p.is_deleted ? 'removed' : p.status || 'active',
-        isProtected: p.is_protected,
-        isDeleted: p.is_deleted,
-        organizationId: p.organization_id,
-        teams: teamMap.get(p.user_id) || [],
-        createdAt: p.created_at,
-        isPro: ent?.isPro ?? false,
-        isTrial: ent?.isTrial ?? false,
-        expiresAt: ent?.expiresAt ?? null,
-        source: ent?.source ?? null,
-      };
-    });
-
-    setUsers(mapped);
-    setSelectedIds(new Set());
-    setLoading(false);
+      setProfiles((profilesRes.data as Profile[]) || []);
+      setEntitlements((entsRes.data as Entitlement[]) || []);
+      setRoles((rolesRes.data as UserRole[]) || []);
+    } catch (err: any) {
+      toast({ title: 'Error loading users', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  useEffect(() => { loadUsers(); }, []);
+  useEffect(() => { fetchData(); }, []);
+
+  // ── Derived maps ───────────────────────────────────────────────────────────
+  const entMap = useMemo(() => {
+    const m = new Map<string, Entitlement>();
+    entitlements.forEach(e => m.set(e.user_id, e));
+    return m;
+  }, [entitlements]);
+
+  const roleMap = useMemo(() => {
+    const m = new Map<string, string[]>();
+    roles.forEach(r => {
+      if (!m.has(r.user_id)) m.set(r.user_id, []);
+      m.get(r.user_id)!.push(r.role);
+    });
+    return m;
+  }, [roles]);
 
   const filtered = useMemo(() => {
-    let result = users.filter(u => {
-      if (u.isDeleted && statusFilter !== 'removed') return false;
-      const searchLower = search.toLowerCase();
-      if (search && !u.name.toLowerCase().includes(searchLower) && !u.email.toLowerCase().includes(searchLower)) return false;
-      if (roleFilter !== 'all' && u.role !== roleFilter) return false;
-      if (statusFilter !== 'all' && u.status !== statusFilter) return false;
-      if (teamFilter !== 'all' && !u.teams.some(t => t.teamId === teamFilter)) return false;
-      return true;
-    });
+    if (!search) return profiles;
+    const t = search.toLowerCase();
+    return profiles.filter(p =>
+      p.name?.toLowerCase().includes(t) || p.email?.toLowerCase().includes(t)
+    );
+  }, [profiles, search]);
 
-    // Sort
-    result.sort((a, b) => {
-      let cmp = 0;
-      if (sortKey === 'name') {
-        cmp = (a.name || '').localeCompare(b.name || '');
-      } else if (sortKey === 'status') {
-        cmp = a.status.localeCompare(b.status);
-      } else if (sortKey === 'expiresAt') {
-        const aDate = a.expiresAt ? new Date(a.expiresAt).getTime() : Infinity;
-        const bDate = b.expiresAt ? new Date(b.expiresAt).getTime() : Infinity;
-        cmp = aDate - bDate;
-      }
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-
-    return result;
-  }, [users, search, roleFilter, statusFilter, teamFilter, sortKey, sortDir]);
-
-  const pendingInvites = invitations.filter((i: any) => i.status === 'pending' || i.status === 'sent');
-
-  const handleCopyLink = async (inviteId: string) => {
-    const link = `${window.location.origin}/login?invite=${inviteId}`;
-    await navigator.clipboard.writeText(link);
-    setCopiedId(inviteId);
-    setTimeout(() => setCopiedId(null), 2000);
-    toast({ title: 'Invite link copied' });
-  };
-
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(key);
-      setSortDir('asc');
-    }
-  };
-
-  const SortIcon = ({ col }: { col: SortKey }) => {
-    if (sortKey !== col) return null;
-    return sortDir === 'asc'
-      ? <ArrowUp className="h-3 w-3 inline ml-0.5" />
-      : <ArrowDown className="h-3 w-3 inline ml-0.5" />;
-  };
-
-  // Bulk select
-  const allFilteredIds = useMemo(() => filtered.filter(u => !u.isDeleted && u.userId !== user?.id).map(u => u.userId), [filtered, user?.id]);
-  const allSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedIds.has(id));
-  const someSelected = selectedIds.size > 0;
-
-  const toggleSelectAll = () => {
-    if (allSelected) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(allFilteredIds));
-    }
-  };
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
-  const handleBulkGrant = async () => {
-    if (selectedIds.size === 0) return;
-    setBulkGranting(true);
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  // ── Delete ─────────────────────────────────────────────────────────────────
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      for (const uid of selectedIds) {
-        await supabase.from('user_entitlements').upsert({
-          user_id: uid,
-          is_pro: true,
-          is_trial: false,
-          source: 'admin_grant',
-          expires_at: expiresAt,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/admin-delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ targetUserId: deleteTarget.user_id }),
+      });
+      const result = await res.json();
+      if (!res.ok || result.error) throw new Error(result.error || 'Delete failed');
+
+      // ✅ Immediately remove from local state — don't rely on refetch
+      setProfiles(prev => prev.filter(p => p.user_id !== deleteTarget.user_id));
+      setDeleteTarget(null);
+      setSelectedUser(null);
+
+      if (result.warning) {
+        toast({ title: 'User removed', description: result.warning });
+      } else {
+        toast({ title: 'User deleted', description: `${deleteTarget.email} has been permanently removed.` });
       }
-      await logAdminAction('bulk_pro_access_granted', { userIds: Array.from(selectedIds), count: selectedIds.size });
-      toast({ description: `Granted 30-day access to ${selectedIds.size} user(s).` });
-      setSelectedIds(new Set());
-      await loadUsers();
-    } catch (err: any) {
-      toast({ title: 'Bulk grant failed', description: err.message, variant: 'destructive' });
+    } catch (e: any) {
+      toast({ title: 'Delete failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
     }
-    setBulkGranting(false);
   };
+
+  // ── Suspend / Reactivate ───────────────────────────────────────────────────
+  const handleSuspend = async (profile: Profile) => {
+    const newStatus = profile.status === 'suspended' ? 'active' : 'suspended';
+    setSuspending(profile.user_id);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ status: newStatus } as any)
+      .eq('user_id', profile.user_id);
+    setSuspending(null);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: newStatus === 'suspended' ? 'User suspended' : 'User reactivated' });
+      setProfiles(prev => prev.map(p => p.user_id === profile.user_id ? { ...p, status: newStatus } : p));
+      setSelectedUser(prev => prev?.user_id === profile.user_id ? { ...prev, status: newStatus } : prev);
+    }
+  };
+
+  // ── Grant access ───────────────────────────────────────────────────────────
+  const effectiveDays = grantUseCustom ? (parseInt(grantCustom) || 0) : grantDays;
+
+  const handleGrantAccess = async () => {
+    if (!grantTarget || effectiveDays < 1) return;
+    const ent = entMap.get(grantTarget.user_id);
+    const base = extendFromCurrent && ent?.expires_at && new Date(ent.expires_at) > new Date()
+      ? new Date(ent.expires_at)
+      : new Date();
+    const expires = new Date(base);
+    expires.setDate(expires.getDate() + effectiveDays);
+
+    setGranting(true);
+    const existing = entMap.get(grantTarget.user_id);
+    const { error } = existing
+      ? await supabase.from('user_entitlements' as any)
+          .update({ is_pro: true, is_trial: false, source: 'admin_grant', expires_at: expires.toISOString() } as any)
+          .eq('user_id', grantTarget.user_id)
+      : await supabase.from('user_entitlements' as any)
+          .insert({ user_id: grantTarget.user_id, is_pro: true, is_trial: false, source: 'admin_grant', expires_at: expires.toISOString() } as any);
+
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: `Access granted — ${effectiveDays} days`, description: `Expires ${expires.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` });
+      setGrantTarget(null);
+      setSelectedUser(null);
+      fetchData(true);
+    }
+    setGranting(false);
+  };
+
+  const handleRevokeAccess = async (profile: Profile) => {
+    const { error } = await supabase.from('user_entitlements' as any)
+      .update({ is_pro: false, is_trial: false, source: 'admin_revoked' } as any)
+      .eq('user_id', profile.user_id);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Access revoked' });
+      fetchData(true);
+      setSelectedUser(null);
+    }
+  };
+
+  // ── Invite ─────────────────────────────────────────────────────────────────
+  const handleInvite = async () => {
+    const email = inviteEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: 'Enter a valid email address', variant: 'destructive' });
+      return;
+    }
+    setInviting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/invite-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ email, name: inviteName.trim() || undefined, days: inviteDays }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Invite failed');
+
+      toast({
+        title: 'Invite sent',
+        description: `${email} will receive a sign-in link. Access granted for ${inviteDays} days.`,
+      });
+      setShowInvite(false);
+      setInviteEmail('');
+      setInviteName('');
+      fetchData(true);
+    } catch (e: any) {
+      toast({ title: 'Invite failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+          <p className="text-sm text-muted-foreground mt-2">Loading users…</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4" /> User Management
-        </h2>
-        <Button size="sm" onClick={() => setShowInvite(true)}>
-          <Plus className="h-4 w-4 mr-1" /> Invite User
-        </Button>
-      </div>
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Users ({profiles.length})
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => fetchData(true)} disabled={refreshing} className="gap-1.5">
+                <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              </Button>
+              <Button size="sm" className="gap-1.5" onClick={() => setShowInvite(true)}>
+                <UserPlus className="h-4 w-4" /> Invite User
+              </Button>
+            </div>
+          </div>
+          <div className="relative mt-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search by name or email…"
+              className="pl-9 h-10"
+            />
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {filtered.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8 text-sm">
+              {search ? 'No users match your search.' : 'No users yet.'}
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Access</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map(profile => {
+                    const ent = entMap.get(profile.user_id);
+                    const userRoles = roleMap.get(profile.user_id) || [];
+                    return (
+                      <TableRow key={profile.id}>
+                        <TableCell className="font-medium">{profile.name || '—'}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{profile.email || '—'}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1 flex-wrap">
+                            {userRoles.length > 0 ? userRoles.map(r => (
+                              <Badge key={r} variant={r === 'admin' ? 'default' : 'secondary'} className="text-xs capitalize">{r}</Badge>
+                            )) : <span className="text-xs text-muted-foreground">agent</span>}
+                          </div>
+                        </TableCell>
+                        <TableCell>{accessBadge(ent)}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={profile.status === 'suspended' ? 'destructive' : 'outline'}
+                            className="text-xs capitalize"
+                          >
+                            {profile.status || 'active'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {format(new Date(profile.created_at), 'MMM d, yyyy')}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedUser(profile)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {!profile.is_protected && (
+                              <Button
+                                variant="ghost" size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => setDeleteTarget(profile)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search name or email..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9 h-9"
-          />
-        </div>
-        <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-[120px] h-9">
-            <SelectValue placeholder="Role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="agent">Agent</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[130px] h-9">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="disabled">Disabled</SelectItem>
-            <SelectItem value="removed">Removed</SelectItem>
-          </SelectContent>
-        </Select>
-        {teams.length > 0 && (
-          <Select value={teamFilter} onValueChange={setTeamFilter}>
-            <SelectTrigger className="w-[140px] h-9">
-              <SelectValue placeholder="Team" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Teams</SelectItem>
-              {teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
-
-      {/* Bulk actions */}
-      {someSelected && (
-        <div className="flex items-center gap-3 mb-3 p-2 rounded-lg bg-primary/5 border border-primary/20">
-          <span className="text-xs font-medium text-muted-foreground">{selectedIds.size} selected</span>
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleBulkGrant} disabled={bulkGranting}>
-            {bulkGranting && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-            Grant 30-day access
-          </Button>
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelectedIds(new Set())}>
-            Clear
-          </Button>
-        </div>
-      )}
-
-      {/* Pending Invitations */}
-      {pendingInvites.length > 0 && (
-        <div className="mb-4 p-3 rounded-lg border border-border bg-muted/30">
-          <p className="text-xs font-semibold mb-2 text-muted-foreground">Pending Invitations</p>
-          <div className="space-y-1.5">
-            {pendingInvites.map((inv: any) => (
-              <div key={inv.id} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <span>{inv.email}</span>
-                  <Badge variant="secondary" className="text-[10px] capitalize">{inv.role}</Badge>
+      {/* ── User Detail Dialog ── */}
+      <Dialog open={!!selectedUser} onOpenChange={open => !open && setSelectedUser(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader><DialogTitle>User Details</DialogTitle></DialogHeader>
+          {selectedUser && (() => {
+            const ent = entMap.get(selectedUser.user_id);
+            const userRoles = roleMap.get(selectedUser.user_id) || [];
+            const hasAccess = ent?.is_pro || ent?.is_trial;
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {[
+                    { icon: Users, label: 'Name', val: selectedUser.name },
+                    { icon: Mail, label: 'Email', val: selectedUser.email },
+                    { icon: Calendar, label: 'Joined', val: format(new Date(selectedUser.created_at), 'MMM d, yyyy') },
+                    { icon: Building2, label: 'Status', val: selectedUser.status || 'active' },
+                  ].map(({ icon: Icon, label, val }) => (
+                    <div key={label} className="flex items-start gap-2">
+                      <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-muted-foreground text-xs">{label}</p>
+                        <p className="font-medium">{val || '—'}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => handleCopyLink(inv.id)}
-                >
-                  {copiedId === inv.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                  <span className="ml-1">{copiedId === inv.id ? 'Copied' : 'Copy Link'}</span>
-                </Button>
+
+                {userRoles.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-muted-foreground">Roles:</span>
+                    {userRoles.map(r => <Badge key={r} variant="secondary" className="capitalize">{r}</Badge>)}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between p-3 rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">App Access</p>
+                      {ent?.expires_at && (
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(ent.expires_at) > new Date()
+                            ? `Expires ${format(new Date(ent.expires_at), 'MMM d, yyyy')}`
+                            : `Expired ${format(new Date(ent.expires_at), 'MMM d, yyyy')}`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {accessBadge(ent)}
+                </div>
+
+                <div className="flex gap-2 pt-3 border-t flex-wrap">
+                  <Button
+                    size="sm"
+                    variant={selectedUser.status === 'suspended' ? 'default' : 'outline'}
+                    disabled={!!suspending}
+                    onClick={() => handleSuspend(selectedUser)}
+                  >
+                    {suspending === selectedUser.user_id
+                      ? <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                      : selectedUser.status === 'suspended'
+                        ? <><UserCheck className="h-4 w-4 mr-1" />Reactivate</>
+                        : <><Ban className="h-4 w-4 mr-1" />Suspend</>
+                    }
+                  </Button>
+
+                  {hasAccess ? (
+                    <Button size="sm" variant="outline" onClick={() => handleRevokeAccess(selectedUser)}>
+                      Revoke Access
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => {
+                      setGrantTarget(selectedUser);
+                      setGrantDays(30);
+                      setGrantCustom('');
+                      setGrantUseCustom(false);
+                      setExtendFromCurrent(false);
+                      setSelectedUser(null);
+                    }}>
+                      <Shield className="h-4 w-4 mr-1" /> Grant Access
+                    </Button>
+                  )}
+
+                  {!selectedUser.is_protected && (
+                    <Button
+                      size="sm" variant="outline"
+                      className="ml-auto text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => { setDeleteTarget(selectedUser); setSelectedUser(null); }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" /> Delete User
+                    </Button>
+                  )}
+                </div>
               </div>
-            ))}
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Confirmation ── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-card border border-destructive/30 rounded-2xl p-5 space-y-4 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                <Trash2 className="h-5 w-5 text-destructive" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Delete User Permanently</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This removes{' '}
+                  <span className="font-medium text-foreground">{deleteTarget.email || deleteTarget.name}</span>{' '}
+                  from all systems. They will lose all access immediately. This cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setDeleteTarget(null)} className="flex-1" disabled={deleting}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDelete} className="flex-1 gap-1.5" disabled={deleting}>
+                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {deleting ? 'Deleting…' : 'Delete Permanently'}
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* User Table */}
-      {loading ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">Loading users...</p>
-      ) : (
-        <div className="rounded-lg border border-border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[40px]">
-                  <Checkbox
-                    checked={allSelected}
-                    onCheckedChange={toggleSelectAll}
-                  />
-                </TableHead>
-                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('name')}>
-                  Name <SortIcon col="name" />
-                </TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('status')}>
-                  Status <SortIcon col="status" />
-                </TableHead>
-                <TableHead>Teams</TableHead>
-                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('expiresAt')}>
-                  Expiry <SortIcon col="expiresAt" />
-                </TableHead>
-                <TableHead className="w-[80px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                    No users found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filtered.map(u => {
-                  const pill = getAccessPill(u);
-                  return (
-                    <TableRow
-                      key={u.userId}
-                      className={`${u.isDeleted ? 'opacity-50' : ''} cursor-pointer hover:bg-accent/50`}
-                      onClick={() => setViewingUserId(u.userId)}
-                    >
-                      <TableCell onClick={e => e.stopPropagation()}>
-                        <Checkbox
-                          checked={selectedIds.has(u.userId)}
-                          onCheckedChange={() => toggleSelect(u.userId)}
-                          disabled={u.isDeleted || u.userId === user?.id}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-medium">{u.name || '—'}</span>
-                          {u.isProtected && (
-                            <Badge variant="outline" className="text-[10px] px-1 py-0">Protected</Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{u.email}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="text-[10px] capitalize">{u.role}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <StatusDot pill={pill} />
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {u.teams.length > 0 ? u.teams.map(t => t.teamName).join(', ') : '—'}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {u.expiresAt ? new Date(u.expiresAt).toLocaleDateString() : '—'}
-                      </TableCell>
-                      <TableCell>
-                        {!u.isDeleted && u.userId !== user?.id && (
-                          <div className="flex gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7"
-                              onClick={(e) => { e.stopPropagation(); setEditingUser(u); }}
-                              title="Edit user"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            {!u.isProtected && (
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7 text-destructive hover:text-destructive"
-                                onClick={(e) => { e.stopPropagation(); setRemovingUser(u); }}
-                                title="Remove user"
-                              >
-                                <UserX className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+      {/* ── Grant Access Modal ── */}
+      {grantTarget && (
+        <div className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-card border border-border rounded-2xl p-5 space-y-4 shadow-2xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-semibold">Grant Access</h3>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[240px]">{grantTarget.email}</p>
+              </div>
+              <button onClick={() => setGrantTarget(null)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Access Duration</p>
+              <div className="grid grid-cols-5 gap-1.5">
+                {GRANT_OPTS.map(o => (
+                  <button key={o.days} onClick={() => { setGrantDays(o.days); setGrantUseCustom(false); }}
+                    className={`py-2 rounded-lg text-xs font-semibold border transition-colors ${!grantUseCustom && grantDays === o.days ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:text-foreground hover:border-primary/50'}`}>
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setGrantUseCustom(true)}
+                className={`w-full py-2 rounded-lg text-xs font-semibold border transition-colors ${grantUseCustom ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:text-foreground'}`}>
+                Custom
+              </button>
+              {grantUseCustom && (
+                <div className="flex items-center gap-2">
+                  <Input type="number" min="1" max="365" value={grantCustom}
+                    onChange={e => setGrantCustom(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Days" className="w-24 text-sm" autoFocus />
+                  <span className="text-sm text-muted-foreground">days</span>
+                </div>
               )}
-            </TableBody>
-          </Table>
+              {effectiveDays > 0 && (() => {
+                const base = extendFromCurrent ? new Date(entMap.get(grantTarget.user_id)?.expires_at || Date.now()) : new Date();
+                const exp = new Date(base);
+                exp.setDate(exp.getDate() + effectiveDays);
+                return (
+                  <p className="text-xs text-muted-foreground">
+                    Expires{' '}
+                    <span className="font-medium text-foreground">
+                      {exp.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </p>
+                );
+              })()}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setGrantTarget(null)} className="flex-1" disabled={granting}>Cancel</Button>
+              <Button onClick={handleGrantAccess} className="flex-1" disabled={granting || effectiveDays < 1}>
+                {granting ? 'Saving…' : 'Grant Access'}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
+      {/* ── Invite User Modal ── */}
       {showInvite && (
-        <InviteUserModal
-          teams={teams}
-          onClose={() => setShowInvite(false)}
-          onInvited={() => { loadUsers(); setShowInvite(false); }}
-        />
+        <div className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-card border border-border rounded-2xl p-5 space-y-4 shadow-2xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-semibold">Invite User</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">They'll receive a sign-in link via email.</p>
+              </div>
+              <button onClick={() => setShowInvite(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Email Address *</label>
+                <Input type="email" placeholder="agent@brokerage.com" value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)} autoFocus />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                  Name <span className="normal-case text-muted-foreground/60">(optional)</span>
+                </label>
+                <Input placeholder="First Last" value={inviteName}
+                  onChange={e => setInviteName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleInvite()} />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Access Duration</p>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {[7, 14, 30, 60, 90].map(d => (
+                    <button key={d} onClick={() => setInviteDays(d)}
+                      className={`py-2 rounded-lg text-xs font-semibold border transition-colors ${inviteDays === d ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:text-foreground hover:border-primary/50'}`}>
+                      {d}d
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Access expires{' '}
+                <span className="font-medium text-foreground">
+                  {new Date(Date.now() + inviteDays * 86400000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </span>
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowInvite(false)} className="flex-1" disabled={inviting}>Cancel</Button>
+              <Button onClick={handleInvite} className="flex-1 gap-1.5" disabled={inviting || !inviteEmail.trim()}>
+                {inviting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                {inviting ? 'Sending…' : 'Send Invite'}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
-
-      {editingUser && (
-        <EditUserModal
-          managedUser={editingUser}
-          teams={teams}
-          onClose={() => setEditingUser(null)}
-          onSaved={() => { loadUsers(); setEditingUser(null); }}
-        />
-      )}
-
-      {removingUser && (
-        <RemoveUserModal
-          managedUser={removingUser}
-          onClose={() => setRemovingUser(null)}
-          onRemoved={() => { loadUsers(); setRemovingUser(null); }}
-        />
-      )}
-
-      {viewingUserId && (
-        <UserDetailDrawer
-          userId={viewingUserId}
-          onClose={() => setViewingUserId(null)}
-          onSaved={() => { loadUsers(); setViewingUserId(null); }}
-        />
-      )}
-    </section>
+    </>
   );
 }
