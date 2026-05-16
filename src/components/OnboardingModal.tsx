@@ -80,7 +80,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
       }
     }
     setSeeding(false);
-    goToStep(2);
+    goToStep(3);
   };
 
   const handleConnectFub = async () => {
