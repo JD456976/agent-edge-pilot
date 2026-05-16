@@ -27,9 +27,9 @@ export default async (req: Request) => {
   }
 
   // Query DP Supabase — server-side with service role key bypasses RLS
-  const supabaseUrl = Netlify.env.get("SUPABASE_URL") || "https://dqcrhjbsrufmkgqbfsyn.supabase.co";
+  const supabaseUrl = Netlify.env.get("SUPABASE_URL") || Netlify.env.get("VITE_SUPABASE_URL") || "https://fatynhxuzsdyoczbpkno.supabase.co";
   const serviceKey = Netlify.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const anonKey = Netlify.env.get("SUPABASE_PUBLISHABLE_KEY");
+  const anonKey = Netlify.env.get("SUPABASE_PUBLISHABLE_KEY") || Netlify.env.get("VITE_SUPABASE_ANON_KEY") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhdHluaHh1enNkeW9jemJwa25vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4OTIyNjEsImV4cCI6MjA5NDQ2ODI2MX0.Okz0W-eqS_BRksOe224dKcyOG7nH3z18aHbvUVFJOXY";
   const authKey = serviceKey || anonKey;
 
   if (!authKey) {

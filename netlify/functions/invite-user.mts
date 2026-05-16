@@ -15,8 +15,8 @@ export default async (req: Request) => {
     return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: CORS });
   }
 
-  const supabaseUrl = Netlify.env.get("VITE_SUPABASE_URL") || process.env.VITE_SUPABASE_URL;
-  const serviceRoleKey = Netlify.env.get("SUPABASE_SERVICE_ROLE_KEY") || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = Netlify.env.get("VITE_SUPABASE_URL") || process.env.VITE_SUPABASE_URL || "https://fatynhxuzsdyoczbpkno.supabase.co";
+  const serviceRoleKey = Netlify.env.get("SUPABASE_SERVICE_ROLE_KEY") || process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhdHluaHh1enNkeW9jemJwa25vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODg5MjI2MSwiZXhwIjoyMDk0NDY4MjYxfQ.MWwUs31ejE986agXIptODDnXSQjWdKohUkOFJ-W6XVw";
 
   if (!supabaseUrl || !serviceRoleKey) {
     return new Response(

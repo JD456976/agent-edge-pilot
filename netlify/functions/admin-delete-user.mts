@@ -40,7 +40,7 @@ export default async (req: Request) => {
 
   const supabaseUrl =
     Netlify.env.get("VITE_SUPABASE_URL") || Netlify.env.get("SUPABASE_URL") ||
-    process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://fatynhxuzsdyoczbpkno.supabase.co";
 
   const serviceRoleKey =
     Netlify.env.get("SUPABASE_SERVICE_ROLE_KEY") || Netlify.env.get("SERVICE_ROLE_KEY") ||
@@ -50,7 +50,7 @@ export default async (req: Request) => {
     Netlify.env.get("VITE_SUPABASE_ANON_KEY") || Netlify.env.get("VITE_SUPABASE_PUBLISHABLE_KEY") ||
     Netlify.env.get("SUPABASE_ANON_KEY") ||
     process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-    process.env.SUPABASE_ANON_KEY;
+    process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhdHluaHh1enNkeW9jemJwa25vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4OTIyNjEsImV4cCI6MjA5NDQ2ODI2MX0.Okz0W-eqS_BRksOe224dKcyOG7nH3z18aHbvUVFJOXY";
 
   if (!supabaseUrl || !anonKey) {
     return new Response(
