@@ -171,7 +171,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                     <span className="flex items-center gap-2"><span className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> Setting up...</span>
                   ) : 'Create Organization + Team'}
                 </Button>
-                <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => goToStep(2)}>
+                <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => goToStep(3)}>
                   Skip for now
                 </Button>
               </div>
