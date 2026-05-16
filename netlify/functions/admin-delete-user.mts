@@ -44,7 +44,7 @@ export default async (req: Request) => {
 
   const serviceRoleKey =
     Netlify.env.get("SUPABASE_SERVICE_ROLE_KEY") || Netlify.env.get("SERVICE_ROLE_KEY") ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhdHluaHh1enNkeW9jemJwa25vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODg5MjI2MSwiZXhwIjoyMDk0NDY4MjYxfQ.MWwUs31ejE986agXIptODDnXSQjWdKohUkOFJ-W6XVw";
 
   const anonKey =
     Netlify.env.get("VITE_SUPABASE_ANON_KEY") || Netlify.env.get("VITE_SUPABASE_PUBLISHABLE_KEY") ||
