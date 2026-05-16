@@ -224,7 +224,7 @@ function ShareButton() {
     const demoToken = 'demo-' + Math.random().toString(36).slice(2, 10);
     const origin = window.location.hostname === 'localhost'
       ? window.location.origin
-      : 'https://deal-pilot-cr.lovable.app';
+      : 'https://deal-pilot-app.netlify.app';
     const url = `${origin}/portal/${demoToken}`;
 
     try {

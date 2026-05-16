@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Sun, RefreshCw, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
 import type { Lead } from '@/types';
 
 interface Props {
@@ -48,15 +47,21 @@ export function HomeMorningBrief({ agentName, leads, appointmentsToday, streak }
     setLoading(true);
     try {
       const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-      const { data, error } = await supabase.functions.invoke('ai-morning-brief', {
-        body: {
-          agent_name: agentName,
-          leads_summary: leads.slice(0, 5).map(l => `${l.name} — score ${l.engagementScore || 0} — ${l.source || 'Direct'}`).join('\n'),
-          pipeline_value: `${leads.length} active leads, ${hotCount} hot, ${appointmentsToday} appointments today, ${streak}-day streak. Today is ${dayOfWeek}.`,
-        },
+      const res = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5',
+          max_tokens: 200,
+          messages: [{
+            role: 'user',
+            content: `You are a real estate coach giving a concise morning brief to ${agentName}. Be direct and motivating in 2-3 sentences max. Pipeline: ${leads.length} active leads, ${hotCount} hot, ${appointmentsToday} appointments today, ${streak}-day streak. Today is ${dayOfWeek}. Top leads: ${leads.slice(0, 3).map(l => l.name).join(', ') || 'none yet'}. Give them a sharp, actionable morning focus.`
+          }]
+        }),
       });
-      if (error) throw error;
-      const text = data?.brief || 'Unable to generate brief.';
+      if (!res.ok) throw new Error('API error');
+      const aiData = await res.json();
+      const text = aiData?.content?.[0]?.text || 'Unable to generate brief.';
       setBrief(text);
       localStorage.setItem(getTodayKey(), JSON.stringify({ text, date: new Date().toDateString() }));
     } catch (e) {

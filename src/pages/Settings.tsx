@@ -775,11 +775,12 @@ export default function Settings() {
                       toast({ title: 'Error', description: 'You must be signed in to delete your account.', variant: 'destructive' });
                       return;
                     }
-                    const res = await supabase.functions.invoke('delete-account', {
+                    const res = await fetch('/api/admin-delete-user', { method: 'POST', headers: { 'Content-Type': 'application/json' },
                       headers: { Authorization: `Bearer ${session.access_token}` },
                     });
-                    if (res.error || res.data?.error) {
-                      throw new Error(res.data?.error || 'Deletion failed');
+                    const resData = await res.json();
+                    if (!res.ok || resData?.error) {
+                      throw new Error(resData?.error || 'Deletion failed');
                     }
                     await supabase.auth.signOut();
                     navigate('/login');

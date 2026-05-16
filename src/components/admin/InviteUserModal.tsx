@@ -38,20 +38,21 @@ export function InviteUserModal({ teams, onClose, onInvited }: Props) {
     setSubmitting(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('invite-user', {
-        body: {
+      const res = await fetch('/api/invite-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           email: email.trim(),
           name: name.trim() || undefined,
           role,
           teamIds: selectedTeams,
-        },
+          days: 30,
+        }),
       });
+      const data = await res.json();
+      if (!res.ok || data?.error) throw new Error(data?.error || 'Invite failed');
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      setInviteLink(data.inviteLink);
-      toast({ title: 'Invitation sent', description: `Invite sent to ${email}` });
+      toast({ title: 'Invitation sent', description: `Magic link sent to ${email}` });
     } catch (err: any) {
       toast({ title: 'Invite failed', description: err.message, variant: 'destructive' });
       setSubmitting(false);

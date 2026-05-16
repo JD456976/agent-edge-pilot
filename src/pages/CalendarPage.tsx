@@ -249,8 +249,8 @@ export default function CalendarPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { toast({ title: 'Error', description: 'Not signed in.', variant: 'destructive' }); return; }
       
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const url = `https://${projectId}.supabase.co/functions/v1/calendar-feed?token=${session.access_token}`;
+      // Calendar feed requires server-side setup — not yet configured
+      const url = null;
       setSubscribeUrl(url);
     } catch {
       toast({ title: 'Error', description: 'Could not generate URL.', variant: 'destructive' });
