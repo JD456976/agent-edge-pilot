@@ -2,8 +2,9 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://fatynhxuzsdyoczbpkno.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_D4nsEzB5pmxFBv5X18q7AA_5Ezk3VLx";
+// Deal Pilot — own Supabase project (migrated off Lovable 2026-05-16)
+const SUPABASE_URL = "https://fatynhxuzsdyoczbpkno.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhdHluaHh1enNkeW9jemJwa25vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4OTIyNjEsImV4cCI6MjA5NDQ2ODI2MX0.Okz0W-eqS_BRksOe224dKcyOG7nH3z18aHbvUVFJOXY";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
